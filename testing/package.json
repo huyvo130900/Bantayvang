@@ -1,0 +1,35 @@
+{
+  "name": "bantayvang-testing",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "BanTayVang API Integration & Automation Test Suite",
+  "scripts": {
+    "test": "node runner.mjs",
+    "test:auth": "node tests/01-auth.test.mjs",
+    "test:users": "node tests/02-users.test.mjs",
+    "test:categories": "node tests/03-categories.test.mjs",
+    "test:questions": "node tests/04-questions.test.mjs",
+    "test:exams": "node tests/05-exams.test.mjs",
+    "test:exam-taking": "node tests/06-exam-taking.test.mjs",
+    "test:grading": "node tests/07-grading.test.mjs",
+    "test:kythi": "node tests/08-kythi.test.mjs",
+    "test:notifications": "node tests/09-notifications.test.mjs",
+    "test:statistics": "node tests/10-statistics.test.mjs",
+    "test:audit": "node tests/11-audit-log.test.mjs",
+    "test:security": "node tests/12-security.test.mjs",
+    "test:edge": "node tests/13-edge-cases.test.mjs",
+    "test:integrity": "node tests/14-data-integrity.test.mjs",
+    "test:performance": "node tests/15-performance.test.mjs",
+    "test:e2e": "node tests/16-exam-workflow.test.mjs",
+    "test:adv-security": "node tests/17-advanced-security.test.mjs",
+    "test:adv-exam": "node tests/18-exam-advanced.test.mjs",
+    "test:anti-cheat": "node tests/19-anti-cheat-deep.test.mjs",
+    "test:error-prone": "node tests/20-error-prone.test.mjs",
+    "test:regression": "node tests/21-regression.test.mjs",
+    "test:stress": "node tests/22-stress-scenarios.test.mjs",
+    "test:contract": "node tests/23-api-contract.test.mjs"
+  },
+  "dependencies": {
+    "axios": "^1.7.0"
+  }
+}
