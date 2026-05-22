@@ -1,0 +1,193 @@
+@baseUrl = https://localhost:7293
+@baseUrlHttp = http://localhost:5293
+
+### 1. Test Question Management - Get All Questions
+GET {{baseUrl}}/api/cauhoi
+Accept: application/json
+
+### 2. Test Question Management - Get Questions with Filter
+GET {{baseUrl}}/api/cauhoi?IdDanhMuc=1&DoKho=Dễ&PageSize=5
+Accept: application/json
+
+### 3. Test Question Management - Get Question by ID
+GET {{baseUrl}}/api/cauhoi/1
+Accept: application/json
+
+### 4. Test Question Management - Create New Question
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 4,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Hàm nào được sử dụng để hiển thị thông báo trong JavaScript?",
+  "diem": 1.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "alert()",
+      "laDapAnDung": true,
+      "thuTu": 1
+    },
+    {
+      "noiDung": "console.log()",
+      "laDapAnDung": false,
+      "thuTu": 2
+    },
+    {
+      "noiDung": "print()",
+      "laDapAnDung": false,
+      "thuTu": 3
+    },
+    {
+      "noiDung": "show()",
+      "laDapAnDung": false,
+      "thuTu": 4
+    }
+  ]
+}
+
+### 5. Test Question Management - Update Question
+PUT {{baseUrl}}/api/cauhoi/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Từ khóa nào được sử dụng để khai báo một lớp trong C#? (Updated)",
+  "diem": 1.5,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "class",
+      "laDapAnDung": true,
+      "thuTu": 1
+    },
+    {
+      "noiDung": "struct",
+      "laDapAnDung": false,
+      "thuTu": 2
+    },
+    {
+      "noiDung": "interface",
+      "laDapAnDung": false,
+      "thuTu": 3
+    },
+    {
+      "noiDung": "enum",
+      "laDapAnDung": false,
+      "thuTu": 4
+    }
+  ]
+}
+
+### 6. Test Question Management - Get Random Questions
+GET {{baseUrl}}/api/cauhoi/random?count=3&danhMucId=1
+Accept: application/json
+
+### 7. Test Exam System - Get Active Exams
+GET {{baseUrl}}/api/exam/active
+Accept: application/json
+
+### 8. Test Exam System - Get Exam by Code
+GET {{baseUrl}}/api/exam/code/CSHARP001
+Accept: application/json
+
+### 9. Test Exam System - Create New Exam
+POST {{baseUrl}}/api/exam
+Content-Type: application/json
+
+{
+  "maDeThi": "TEST002",
+  "tenDeThi": "Đề thi JavaScript cơ bản",
+  "thoiGianLamBai": 45,
+  "thoiGianBatDau": "2024-12-20T14:00:00",
+  "trangThai": "Active",
+  "danhSachIdCauHoi": [1, 2, 3, 4]
+}
+
+### 10. Test Exam System - Start Exam
+POST {{baseUrl}}/api/exam/start
+Content-Type: application/json
+
+{
+  "maDeThi": "CSHARP001",
+  "thietBiUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "ip": "192.168.1.100"
+}
+
+### 11. Test Exam System - Get Exam Questions (sau khi start exam)
+GET {{baseUrl}}/api/exam/1/questions
+Accept: application/json
+
+### 12. Test Exam System - Save Answer
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "idCauHoi": 3,
+  "idLuaChonDaChon": 3,
+  "daLuu": true
+}
+
+### 13. Test Exam System - Get Exam Progress
+GET {{baseUrl}}/api/exam/2/progress
+Accept: application/json
+
+### 14. Test Exam System - Submit Exam
+POST {{baseUrl}}/api/exam/submit
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "danhSachCauTraLoi": [
+    {
+      "idBaiThi": 2,
+      "idCauHoi": 1,
+      "idLuaChonDaChon": 1,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 2,
+      "idCauHoi": 2,
+      "idLuaChonDaChon": 1,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 2,
+      "idCauHoi": 3,
+      "idLuaChonDaChon": 3,
+      "daLuu": true
+    }
+  ]
+}
+
+### 15. Test Anti-Cheat - Log Warning
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Thí sinh chuyển tab sang Google"
+}
+
+### 16. Test Anti-Cheat - Get Warning Count
+GET {{baseUrl}}/api/exam/2/warnings
+Accept: application/json
+
+### 17. Test Question Management - Search Questions
+GET {{baseUrl}}/api/cauhoi?SearchKeyword=C%23&PageNumber=1&PageSize=10
+Accept: application/json
+
+### 18. Test Question Management - Filter by Department
+GET {{baseUrl}}/api/cauhoi?KhoaPhong=CNTT&DoKho=Dễ
+Accept: application/json
+
+### 19. Test Question Management - Delete Question (Soft Delete)
+DELETE {{baseUrl}}/api/cauhoi/8
+Accept: application/json

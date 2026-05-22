@@ -1,0 +1,93 @@
+em liệt kê các chức năng chị Thúy xem thử nha 1. Quản lý người dùng
+• Đăng nhập bằng tài khoản nội bộ bệnh viện 
+• Phân quyền: 
+o Quản trị hệ thống 
+o Thí sinh 
+• Đổi mật khẩu 
+• Quản lý phiên đăng nhập 
+________________________________________
+2. Quản lý kỳ thi
+• Tạo kỳ thi 
+• Chọn: 
+o Tên kỳ thi 
+o Thời gian thi 
+o Hình thức thi 
+o Đơn vị tham gia 
+• Chia ca thi 
+• Khóa/mở kỳ thi 
+• Gia hạn thời gian thi 
+• Tạo nhiều đợt thi 
+Ví dụ:
+• Thi kiểm soát nhiễm khuẩn 
+• Thi bàn tay vàng điều dưỡng 
+• Thi an toàn người bệnh 
+• Thi CNTT nội bộ 
+________________________________________
+3. Quản lý ngân hàng câu hỏi
+• Tạo câu hỏi: 
+o Trắc nghiệm 
+o Đúng/sai 
+o Điền khuyết 
+o Tự luận 
+o Case lâm sàng 
+• Upload hình ảnh: 
+o Xquang 
+o ECG 
+o Hình tổn thương 
+• Import Excel 
+• Phân loại: 
+o Chủ đề 
+o Mức độ khó 
+o Khoa/phòng 
+• Random câu hỏi 
+________________________________________
+4. Thi trực tuyến
+• Giao diện làm bài 
+• Đếm thời gian 
+• Tự động lưu bài 
+• Chống refresh mất bài 
+• Random: 
+o Câu hỏi 
+o Đáp án 
+• Khóa tab / fullscreen
+• Tự nộp bài khi thoát màn hình 
+• Tự nộp bài khi hết giờ 
+
+6. Chấm điểm
+• Tự động chấm trắc nghiệm 
+• Chấm thủ công tự luận 
+• Chấm theo checklist 
+• Tính điểm theo trọng số 
+• Điểm liệt 
+• Nhiều giám khảo 
+• Trung bình điểm 
+________________________________________
+7. Báo cáo thống kê
+• Tỷ lệ đạt/rớt 
+• Điểm trung bình 
+• Top điểm cao 
+• Theo khoa/phòng 
+• Theo nhóm chức danh 
+• Xuất: 
+o Excel 
+o PDF 
+• Biểu đồ 
+________________________________________
+8. Chống gian lận
+Nếu thi quan trọng.
+Có thể gồm:
+• Random đề 
+• Random đáp án 
+• Log thao tác 
+• Phát hiện chuyển tab 
+• Khóa copy/paste 
+• Ghi lịch sử làm bài 
+________________________________________
+9. Thông báo & lịch thi
+• Thông báo nội bộ 
+• In danh sách dự thi 
+• QR check-in 
+11. Dashboard quản trị
+• Số lượng thí sinh online 
+• Số người đã nộp bài 
+• Thiết bị đang sử dụng

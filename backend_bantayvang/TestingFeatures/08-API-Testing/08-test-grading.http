@@ -1,0 +1,35 @@
+### Test Grading & Result Reports API
+
+@baseUrl = https://localhost:7249
+@accessToken = PASTE_YOUR_TOKEN_HERE
+
+### 1. Chi tiết kết quả bài thi (kèm câu trả lời)
+GET {{baseUrl}}/api/Grading/result/1
+Authorization: Bearer {{accessToken}}
+
+### 2. Danh sách kết quả của 1 đề thi
+GET {{baseUrl}}/api/Grading/exam/1/results
+Authorization: Bearer {{accessToken}}
+
+### 3. Bảng xếp hạng (top 50)
+GET {{baseUrl}}/api/Grading/exam/1/ranking?top=50
+Authorization: Bearer {{accessToken}}
+
+### 4. Chấm lại 1 bài thi
+POST {{baseUrl}}/api/Grading/regrade/1
+Authorization: Bearer {{accessToken}}
+
+### 5. Chấm thủ công câu tự luận
+POST {{baseUrl}}/api/Grading/manual-grade
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "chiTietLamBaiId": 1,
+  "diemDatDuoc": 8.5,
+  "nhanXet": "Bài làm tốt"
+}
+
+### 6. Auto-grade tất cả bài thi chưa chấm
+POST {{baseUrl}}/api/Grading/auto-grade-all
+Authorization: Bearer {{accessToken}}

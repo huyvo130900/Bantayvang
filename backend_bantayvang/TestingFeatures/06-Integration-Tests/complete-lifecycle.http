@@ -1,0 +1,191 @@
+# Complete Question-to-Result Lifecycle Integration Test
+# This test covers the full workflow from question creation to final results
+
+### Variables
+@baseUrl = https://localhost:7001/api
+@adminToken = your-admin-token-here
+@teacherToken = your-teacher-token-here
+@studentToken = your-student-token-here
+
+### STEP 1: Admin creates question categories
+POST {{baseUrl}}/cauhoi/danhmuc
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "tenDanhMuc": "Integration Test Category",
+  "moTa": "Category for integration testing"
+}
+
+### Store category ID for next steps
+@categoryId = {{$response.body.$.data.id}}
+
+### STEP 2: Admin creates question types
+POST {{baseUrl}}/cauhoi/loai
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "tenLoai": "Integration Multiple Choice",
+  "moTa": "Multiple choice for integration testing"
+}
+
+### Store type ID
+@typeId = {{$response.body.$.data.id}}
+
+### STEP 3: Teacher creates questions
+POST {{baseUrl}}/cauhoi
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "noiDung": "What is the capital of Vietnam?",
+  "idDanhMuc": {{categoryId}},
+  "idLoai": {{typeId}},
+  "mucDo": 1,
+  "dapAnA": "Hanoi",
+  "dapAnB": "Ho Chi Minh City",
+  "dapAnC": "Da Nang",
+  "dapAnD": "Hue",
+  "dapAnDung": "A",
+  "giaiThich": "Hanoi is the capital city of Vietnam"
+}
+
+### Store question ID
+@questionId1 = {{$response.body.$.data.id}}
+
+### STEP 4: Create second question
+POST {{baseUrl}}/cauhoi
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "noiDung": "What is 2 + 2?",
+  "idDanhMuc": {{categoryId}},
+  "idLoai": {{typeId}},
+  "mucDo": 1,
+  "dapAnA": "3",
+  "dapAnB": "4",
+  "dapAnC": "5",
+  "dapAnD": "6",
+  "dapAnDung": "B",
+  "giaiThich": "Basic arithmetic: 2 + 2 = 4"
+}
+
+### Store second question ID
+@questionId2 = {{$response.body.$.data.id}}
+
+### STEP 5: Teacher creates exam
+POST {{baseUrl}}/exam
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "tenDeThi": "Integration Test Exam",
+  "moTa": "Full lifecycle integration test exam",
+  "thoiGianLamBai": 30,
+  "soLuongCauHoi": 2,
+  "trangThai": true,
+  "ngayBatDau": "2026-05-20T09:00:00",
+  "ngayKetThuc": "2026-05-20T18:00:00",
+  "cauHoiIds": [{{questionId1}}, {{questionId2}}]
+}
+
+### Store exam ID
+@examId = {{$response.body.$.data.id}}
+
+### STEP 6: Student starts exam session
+POST {{baseUrl}}/exam/{{examId}}/start
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{}
+
+### Store session ID
+@sessionId = {{$response.body.$.data.sessionId}}
+
+### STEP 7: Student answers first question
+POST {{baseUrl}}/exam/{{sessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": {{questionId1}},
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 15
+}
+
+### STEP 8: Student answers second question
+POST {{baseUrl}}/exam/{{sessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": {{questionId2}},
+  "dapAnChon": "B",
+  "thoiGianTraLoi": 10
+}
+
+### STEP 9: Student submits exam
+POST {{baseUrl}}/exam/{{sessionId}}/submit
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{}
+
+### STEP 10: Teacher views exam results
+GET {{baseUrl}}/exam/{{examId}}/results
+Authorization: Bearer {{teacherToken}}
+
+### STEP 11: Verify student's specific result
+GET {{baseUrl}}/exam/{{sessionId}}/result
+Authorization: Bearer {{studentToken}}
+
+### STEP 12: Admin views system statistics
+GET {{baseUrl}}/admin/statistics
+Authorization: Bearer {{adminToken}}
+
+### VERIFICATION STEPS
+
+### Verify question was created correctly
+GET {{baseUrl}}/cauhoi/{{questionId1}}
+Authorization: Bearer {{teacherToken}}
+
+### Verify exam contains questions
+GET {{baseUrl}}/exam/{{examId}}/questions
+Authorization: Bearer {{teacherToken}}
+
+### Verify session was recorded
+GET {{baseUrl}}/exam/{{sessionId}}/details
+Authorization: Bearer {{teacherToken}}
+
+### Verify answers were saved
+GET {{baseUrl}}/exam/{{sessionId}}/answers
+Authorization: Bearer {{teacherToken}}
+
+### CLEANUP (Optional - run after testing)
+
+### Delete exam (cascades to sessions and answers)
+DELETE {{baseUrl}}/exam/{{examId}}
+Authorization: Bearer {{adminToken}}
+
+### Delete questions
+DELETE {{baseUrl}}/cauhoi/{{questionId1}}
+Authorization: Bearer {{adminToken}}
+
+DELETE {{baseUrl}}/cauhoi/{{questionId2}}
+Authorization: Bearer {{adminToken}}
+
+### Delete category and type
+DELETE {{baseUrl}}/cauhoi/danhmuc/{{categoryId}}
+Authorization: Bearer {{adminToken}}
+
+DELETE {{baseUrl}}/cauhoi/loai/{{typeId}}
+Authorization: Bearer {{adminToken}}
+
+### EXPECTED RESULTS:
+# - All API calls should return 200/201 status codes
+# - Student should get 100% score (2/2 correct answers)
+# - Exam results should show 1 participant with full score
+# - All data should be consistent across different API endpoints
+# - No orphaned records should remain after cleanup

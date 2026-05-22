@@ -1,0 +1,297 @@
+# Multi-User Concurrent Testing Scenario
+# Tests multiple students taking the same exam simultaneously
+
+### Variables
+@baseUrl = https://localhost:7001/api
+@adminToken = your-admin-token-here
+@teacherToken = your-teacher-token-here
+@student1Token = your-student1-token-here
+@student2Token = your-student2-token-here
+@student3Token = your-student3-token-here
+
+### SETUP: Create exam for multi-user testing
+POST {{baseUrl}}/exam
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "tenDeThi": "Multi-User Test Exam",
+  "moTa": "Exam for testing concurrent user access",
+  "thoiGianLamBai": 45,
+  "soLuongCauHoi": 5,
+  "trangThai": true,
+  "ngayBatDau": "2026-05-20T09:00:00",
+  "ngayKetThuc": "2026-05-20T18:00:00",
+  "cauHoiIds": [1, 2, 3, 4, 5]
+}
+
+### Store exam ID
+@examId = {{$response.body.$.data.id}}
+
+### CONCURRENT SCENARIO 1: Multiple students start exam at same time
+
+### Student 1 starts exam
+POST {{baseUrl}}/exam/{{examId}}/start
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{}
+
+### Store session IDs
+@session1Id = {{$response.body.$.data.sessionId}}
+
+### Student 2 starts exam (concurrent)
+POST {{baseUrl}}/exam/{{examId}}/start
+Authorization: Bearer {{student2Token}}
+Content-Type: application/json
+
+{}
+
+@session2Id = {{$response.body.$.data.sessionId}}
+
+### Student 3 starts exam (concurrent)
+POST {{baseUrl}}/exam/{{examId}}/start
+Authorization: Bearer {{student3Token}}
+Content-Type: application/json
+
+{}
+
+@session3Id = {{$response.body.$.data.sessionId}}
+
+### CONCURRENT SCENARIO 2: Students answer questions simultaneously
+
+### Student 1 answers question 1
+POST {{baseUrl}}/exam/{{session1Id}}/answer
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 1,
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 30
+}
+
+### Student 2 answers question 1 (different answer)
+POST {{baseUrl}}/exam/{{session2Id}}/answer
+Authorization: Bearer {{student2Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 1,
+  "dapAnChon": "B",
+  "thoiGianTraLoi": 25
+}
+
+### Student 3 answers question 1 (different answer)
+POST {{baseUrl}}/exam/{{session3Id}}/answer
+Authorization: Bearer {{student3Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 1,
+  "dapAnChon": "C",
+  "thoiGianTraLoi": 35
+}
+
+### CONCURRENT SCENARIO 3: Mixed timing answers
+
+### Student 1 answers question 2 quickly
+POST {{baseUrl}}/exam/{{session1Id}}/answer
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 2,
+  "dapAnChon": "B",
+  "thoiGianTraLoi": 15
+}
+
+### Student 2 takes longer on question 2
+POST {{baseUrl}}/exam/{{session2Id}}/answer
+Authorization: Bearer {{student2Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 2,
+  "dapAnChon": "B",
+  "thoiGianTraLoi": 45
+}
+
+### Student 3 answers question 2 with medium time
+POST {{baseUrl}}/exam/{{session3Id}}/answer
+Authorization: Bearer {{student3Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 2,
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 30
+}
+
+### CONCURRENT SCENARIO 4: Anti-cheat monitoring during concurrent access
+
+### Student 1 - Normal behavior
+POST {{baseUrl}}/exam/{{session1Id}}/anticheat
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{
+  "loaiHanhVi": "FOCUS_LOST",
+  "thoiGian": "2026-05-20T10:15:00",
+  "chiTiet": "User switched to another tab briefly"
+}
+
+### Student 2 - Suspicious behavior
+POST {{baseUrl}}/exam/{{session2Id}}/anticheat
+Authorization: Bearer {{student2Token}}
+Content-Type: application/json
+
+{
+  "loaiHanhVi": "COPY_PASTE",
+  "thoiGian": "2026-05-20T10:16:00",
+  "chiTiet": "Attempted to paste content"
+}
+
+### Student 3 - Multiple violations
+POST {{baseUrl}}/exam/{{session3Id}}/anticheat
+Authorization: Bearer {{student3Token}}
+Content-Type: application/json
+
+{
+  "loaiHanhVi": "TAB_SWITCH",
+  "thoiGian": "2026-05-20T10:17:00",
+  "chiTiet": "Switched tabs multiple times"
+}
+
+### CONCURRENT SCENARIO 5: Different submission times
+
+### Student 1 submits early
+POST {{baseUrl}}/exam/{{session1Id}}/submit
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{}
+
+### Student 2 continues and answers more questions
+POST {{baseUrl}}/exam/{{session2Id}}/answer
+Authorization: Bearer {{student2Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 3,
+  "dapAnChon": "C",
+  "thoiGianTraLoi": 40
+}
+
+### Student 3 also continues
+POST {{baseUrl}}/exam/{{session3Id}}/answer
+Authorization: Bearer {{student3Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 3,
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 35
+}
+
+### Student 2 submits
+POST {{baseUrl}}/exam/{{session2Id}}/submit
+Authorization: Bearer {{student2Token}}
+Content-Type: application/json
+
+{}
+
+### Student 3 submits last
+POST {{baseUrl}}/exam/{{session3Id}}/submit
+Authorization: Bearer {{student3Token}}
+Content-Type: application/json
+
+{}
+
+### VERIFICATION: Check concurrent access results
+
+### Teacher views all exam sessions
+GET {{baseUrl}}/exam/{{examId}}/sessions
+Authorization: Bearer {{teacherToken}}
+
+### Check individual results
+GET {{baseUrl}}/exam/{{session1Id}}/result
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/exam/{{session2Id}}/result
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/exam/{{session3Id}}/result
+Authorization: Bearer {{teacherToken}}
+
+### Verify anti-cheat logs for all sessions
+GET {{baseUrl}}/exam/{{session1Id}}/anticheat-logs
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/exam/{{session2Id}}/anticheat-logs
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/exam/{{session3Id}}/anticheat-logs
+Authorization: Bearer {{teacherToken}}
+
+### Check exam statistics
+GET {{baseUrl}}/exam/{{examId}}/statistics
+Authorization: Bearer {{teacherToken}}
+
+### STRESS TEST: Rapid concurrent requests
+
+### Multiple rapid answer submissions (simulate network lag/retry)
+POST {{baseUrl}}/exam/{{session1Id}}/answer
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 4,
+  "dapAnChon": "D",
+  "thoiGianTraLoi": 20
+}
+
+### Immediate second request (should handle gracefully)
+POST {{baseUrl}}/exam/{{session1Id}}/answer
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 4,
+  "dapAnChon": "D",
+  "thoiGianTraLoi": 20
+}
+
+### EDGE CASES: Concurrent edge scenarios
+
+### Try to start exam that's already started
+POST {{baseUrl}}/exam/{{examId}}/start
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{}
+
+### Try to answer after submission
+POST {{baseUrl}}/exam/{{session1Id}}/answer
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 5,
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 25
+}
+
+### CLEANUP
+DELETE {{baseUrl}}/exam/{{examId}}
+Authorization: Bearer {{adminToken}}
+
+### EXPECTED RESULTS:
+# - All students should be able to start exam simultaneously
+# - Each student should have unique session IDs
+# - Answers should be isolated per student session
+# - Anti-cheat logs should be tracked separately
+# - No data corruption or race conditions
+# - System should handle concurrent load gracefully
+# - Edge cases should return appropriate error messages
+# - Final results should be accurate for each student

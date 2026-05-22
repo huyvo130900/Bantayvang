@@ -1,0 +1,301 @@
+# Data Consistency Integration Tests
+# Verifies data integrity across all operations and modules
+
+### Variables
+@baseUrl = https://localhost:7001/api
+@adminToken = your-admin-token-here
+@teacherToken = your-teacher-token-here
+@studentToken = your-student-token-here
+
+### TEST 1: Question-Exam Relationship Consistency
+
+### Create question
+POST {{baseUrl}}/cauhoi
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "noiDung": "Data consistency test question",
+  "idDanhMuc": 1,
+  "idLoai": 1,
+  "mucDo": 2,
+  "dapAnA": "Option A",
+  "dapAnB": "Option B",
+  "dapAnC": "Option C",
+  "dapAnD": "Option D",
+  "dapAnDung": "A",
+  "giaiThich": "Test explanation"
+}
+
+@questionId = {{$response.body.$.data.id}}
+
+### Create exam with the question
+POST {{baseUrl}}/exam
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "tenDeThi": "Data Consistency Test Exam",
+  "moTa": "Testing data relationships",
+  "thoiGianLamBai": 30,
+  "soLuongCauHoi": 1,
+  "trangThai": true,
+  "ngayBatDau": "2026-05-20T09:00:00",
+  "ngayKetThuc": "2026-05-20T18:00:00",
+  "cauHoiIds": [{{questionId}}]
+}
+
+@examId = {{$response.body.$.data.id}}
+
+### Verify question appears in exam
+GET {{baseUrl}}/exam/{{examId}}/questions
+Authorization: Bearer {{teacherToken}}
+
+### Verify exam references question correctly
+GET {{baseUrl}}/cauhoi/{{questionId}}
+Authorization: Bearer {{teacherToken}}
+
+### TEST 2: Session-Answer Relationship Consistency
+
+### Start exam session
+POST {{baseUrl}}/exam/{{examId}}/start
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{}
+
+@sessionId = {{$response.body.$.data.sessionId}}
+
+### Submit answer
+POST {{baseUrl}}/exam/{{sessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": {{questionId}},
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 25
+}
+
+### Verify answer is linked to correct session
+GET {{baseUrl}}/exam/{{sessionId}}/answers
+Authorization: Bearer {{teacherToken}}
+
+### Verify session contains correct answer
+GET {{baseUrl}}/exam/{{sessionId}}/details
+Authorization: Bearer {{teacherToken}}
+
+### TEST 3: Anti-Cheat Log Consistency
+
+### Log anti-cheat event
+POST {{baseUrl}}/exam/{{sessionId}}/anticheat
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "loaiHanhVi": "SUSPICIOUS_ACTIVITY",
+  "thoiGian": "2026-05-20T10:30:00",
+  "chiTiet": "Testing data consistency"
+}
+
+### Verify anti-cheat log is linked to session
+GET {{baseUrl}}/exam/{{sessionId}}/anticheat-logs
+Authorization: Bearer {{teacherToken}}
+
+### Submit exam
+POST {{baseUrl}}/exam/{{sessionId}}/submit
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{}
+
+### TEST 4: Cascade Operations Consistency
+
+### Verify all related data exists before deletion
+GET {{baseUrl}}/exam/{{examId}}/sessions
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/exam/{{sessionId}}/result
+Authorization: Bearer {{teacherToken}}
+
+### TEST 5: Transaction Consistency (Simulated Failure Scenarios)
+
+### Try to create exam with non-existent question (should fail)
+POST {{baseUrl}}/exam
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "tenDeThi": "Invalid Exam",
+  "moTa": "Should fail due to invalid question ID",
+  "thoiGianLamBai": 30,
+  "soLuongCauHoi": 1,
+  "trangThai": true,
+  "ngayBatDau": "2026-05-20T09:00:00",
+  "ngayKetThuc": "2026-05-20T18:00:00",
+  "cauHoiIds": [99999]
+}
+
+### Try to answer non-existent question (should fail)
+POST {{baseUrl}}/exam/{{sessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 99999,
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 25
+}
+
+### Try to start exam that doesn't exist (should fail)
+POST {{baseUrl}}/exam/99999/start
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{}
+
+### TEST 6: Data Integrity After Updates
+
+### Update question content
+PUT {{baseUrl}}/cauhoi/{{questionId}}
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "noiDung": "Updated question content for consistency test",
+  "idDanhMuc": 1,
+  "idLoai": 1,
+  "mucDo": 2,
+  "dapAnA": "Updated Option A",
+  "dapAnB": "Updated Option B",
+  "dapAnC": "Updated Option C",
+  "dapAnD": "Updated Option D",
+  "dapAnDung": "A",
+  "giaiThich": "Updated explanation"
+}
+
+### Verify exam still references updated question correctly
+GET {{baseUrl}}/exam/{{examId}}/questions
+Authorization: Bearer {{teacherToken}}
+
+### Verify existing answers remain consistent
+GET {{baseUrl}}/exam/{{sessionId}}/answers
+Authorization: Bearer {{teacherToken}}
+
+### TEST 7: Concurrent Data Modification Consistency
+
+### Create second session for same exam
+POST {{baseUrl}}/exam/{{examId}}/start
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{}
+
+@session2Id = {{$response.body.$.data.sessionId}}
+
+### Both sessions should see same question data
+GET {{baseUrl}}/exam/{{sessionId}}/questions
+Authorization: Bearer {{studentToken}}
+
+GET {{baseUrl}}/exam/{{session2Id}}/questions
+Authorization: Bearer {{studentToken}}
+
+### Submit different answers from both sessions
+POST {{baseUrl}}/exam/{{session2Id}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": {{questionId}},
+  "dapAnChon": "B",
+  "thoiGianTraLoi": 30
+}
+
+### Submit second session
+POST {{baseUrl}}/exam/{{session2Id}}/submit
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{}
+
+### Verify both sessions have independent results
+GET {{baseUrl}}/exam/{{sessionId}}/result
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/exam/{{session2Id}}/result
+Authorization: Bearer {{teacherToken}}
+
+### TEST 8: Foreign Key Constraint Verification
+
+### Try to delete question that's used in exam (should fail or handle gracefully)
+DELETE {{baseUrl}}/cauhoi/{{questionId}}
+Authorization: Bearer {{adminToken}}
+
+### Verify question still exists
+GET {{baseUrl}}/cauhoi/{{questionId}}
+Authorization: Bearer {{teacherToken}}
+
+### Verify exam still works
+GET {{baseUrl}}/exam/{{examId}}/questions
+Authorization: Bearer {{teacherToken}}
+
+### TEST 9: Data Consistency After System Operations
+
+### Get comprehensive exam statistics
+GET {{baseUrl}}/exam/{{examId}}/statistics
+Authorization: Bearer {{teacherToken}}
+
+### Verify statistics match actual data
+GET {{baseUrl}}/exam/{{examId}}/results
+Authorization: Bearer {{teacherToken}}
+
+### Cross-check session count
+GET {{baseUrl}}/exam/{{examId}}/sessions
+Authorization: Bearer {{teacherToken}}
+
+### TEST 10: Audit Trail Consistency
+
+### Check if all operations are properly logged
+GET {{baseUrl}}/admin/audit-logs?examId={{examId}}
+Authorization: Bearer {{adminToken}}
+
+### Verify timestamps are consistent
+GET {{baseUrl}}/exam/{{sessionId}}/timeline
+Authorization: Bearer {{teacherToken}}
+
+### CLEANUP AND FINAL VERIFICATION
+
+### Delete exam (should cascade properly)
+DELETE {{baseUrl}}/exam/{{examId}}
+Authorization: Bearer {{adminToken}}
+
+### Verify sessions are deleted
+GET {{baseUrl}}/exam/{{sessionId}}/details
+Authorization: Bearer {{teacherToken}}
+
+### Verify answers are deleted
+GET {{baseUrl}}/exam/{{sessionId}}/answers
+Authorization: Bearer {{teacherToken}}
+
+### Verify anti-cheat logs are deleted
+GET {{baseUrl}}/exam/{{sessionId}}/anticheat-logs
+Authorization: Bearer {{teacherToken}}
+
+### Question should still exist (not cascaded)
+GET {{baseUrl}}/cauhoi/{{questionId}}
+Authorization: Bearer {{teacherToken}}
+
+### Clean up question
+DELETE {{baseUrl}}/cauhoi/{{questionId}}
+Authorization: Bearer {{adminToken}}
+
+### EXPECTED RESULTS:
+# - All foreign key relationships should be maintained
+# - No orphaned records should exist
+# - Updates should not break existing relationships
+# - Cascade deletes should work properly
+# - Concurrent operations should not corrupt data
+# - Failed operations should not leave partial data
+# - All timestamps should be consistent and logical
+# - Statistics should match actual data counts
+# - Audit trails should be complete and accurate

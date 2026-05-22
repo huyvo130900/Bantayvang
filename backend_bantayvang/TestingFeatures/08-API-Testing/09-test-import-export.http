@@ -1,0 +1,28 @@
+### Test Import/Export Excel API
+
+@baseUrl = https://localhost:7249
+@accessToken = PASTE_YOUR_TOKEN_HERE
+
+### 1. Download template Excel để import câu hỏi
+GET {{baseUrl}}/api/Cauhoi/import-template
+Authorization: Bearer {{accessToken}}
+
+### 2. Import câu hỏi từ Excel (dùng Postman/Thunder Client để upload file)
+# Multipart form-data với key "file"
+POST {{baseUrl}}/api/Cauhoi/import
+Authorization: Bearer {{accessToken}}
+
+### 3. Export kết quả 1 đề thi ra Excel
+GET {{baseUrl}}/api/Grading/exam/1/export
+Authorization: Bearer {{accessToken}}
+
+### 4. Export bảng xếp hạng ra Excel
+GET {{baseUrl}}/api/Grading/exam/1/ranking/export?top=50
+Authorization: Bearer {{accessToken}}
+
+### 5. Test password reset (gửi email)
+# Note: Email chỉ log ra console nếu EnableEmailSending=false trong appsettings
+POST {{baseUrl}}/api/Auth/request-reset
+Content-Type: application/json
+
+"admin@bantayvang.vn"

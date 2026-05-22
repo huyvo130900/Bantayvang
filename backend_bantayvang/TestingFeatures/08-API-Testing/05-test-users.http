@@ -1,0 +1,73 @@
+### Test User Management API
+
+@baseUrl = https://localhost:7249
+@accessToken = PASTE_YOUR_TOKEN_HERE
+
+### 1. Lấy danh sách users
+GET {{baseUrl}}/api/User?pageNumber=1&pageSize=10
+Authorization: Bearer {{accessToken}}
+
+### 2. Lọc theo role (1=Admin, 2=Teacher, 3=Student, 4=Supervisor)
+GET {{baseUrl}}/api/User?idVaiTro=3
+Authorization: Bearer {{accessToken}}
+
+### 3. Tìm kiếm
+GET {{baseUrl}}/api/User?searchKeyword=admin
+Authorization: Bearer {{accessToken}}
+
+### 4. Lấy chi tiết user
+GET {{baseUrl}}/api/User/1
+Authorization: Bearer {{accessToken}}
+
+### 5. Tạo user mới
+POST {{baseUrl}}/api/User
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "tenDangNhap": "teacher02",
+  "matKhau": "Teacher@123",
+  "email": "teacher02@bantayvang.vn",
+  "hoTen": "Phạm Văn C",
+  "maNhanVien": "GV002",
+  "chucDanh": "Giảng viên",
+  "khoaPhong": "Khoa Đào tạo",
+  "idVaiTro": 2,
+  "trangThai": true
+}
+
+### 6. Cập nhật user
+PUT {{baseUrl}}/api/User/2
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "email": "updated@bantayvang.vn",
+  "hoTen": "Tên đã cập nhật",
+  "maNhanVien": "GV001",
+  "chucDanh": "Giảng viên trưởng",
+  "khoaPhong": "CNTT",
+  "idVaiTro": 2,
+  "trangThai": true
+}
+
+### 7. Vô hiệu hóa user
+POST {{baseUrl}}/api/User/3/deactivate
+Authorization: Bearer {{accessToken}}
+
+### 8. Kích hoạt user
+POST {{baseUrl}}/api/User/3/activate
+Authorization: Bearer {{accessToken}}
+
+### 9. Reset password
+POST {{baseUrl}}/api/User/3/reset-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "newPassword": "NewPass@123"
+}
+
+### 10. Xóa (deactivate) user
+DELETE {{baseUrl}}/api/User/4
+Authorization: Bearer {{accessToken}}

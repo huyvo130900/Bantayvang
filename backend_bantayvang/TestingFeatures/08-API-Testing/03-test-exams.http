@@ -1,0 +1,96 @@
+### Test API Đề thi (Exam) - Full flow
+
+@baseUrl = https://localhost:7249
+@accessToken = PASTE_YOUR_TOKEN_HERE
+
+### 1. Lấy danh sách đề thi đang active
+GET {{baseUrl}}/api/Exam/active
+Authorization: Bearer {{accessToken}}
+
+### 2. Lấy đề thi theo mã
+GET {{baseUrl}}/api/Exam/code/EXAM001
+Authorization: Bearer {{accessToken}}
+
+### 3. Tạo đề thi mới
+POST {{baseUrl}}/api/Exam
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "maDeThi": "TEST001",
+  "tenDeThi": "Đề thi C# cơ bản",
+  "thoiGianLamBai": 60,
+  "thoiGianBatDau": "2026-05-21T08:00:00",
+  "trangThai": "Active",
+  "danhSachIdCauHoi": [1, 2, 3, 4, 5]
+}
+
+### 4. Bắt đầu làm bài (Start exam session)
+POST {{baseUrl}}/api/Exam/start
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "maDeThi": "TEST001"
+}
+
+### 5. Lấy danh sách câu hỏi của bài thi (đổi baithiId thành ID thật từ bước 4)
+GET {{baseUrl}}/api/Exam/1/questions
+Authorization: Bearer {{accessToken}}
+
+### 6. Lấy tiến độ làm bài
+GET {{baseUrl}}/api/Exam/1/progress
+Authorization: Bearer {{accessToken}}
+
+### 7. Lưu câu trả lời (1 câu)
+POST {{baseUrl}}/api/Exam/answer
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "idBaiThi": 1,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 1,
+  "cauTraLoiTuLuan": null,
+  "daLuu": true
+}
+
+### 8. Báo cáo gian lận (Anti-cheat warning)
+POST {{baseUrl}}/api/Exam/warning
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "idBaiThi": 1,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "User chuyển sang tab khác trong khi làm bài"
+}
+
+### 9. Lấy số lượng cảnh báo
+GET {{baseUrl}}/api/Exam/1/warnings
+Authorization: Bearer {{accessToken}}
+
+### 10. Nộp bài
+POST {{baseUrl}}/api/Exam/submit
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "idBaiThi": 1,
+  "danhSachCauTraLoi": [
+    {
+      "idBaiThi": 1,
+      "idCauHoi": 1,
+      "idLuaChonDaChon": 1,
+      "cauTraLoiTuLuan": null,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 1,
+      "idCauHoi": 2,
+      "idLuaChonDaChon": 5,
+      "cauTraLoiTuLuan": null,
+      "daLuu": true
+    }
+  ]
+}

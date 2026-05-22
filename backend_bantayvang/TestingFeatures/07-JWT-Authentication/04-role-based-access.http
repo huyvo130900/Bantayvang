@@ -1,0 +1,56 @@
+### Role-Based Access Control Testing
+### Test admin-only endpoints and role restrictions
+
+# Variables (Update after login)
+@baseUrl = https://localhost:7249@adminToken = YOUR_ADMIN_TOKEN_HERE
+@studentToken = YOUR_STUDENT_TOKEN_HERE
+
+### 1. Test Admin-Only Endpoint - Revoke User Sessions (Admin Access)
+POST {{baseUrl}}/api/auth/revoke-sessions/2
+Authorization: Bearer {{adminToken}}
+
+### 2. Test Admin-Only Endpoint - Without Admin Role (Should Fail)
+POST {{baseUrl}}/api/auth/revoke-sessions/2
+Authorization: Bearer {{studentToken}}
+
+### 3. Test Admin-Only Endpoint - Without Authentication (Should Fail)
+POST {{baseUrl}}/api/auth/revoke-sessions/2
+
+### 4. Test Exam Creation (Teacher/Admin Only) - Will be implemented later
+# POST {{baseUrl}}/api/exam
+# Authorization: Bearer {{adminToken}}
+# Content-Type: application/json
+# 
+# {
+#   "maDeThi": "TEST001",
+#   "tenDeThi": "Test Exam",
+#   "thoiGianLamBai": 60,
+#   "thoiGianBatDau": "2024-12-01T09:00:00",
+#   "trangThai": "Active",
+#   "danhSachIdCauHoi": [1, 2, 3]
+# }
+
+### 5. Test Question Management (Teacher/Admin Only) - Will be implemented later
+# GET {{baseUrl}}/api/question
+# Authorization: Bearer {{adminToken}}
+
+### 6. Test Student Access to Exam Taking (Student Role)
+# GET {{baseUrl}}/api/exam/active
+# Authorization: Bearer {{studentToken}}
+
+### 7. Test Role Information in Token
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{adminToken}}
+
+### 8. Test Multiple Role Scenarios
+# Create test users with different roles for comprehensive testing
+# This will be expanded when user management is implemented
+
+### Security Test: Token Tampering
+### 9. Test with Modified Token (Should Fail)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.tampered_payload.signature
+
+### 10. Test with Different Algorithm Token (Should Fail)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxIiwibmFtZSI6ImFkbWluIiwiaWF0IjoxNTE2MjM5MDIyfQ.

@@ -1,0 +1,60 @@
+### Test Notification & Schedule API
+
+@baseUrl = https://localhost:7249
+@accessToken = PASTE_YOUR_TOKEN_HERE
+
+### 1. Lấy thông báo của user hiện tại
+GET {{baseUrl}}/api/Notification
+Authorization: Bearer {{accessToken}}
+
+### 2. Lấy thông báo chưa đọc
+GET {{baseUrl}}/api/Notification?unreadOnly=true
+Authorization: Bearer {{accessToken}}
+
+### 3. Số thông báo chưa đọc
+GET {{baseUrl}}/api/Notification/unread-count
+Authorization: Bearer {{accessToken}}
+
+### 4. Tạo thông báo cho user
+POST {{baseUrl}}/api/Notification
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "title": "Lịch thi mới",
+  "message": "Bạn có lịch thi vào ngày 22/05/2026",
+  "type": "Info",
+  "relatedUrl": "/exams/upcoming"
+}
+
+### 5. Broadcast thông báo cho tất cả
+POST {{baseUrl}}/api/Notification/broadcast
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "Thông báo bảo trì hệ thống",
+  "message": "Hệ thống sẽ bảo trì từ 23h-24h ngày 25/05/2026",
+  "type": "Warning"
+}
+
+### 6. Đánh dấu đã đọc 1 thông báo
+POST {{baseUrl}}/api/Notification/1/read
+Authorization: Bearer {{accessToken}}
+
+### 7. Đánh dấu tất cả đã đọc
+POST {{baseUrl}}/api/Notification/mark-all-read
+Authorization: Bearer {{accessToken}}
+
+### 8. Xóa thông báo
+DELETE {{baseUrl}}/api/Notification/1
+Authorization: Bearer {{accessToken}}
+
+### 9. Lịch các đề thi sắp diễn ra
+GET {{baseUrl}}/api/Notification/upcoming-exams
+Authorization: Bearer {{accessToken}}
+
+### 10. Đề thi đang/đã diễn ra
+GET {{baseUrl}}/api/Notification/current-exams
+Authorization: Bearer {{accessToken}}

@@ -1,0 +1,24 @@
+### Test Statistics & Dashboard API
+
+@baseUrl = https://localhost:7249
+@accessToken = PASTE_YOUR_TOKEN_HERE
+
+### 1. Dashboard tổng quan
+GET {{baseUrl}}/api/Statistics/dashboard
+Authorization: Bearer {{accessToken}}
+
+### 2. Thống kê chi tiết 1 đề thi
+GET {{baseUrl}}/api/Statistics/exam/1
+Authorization: Bearer {{accessToken}}
+
+### 3. Lịch sử thi của user
+GET {{baseUrl}}/api/Statistics/user/1/history
+Authorization: Bearer {{accessToken}}
+
+### 4. Lịch sử thi của user hiện tại
+GET {{baseUrl}}/api/Statistics/my-history
+Authorization: Bearer {{accessToken}}
+
+### 5. Top 10 performers
+GET {{baseUrl}}/api/Statistics/top-performers?top=10
+Authorization: Bearer {{accessToken}}

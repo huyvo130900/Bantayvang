@@ -1,0 +1,108 @@
+### Test API Câu hỏi (Cauhoi)
+### Đảm bảo đã có sample data trong DB
+
+@baseUrl = https://localhost:7249
+@accessToken = PASTE_YOUR_TOKEN_HERE
+
+### 1. Lấy danh sách câu hỏi (có phân trang)
+GET {{baseUrl}}/api/Cauhoi?pageNumber=1&pageSize=10
+Authorization: Bearer {{accessToken}}
+
+### 2. Lấy danh sách với filter danh mục
+GET {{baseUrl}}/api/Cauhoi?pageNumber=1&pageSize=10&idDanhMuc=1
+Authorization: Bearer {{accessToken}}
+
+### 3. Lấy danh sách với filter từ khóa
+GET {{baseUrl}}/api/Cauhoi?pageNumber=1&pageSize=10&searchKeyword=C#
+Authorization: Bearer {{accessToken}}
+
+### 4. Lấy 5 câu hỏi ngẫu nhiên
+GET {{baseUrl}}/api/Cauhoi/random?count=5
+Authorization: Bearer {{accessToken}}
+
+### 5. Lấy 5 câu hỏi ngẫu nhiên từ danh mục 1
+GET {{baseUrl}}/api/Cauhoi/random?count=5&danhMucId=1
+Authorization: Bearer {{accessToken}}
+
+### 6. Lấy chi tiết câu hỏi theo ID
+GET {{baseUrl}}/api/Cauhoi/1
+Authorization: Bearer {{accessToken}}
+
+### 7. Tạo câu hỏi mới (Trắc nghiệm)
+POST {{baseUrl}}/api/Cauhoi
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "C# là ngôn ngữ lập trình do hãng nào phát triển?",
+  "diem": 1.0,
+  "doKho": "Easy",
+  "khoaPhong": "CNTT",
+  "loaiCauHoi": "MultipleChoice",
+  "mucDo": "Easy",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "Microsoft",
+      "thuTu": 1,
+      "laDapAnDung": true
+    },
+    {
+      "noiDung": "Apple",
+      "thuTu": 2,
+      "laDapAnDung": false
+    },
+    {
+      "noiDung": "Google",
+      "thuTu": 3,
+      "laDapAnDung": false
+    },
+    {
+      "noiDung": "Oracle",
+      "thuTu": 4,
+      "laDapAnDung": false
+    }
+  ]
+}
+
+### 8. Cập nhật câu hỏi (đổi ID thành ID thật từ bước 7)
+PUT {{baseUrl}}/api/Cauhoi/1
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "id": 1,
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "C# là ngôn ngữ lập trình do hãng nào phát triển? (Cập nhật)",
+  "diem": 1.5,
+  "doKho": "Medium",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "Microsoft",
+      "thuTu": 1,
+      "laDapAnDung": true
+    },
+    {
+      "noiDung": "Apple",
+      "thuTu": 2,
+      "laDapAnDung": false
+    },
+    {
+      "noiDung": "Google",
+      "thuTu": 3,
+      "laDapAnDung": false
+    },
+    {
+      "noiDung": "IBM",
+      "thuTu": 4,
+      "laDapAnDung": false
+    }
+  ]
+}
+
+### 9. Xóa câu hỏi (soft delete)
+DELETE {{baseUrl}}/api/Cauhoi/1
+Authorization: Bearer {{accessToken}}

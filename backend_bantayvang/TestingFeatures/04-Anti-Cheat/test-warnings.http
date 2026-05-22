@@ -1,0 +1,170 @@
+@baseUrl = https://localhost:7293
+
+### Anti-Cheat Warning System Test
+
+### SETUP: Start an exam first (use existing exam session)
+# Assume we have baithiId = 2 (from previous tests)
+
+### 1. Log Tab Switch Warning
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Student switched to Google tab at 10:15:30"
+}
+
+### 2. Check Warning Count (Should be 1)
+GET {{baseUrl}}/api/exam/2/warnings
+Accept: application/json
+
+### 3. Log Copy/Paste Warning
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "COPY_PASTE",
+  "moTa": "Detected Ctrl+C and Ctrl+V activity"
+}
+
+### 4. Log Right Click Warning
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "RIGHT_CLICK",
+  "moTa": "Student attempted right-click on question text"
+}
+
+### 5. Check Warning Count (Should be 3)
+GET {{baseUrl}}/api/exam/2/warnings
+Accept: application/json
+
+### 6. Log Fullscreen Exit Warning
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "FULLSCREEN_EXIT",
+  "moTa": "Student exited fullscreen mode"
+}
+
+### 7. Log Multiple Tab Switch (Rapid violations)
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Student switched to Facebook tab"
+}
+
+### 8. Check Warning Count (Should be 5 - Critical level)
+GET {{baseUrl}}/api/exam/2/warnings
+Accept: application/json
+
+### 9. Log One More Warning (Should trigger auto-submit)
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Student switched to YouTube tab - 6th violation"
+}
+
+### 10. Check Final Warning Count (Should be 6+)
+GET {{baseUrl}}/api/exam/2/warnings
+Accept: application/json
+
+### 11. Check Exam Status (Should be auto-submitted)
+GET {{baseUrl}}/api/exam/2/progress
+Accept: application/json
+
+### 12. Try to Save Answer After Auto-Submit (Should fail)
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 1,
+  "daLuu": true
+}
+
+### EDGE CASES
+
+### 13. Log Warning for Non-existent Exam (Should fail)
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 999,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "This should fail"
+}
+
+### 14. Log Warning with Invalid Type
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "INVALID_TYPE",
+  "moTa": "Testing invalid warning type"
+}
+
+### 15. Log Warning with Empty Description
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": ""
+}
+
+### 16. Bulk Warning Test (Stress test)
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Bulk test warning 1"
+}
+
+###
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Bulk test warning 2"
+}
+
+###
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Bulk test warning 3"
+}
+
+### 17. Final Warning Count Check
+GET {{baseUrl}}/api/exam/2/warnings
+Accept: application/json
+
+### SUCCESS CRITERIA:
+# - All warning types logged correctly
+# - Warning count increments properly
+# - Auto-submit triggers at threshold
+# - Invalid requests handled gracefully
+# - System performance remains stable

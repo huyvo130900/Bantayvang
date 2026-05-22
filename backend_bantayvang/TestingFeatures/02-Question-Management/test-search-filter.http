@@ -1,0 +1,83 @@
+@baseUrl = https://localhost:7293
+
+### Test Search and Filter Functionality
+
+### 1. Search by Keyword - "C#"
+GET {{baseUrl}}/api/cauhoi?SearchKeyword=C%23&PageSize=10
+Accept: application/json
+
+### 2. Search by Keyword - "SQL"
+GET {{baseUrl}}/api/cauhoi?SearchKeyword=SQL&PageSize=10
+Accept: application/json
+
+### 3. Filter by Category - Lập trình C# (ID = 1)
+GET {{baseUrl}}/api/cauhoi?IdDanhMuc=1&PageSize=10
+Accept: application/json
+
+### 4. Filter by Category - Cơ sở dữ liệu (ID = 2)
+GET {{baseUrl}}/api/cauhoi?IdDanhMuc=2&PageSize=10
+Accept: application/json
+
+### 5. Filter by Difficulty - "Dễ"
+GET {{baseUrl}}/api/cauhoi?DoKho=Dễ&PageSize=10
+Accept: application/json
+
+### 6. Filter by Difficulty - "Trung bình"
+GET {{baseUrl}}/api/cauhoi?DoKho=Trung%20bình&PageSize=10
+Accept: application/json
+
+### 7. Filter by Department - "CNTT"
+GET {{baseUrl}}/api/cauhoi?KhoaPhong=CNTT&PageSize=10
+Accept: application/json
+
+### 8. Filter by Question Type - Trắc nghiệm (ID = 1)
+GET {{baseUrl}}/api/cauhoi?IdLoaiCauHoi=1&PageSize=10
+Accept: application/json
+
+### 9. Combined Filters - Category + Difficulty
+GET {{baseUrl}}/api/cauhoi?IdDanhMuc=1&DoKho=Dễ&PageSize=10
+Accept: application/json
+
+### 10. Combined Filters - Category + Department + Difficulty
+GET {{baseUrl}}/api/cauhoi?IdDanhMuc=1&KhoaPhong=CNTT&DoKho=Dễ&PageSize=10
+Accept: application/json
+
+### 11. Search + Filter - Keyword + Category
+GET {{baseUrl}}/api/cauhoi?SearchKeyword=class&IdDanhMuc=1&PageSize=10
+Accept: application/json
+
+### 12. Pagination Test - Page 1
+GET {{baseUrl}}/api/cauhoi?PageNumber=1&PageSize=3
+Accept: application/json
+
+### 13. Pagination Test - Page 2
+GET {{baseUrl}}/api/cauhoi?PageNumber=2&PageSize=3
+Accept: application/json
+
+### 14. Large Page Size Test
+GET {{baseUrl}}/api/cauhoi?PageSize=100
+Accept: application/json
+
+### 15. Invalid Page Number (should return empty or error)
+GET {{baseUrl}}/api/cauhoi?PageNumber=999&PageSize=10
+Accept: application/json
+
+### 16. Search with Special Characters
+GET {{baseUrl}}/api/cauhoi?SearchKeyword=ASP.NET&PageSize=10
+Accept: application/json
+
+### 17. Search with No Results
+GET {{baseUrl}}/api/cauhoi?SearchKeyword=NonExistentKeyword&PageSize=10
+Accept: application/json
+
+### 18. Filter with Invalid Category ID
+GET {{baseUrl}}/api/cauhoi?IdDanhMuc=999&PageSize=10
+Accept: application/json
+
+### 19. Empty Search (should return all)
+GET {{baseUrl}}/api/cauhoi?SearchKeyword=&PageSize=10
+Accept: application/json
+
+### 20. Case Insensitive Search
+GET {{baseUrl}}/api/cauhoi?SearchKeyword=constructor&PageSize=10
+Accept: application/json

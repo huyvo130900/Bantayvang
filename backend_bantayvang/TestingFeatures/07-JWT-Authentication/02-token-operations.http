@@ -1,0 +1,61 @@
+### JWT Token Operations Testing
+### Test token validation, refresh, and protected endpoints
+
+# Variables (Update these after successful login)
+@baseUrl = https://localhost:7249@accessToken = YOUR_ACCESS_TOKEN_HERE
+@refreshToken = YOUR_REFRESH_TOKEN_HERE
+
+### 1. Test Token Validation
+GET {{baseUrl}}/api/auth/validate
+Authorization: Bearer {{accessToken}}
+
+### 2. Test Get Current User (Protected Endpoint)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{accessToken}}
+
+### 3. Test Refresh Token
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 4. Test Protected Endpoint Without Token (Should Fail)
+GET {{baseUrl}}/api/auth/me
+
+### 5. Test Protected Endpoint With Invalid Token (Should Fail)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer invalid_token_here
+
+### 6. Test Protected Endpoint With Expired Token (Should Fail)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.expired_token
+
+### 7. Test Refresh With Invalid Token (Should Fail)
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "invalid_refresh_token"
+}
+
+### 8. Test Logout
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}",
+  "logoutFromAllDevices": false
+}
+
+### 9. Test Logout From All Devices
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}",
+  "logoutFromAllDevices": true
+}

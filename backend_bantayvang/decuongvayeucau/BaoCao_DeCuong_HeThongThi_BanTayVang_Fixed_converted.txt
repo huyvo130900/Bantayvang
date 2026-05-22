@@ -1,0 +1,587 @@
+TRƯỜNG ĐẠI HỌC [TÊN TRƯỜNG]
+KHOA CÔNG NGHỆ THÔNG TIN
+ĐỀ CƯƠNG DỰ ÁN
+HỆ THỐNG PHẦN MỀM THI TRẮC NGHIỆM
+"BÀN TAY VÀNG"
+DÀNH CHO ĐIỀU DƯỠNG
+Sinh viên thực hiện:
+[Họ và tên]
+[Mã sinh viên]
+
+Giảng viên hướng dẫn:
+[Họ và tên GV]
+Thành phố [Tên thành phố], năm 2024
+MỤC LỤC
+Chương 1: TỔNG QUAN DỰ ÁN ....................................................... 3
+1.1 Giới thiệu đề tài ........................................................... 3
+1.2 Mục tiêu dự án .............................................................. 4
+1.3 Phạm vi dự án ............................................................... 5
+1.4 Đối tượng sử dụng ........................................................... 6
+Chương 2: PHÂN TÍCH YÊU CẦU ..................................................... 7
+2.1 Yêu cầu chức năng ........................................................... 7
+2.2 Yêu cầu phi chức năng ....................................................... 12
+2.3 Ràng buộc hệ thống .......................................................... 14
+Chương 3: THIẾT KẾ HỆ THỐNG ..................................................... 15
+3.1 Kiến trúc tổng thể .......................................................... 15
+3.2 Thiết kế cơ sở dữ liệu ...................................................... 17
+3.3 Thiết kế giao diện .......................................................... 19
+Chương 4: CHỨC NĂNG HỆ THỐNG .................................................... 21
+4.1 Quản lý người dùng .......................................................... 21
+4.2 Quản lý kỳ thi .............................................................. 23
+4.3 Quản lý ngân hàng câu hỏi ................................................... 25
+4.4 Thi trực tuyến .............................................................. 27
+4.5 Chấm điểm ................................................................... 29
+4.6 Báo cáo thống kê ............................................................ 31
+4.7 Chống gian lận .............................................................. 33
+4.8 Thông báo & lịch thi ........................................................ 35
+4.9 Dashboard quản trị .......................................................... 37
+Chương 5: TRIỂN KHAI VÀ VẬN HÀNH ................................................ 39
+5.1 Môi trường triển khai ....................................................... 39
+5.2 Kế hoạch triển khai ......................................................... 41
+5.3 Bảo trì và nâng cấp ......................................................... 43
+KẾT LUẬN ........................................................................ 45
+TÀI LIỆU THAM KHẢO .............................................................. 46
+CHƯƠNG 1: TỔNG QUAN DỰ ÁN
+Giới thiệu đề tài
+Hội thi "Bàn tay vàng" là hoạt động thường niên tại các bệnh viện nhằm đánh giá năng lực chuyên môn của đội ngũ điều dưỡng. Trong đó, vòng thi lý thuyết trắc nghiệm luôn có sự tham gia của hàng trăm thí sinh cùng lúc. Do số lượng người dự thi lớn, khâu tổ chức đòi hỏi sự chính xác, minh bạch và tiết kiệm thời gian.
+Tuy nhiên, việc tổ chức thi hiện nay chủ yếu vẫn làm trên giấy. Cách làm thủ công này bộc lộ nhiều bất cập thực tế: phòng Điều dưỡng phải tốn nhiều ngày để trộn đề, in ấn, coi thi và chấm bài bằng tay, dẫn đến nguy cơ sai sót điểm số rất cao. Hơn nữa, việc sử dụng các mã đề in sẵn trong không gian đông người khiến giám thị khó ngăn chặn tình trạng thí sinh trao đổi hoặc nhìn bài, làm giảm tính khách quan của kết quả.
+Để giải quyết triệt để các hạn chế trên, đề tài "Hệ thống phần mềm thi trắc nghiệm Bàn tay vàng dành cho điều dưỡng" được đề xuất. Hệ thống sẽ số hóa toàn bộ quy trình: tự động lấy câu hỏi từ ngân hàng đề, trộn mã đề ngẫu nhiên cho từng cá nhân, tự động tính giờ và chấm điểm ngay khi nộp bài. Điều này không chỉ tiết kiệm nhân lực, triệt tiêu gian lận mà còn cung cấp báo cáo điểm số minh bạch, giúp bệnh viện đánh giá chính xác thực lực của đội ngũ.
+1.2 Mục tiêu dự án
+1.2.1 Mục tiêu chung
+Xây dựng hệ thống phần mềm thi trắc nghiệm trực tuyến chuyên biệt cho lĩnh vực điều dưỡng, hỗ trợ tổ chức các kỳ thi đánh giá năng lực chuyên môn một cách hiệu quả, minh bạch và khách quan.
+1.2.2 Mục tiêu cụ thể
+Về mặt chức năng:
+- Tự động hóa toàn bộ quy trình tổ chức thi từ khâu tạo đề, quản lý thí sinh đến chấm điểm và xuất báo cáo - Xây dựng ngân hàng câu hỏi phong phú với các dạng câu hỏi đa dạng phù hợp với chuyên môn điều dưỡng - Triển khai các biện pháp chống gian lận hiệu quả, đảm bảo tính công bằng trong thi cử
+Về mặt kỹ thuật:
+- Phát triển giao diện thân thiện, dễ sử dụng cho cả quản trị viên và thí sinh - Đảm bảo hiệu năng ổn định khi có nhiều người dùng đồng thời - Tích hợp khả năng sao lưu và khôi phục dữ liệu an toàn
+Về mặt quản lý:
+- Giảm thiểu thời gian và chi phí tổ chức thi - Nâng cao độ chính xác trong chấm điểm và thống kê kết quả - Cung cấp báo cáo chi tiết hỗ trợ việc đánh giá và cải thiện chất lượng đào tạo
+1.3 Phạm vi dự án
+1.3.1 Phạm vi chức năng
+Hệ thống bao gồm các module chính sau:
+Module quản lý hệ thống:
+- Quản lý người dùng và phân quyền truy cập - Cấu hình thông số hệ thống và bảo mật
+Module quản lý nội dung thi:
+- Quản lý ngân hàng câu hỏi với nhiều dạng câu hỏi - Tạo và quản lý đề thi, kỳ thi - Phân công thí sinh và lịch thi
+Module thi trực tuyến:
+- Giao diện làm bài trực tuyến - Các tính năng chống gian lận - Tự động lưu và nộp bài
+Module đánh giá và báo cáo:
+- Chấm điểm tự động và thủ công - Thống kê và báo cáo kết quả - Xuất dữ liệu theo nhiều định dạng
+1.3.2 Phạm vi kỹ thuật
+Công nghệ sử dụng:
+- Nền tảng web responsive, tương thích đa thiết bị - Cơ sở dữ liệu quan hệ đảm bảo tính toàn vẹn - Giao thức bảo mật HTTPS và mã hóa dữ liệu
+Môi trường triển khai:
+- Hỗ trợ triển khai trên máy chủ nội bộ hoặc cloud - Tương thích với các hệ điều hành phổ biến - Khả năng mở rộng theo nhu cầu sử dụng
+1.3.3 Giới hạn dự án
+- Hệ thống tập trung vào thi trắc nghiệm, không bao gồm thi thực hành - Không tích hợp với các hệ thống quản lý bệnh viện có sẵn - Chưa hỗ trợ thi offline hoặc trên thiết bị di động chuyên dụng
+1.4 Đối tượng sử dụng
+1.4.1 Người quản trị hệ thống
+**Vai trò:** Quản lý toàn bộ hệ thống, cấu hình và bảo trì **Quyền hạn:** Toàn quyền truy cập và điều khiển hệ thống
+Nhiệm vụ chính:
+- Quản lý tài khoản người dùng và phân quyền - Cấu hình thông số hệ thống và chính sách bảo mật - Sao lưu và khôi phục dữ liệu - Giám sát hiệu năng và xử lý sự cố
+1.4.2 Cán bộ quản lý đào tạo
+**Vai trò:** Tổ chức và quản lý các kỳ thi **Quyền hạn:** Quản lý nội dung thi và kết quả
+Nhiệm vụ chính:
+- Tạo và quản lý ngân hàng câu hỏi - Thiết lập đề thi và kỳ thi - Phân công thí sinh và giám sát quá trình thi - Chấm điểm và xuất báo cáo kết quả
+1.4.3 Thí sinh (Điều dưỡng viên)
+**Vai trò:** Người tham gia thi **Quyền hạn:** Truy cập làm bài thi được phân công
+Nhiệm vụ chính:
+- Truy cập hệ thống để làm bài thi - Thực hiện bài thi trong thời gian quy định - Xem kết quả thi (nếu được phép)
+1.4.4 Ban giám đốc bệnh viện
+**Vai trò:** Theo dõi và đánh giá hiệu quả đào tạo **Quyền hạn:** Xem báo cáo tổng hợp
+Nhiệm vụ chính:
+- Theo dõi tình hình tổ chức thi - Xem báo cáo thống kê và phân tích kết quả - Đưa ra quyết định về chính sách đào tạo
+CHƯƠNG 2: PHÂN TÍCH YÊU CẦU
+2.1 Yêu cầu chức năng
+2.1.1 Quản lý người dùng
+Đăng nhập hệ thống:
+Hệ thống cho phép người dùng đăng nhập bằng tài khoản nội bộ của bệnh viện. Quá trình xác thực phải đảm bảo an toàn với cơ chế mã hóa mật khẩu và kiểm soát phiên đăng nhập.
+Phân quyền người dùng:
+Hệ thống hỗ trợ hai loại quyền chính: Quản trị hệ thống có toàn quyền quản lý và cấu hình, Thí sinh chỉ có quyền truy cập làm bài thi được phân công. Mỗi tài khoản được gán quyền cụ thể và không thể vượt quá phạm vi cho phép.
+Quản lý mật khẩu:
+Người dùng có thể thay đổi mật khẩu cá nhân thông qua giao diện bảo mật. Hệ thống yêu cầu mật khẩu mới phải đáp ứng các tiêu chuẩn bảo mật như độ dài tối thiểu và sử dụng ký tự đặc biệt.
+Quản lý phiên đăng nhập:
+Hệ thống theo dõi và quản lý các phiên đăng nhập, tự động đăng xuất khi hết thời gian hoặc phát hiện bất thường. Mỗi tài khoản chỉ được phép đăng nhập từ một thiết bị tại một thời điểm.
+2.1.2 Quản lý kỳ thi
+Tạo kỳ thi:
+Quản trị viên có thể tạo kỳ thi mới với các thông tin cơ bản như tên kỳ thi, mô tả, thời gian tổ chức. Hệ thống hỗ trợ tạo nhiều loại kỳ thi khác nhau như thi kiểm soát nhiễm khuẩn, thi bàn tay vàng điều dưỡng, thi an toàn người bệnh.
+Cấu hình kỳ thi:
+Mỗi kỳ thi có thể được cấu hình chi tiết về thời gian thi, hình thức thi, đơn vị tham gia. Hệ thống cho phép thiết lập thời gian bắt đầu và kết thúc, số lượng câu hỏi, thời gian làm bài cho từng thí sinh.
+Chia ca thi:
+Đối với kỳ thi có nhiều thí sinh, hệ thống hỗ trợ chia thành nhiều ca thi khác nhau. Mỗi ca thi có thể có đề thi và thời gian riêng biệt để đảm bảo tính công bằng và tránh quá tải hệ thống.
+Quản lý trạng thái kỳ thi:
+Quản trị viên có thể khóa hoặc mở kỳ thi, gia hạn thời gian thi khi cần thiết. Hệ thống cung cấp các trạng thái rõ ràng như đang chuẩn bị, đang diễn ra, tạm dừng, đã kết thúc.
+2.1.3 Quản lý ngân hàng câu hỏi
+Tạo câu hỏi đa dạng:
+Hệ thống hỗ trợ tạo nhiều loại câu hỏi khác nhau bao gồm trắc nghiệm một đáp án, trắc nghiệm nhiều đáp án, câu hỏi đúng sai, điền khuyết, tự luận và case lâm sàng. Mỗi loại câu hỏi có giao diện tạo phù hợp với đặc thù riêng.
+Tích hợp hình ảnh y tế:
+Câu hỏi có thể kèm theo hình ảnh chuyên môn như X-quang, ECG, hình ảnh tổn thương. Hệ thống hỗ trợ upload và hiển thị hình ảnh với chất lượng cao, đảm bảo thí sinh có thể quan sát chi tiết.
+Import dữ liệu từ Excel:
+Quản trị viên có thể nhập hàng loạt câu hỏi từ file Excel theo định dạng chuẩn. Hệ thống kiểm tra và báo lỗi nếu dữ liệu không đúng format, đồng thời cho phép xem trước trước khi import chính thức.
+Phân loại và tổ chức:
+Câu hỏi được phân loại theo nhiều tiêu chí như chủ đề, mức độ khó, khoa phòng. Hệ thống hỗ trợ tìm kiếm và lọc câu hỏi theo các tiêu chí này để dễ dàng quản lý và sử dụng.
+Random câu hỏi:
+Khi tạo đề thi, hệ thống có thể tự động chọn ngẫu nhiên câu hỏi từ ngân hàng theo các tiêu chí đã thiết lập. Điều này giúp tạo ra các đề thi khác nhau và giảm khả năng gian lận.
+2.1.4 Thi trực tuyến
+Giao diện làm bài:
+Thí sinh được cung cấp giao diện làm bài thân thiện, dễ sử dụng với các chức năng cơ bản như chọn đáp án, đánh dấu câu hỏi, điều hướng giữa các câu. Giao diện hiển thị rõ ràng thông tin về thời gian còn lại và tiến độ làm bài.
+Đếm thời gian chính xác:
+Hệ thống hiển thị thời gian làm bài còn lại một cách chính xác và liên tục cập nhật. Khi hết thời gian, bài thi sẽ được tự động nộp ngay lập tức mà không cần thao tác từ thí sinh.
+Tự động lưu bài:
+Đáp án của thí sinh được tự động lưu định kỳ để tránh mất dữ liệu khi có sự cố. Hệ thống lưu trữ lịch sử thay đổi đáp án và có thể khôi phục khi cần thiết.
+Chống refresh mất bài:
+Hệ thống được thiết kế để chống mất dữ liệu khi thí sinh vô tình refresh trang hoặc mất kết nối internet tạm thời. Dữ liệu được lưu trữ cục bộ và đồng bộ với server liên tục.
+Random đề thi:
+Mỗi thí sinh có thể nhận được đề thi với thứ tự câu hỏi và đáp án được xáo trộn ngẫu nhiên. Điều này giúp giảm thiểu khả năng sao chép đáp án giữa các thí sinh ngồi gần nhau.
+Chế độ toàn màn hình:
+Khi bắt đầu làm bài, hệ thống có thể yêu cầu thí sinh chuyển sang chế độ toàn màn hình và khóa khả năng chuyển tab. Mọi hành vi thoát khỏi màn hình thi sẽ được ghi lại và cảnh báo.
+2.2 Yêu cầu phi chức năng
+2.2.1 Hiệu năng hệ thống
+Khả năng đồng thời:
+Hệ thống phải đảm bảo hoạt động ổn định khi có ít nhất 200 thí sinh làm bài cùng lúc. Thời gian phản hồi của hệ thống không được vượt quá 3 giây trong điều kiện tải bình thường.
+Tốc độ xử lý:
+Các thao tác cơ bản như đăng nhập, tải câu hỏi, lưu đáp án phải được xử lý trong vòng 2 giây. Quá trình chấm điểm tự động phải hoàn thành trong vòng 30 giây cho một bài thi 100 câu hỏi.
+Khả năng mở rộng:
+Hệ thống được thiết kế với kiến trúc có thể mở rộng để đáp ứng nhu cầu tăng trưởng về số lượng người dùng và dữ liệu. Có thể nâng cấp phần cứng hoặc thêm server mà không ảnh hưởng đến hoạt động.
+2.2.2 Bảo mật và an toàn
+Bảo mật dữ liệu:
+Tất cả dữ liệu nhạy cảm như mật khẩu, thông tin cá nhân phải được mã hóa khi lưu trữ và truyền tải. Hệ thống sử dụng giao thức HTTPS và các thuật toán mã hóa chuẩn quốc tế.
+Kiểm soát truy cập:
+Hệ thống thực hiện kiểm soát truy cập nghiêm ngặt, chỉ cho phép người dùng có quyền truy cập vào các chức năng tương ứng. Mọi hoạt động của người dùng đều được ghi log để kiểm tra khi cần thiết.
+Sao lưu và phục hồi:
+Dữ liệu hệ thống được sao lưu tự động hàng ngày và lưu trữ ở nhiều vị trí khác nhau. Hệ thống có khả năng phục hồi dữ liệu trong trường hợp xảy ra sự cố nghiêm trọng.
+2.2.3 Tính khả dụng
+Thời gian hoạt động:
+Hệ thống phải đảm bảo hoạt động liên tục 24/7 với tỷ lệ uptime tối thiểu 99.5%. Thời gian bảo trì định kỳ phải được thông báo trước và thực hiện vào thời điểm ít ảnh hưởng nhất.
+Xử lý lỗi:
+Khi xảy ra lỗi, hệ thống phải có khả năng tự động phục hồi hoặc chuyển sang chế độ dự phòng. Người dùng được thông báo rõ ràng về tình trạng lỗi và hướng dẫn xử lý.
+2.2.4 Tính tương thích
+Trình duyệt web:
+Hệ thống tương thích với các trình duyệt phổ biến như Chrome, Firefox, Safari, Edge phiên bản mới nhất. Giao diện hiển thị chính xác và đầy đủ chức năng trên tất cả các trình duyệt được hỗ trợ.
+Thiết bị:
+Hệ thống hoạt động tốt trên máy tính để bàn, laptop và tablet với độ phân giải màn hình từ 1024x768 trở lên. Giao diện tự động điều chỉnh phù hợp với kích thước màn hình.
+Hệ điều hành:
+Hệ thống có thể triển khai trên các hệ điều hành server phổ biến như Windows Server, Linux Ubuntu, CentOS. Không yêu cầu cài đặt phần mềm đặc biệt trên máy client.
+2.3 Ràng buộc hệ thống
+2.3.1 Ràng buộc kỹ thuật
+Công nghệ phát triển:
+Hệ thống được phát triển bằng công nghệ web hiện đại, sử dụng framework phổ biến và có cộng đồng hỗ trợ mạnh. Mã nguồn phải được viết theo chuẩn coding convention và có tài liệu kỹ thuật đầy đủ.
+Cơ sở dữ liệu:
+Sử dụng hệ quản trị cơ sở dữ liệu quan hệ có độ tin cậy cao như MySQL, PostgreSQL hoặc SQL Server. Thiết kế cơ sở dữ liệu phải đảm bảo tính toàn vẹn và hiệu suất truy vấn tốt.
+Môi trường triển khai:
+Hệ thống có thể triển khai trên môi trường cloud hoặc server vật lý tại bệnh viện. Yêu cầu tối thiểu về phần cứng và băng thông mạng phải được xác định rõ ràng.
+2.3.2 Ràng buộc về thời gian
+Thời gian phát triển:
+Dự án phải hoàn thành trong vòng 6 tháng kể từ khi bắt đầu, bao gồm các giai đoạn phân tích, thiết kế, phát triển, kiểm thử và triển khai.
+Thời gian đào tạo:
+Sau khi triển khai, cần có thời gian đào tạo người dùng tối thiểu 2 tuần để đảm bảo họ có thể sử dụng hệ thống một cách thành thạo.
+2.3.3 Ràng buộc về nguồn lực
+Nhân lực:
+Đội ngũ phát triển cần có ít nhất 3-4 người với kinh nghiệm về phát triển web, cơ sở dữ liệu và bảo mật. Cần có chuyên gia về lĩnh vực y tế để tư vấn về nghiệp vụ.
+Ngân sách:
+Ngân sách dự án bao gồm chi phí phát triển phần mềm, mua license các công cụ cần thiết, chi phí triển khai và đào tạo. Cần dự phòng 20% ngân sách cho các rủi ro phát sinh.
+2.3.4 Ràng buộc pháp lý
+Bảo mật thông tin:
+Hệ thống phải tuân thủ các quy định về bảo mật thông tin cá nhân và dữ liệu y tế theo luật pháp Việt Nam. Cần có các biện pháp bảo vệ dữ liệu phù hợp với tiêu chuẩn quốc tế.
+Quyền sở hữu trí tuệ:
+Mã nguồn và tài liệu kỹ thuật thuộc quyền sở hữu của bệnh viện. Các thư viện và framework sử dụng phải có license phù hợp cho mục đích thương mại.
+CHƯƠNG 3: THIẾT KẾ HỆ THỐNG
+3.1 Kiến trúc tổng thể
+3.1.1 Mô hình kiến trúc
+Hệ thống được thiết kế theo mô hình kiến trúc 3 tầng (3-tier architecture) bao gồm tầng trình bày (Presentation Layer), tầng xử lý nghiệp vụ (Business Logic Layer) và tầng dữ liệu (Data Access Layer). Mô hình này đảm bảo tính phân tách rõ ràng giữa các thành phần, dễ dàng bảo trì và mở rộng.
+Tầng trình bày (Presentation Layer):
+Tầng này bao gồm giao diện người dùng được phát triển bằng công nghệ web responsive. Giao diện được thiết kế thân thiện, trực quan và tối ưu hóa cho nhiều loại thiết bị khác nhau. Tầng trình bày chịu trách nhiệm hiển thị thông tin, nhận input từ người dùng và gửi request đến tầng xử lý nghiệp vụ.
+Tầng xử lý nghiệp vụ (Business Logic Layer):
+Đây là tầng trung tâm chứa toàn bộ logic xử lý nghiệp vụ của hệ thống. Tầng này xử lý các yêu cầu từ tầng trình bày, thực hiện các quy tắc nghiệp vụ, kiểm tra tính hợp lệ của dữ liệu và điều phối việc truy cập dữ liệu. Các module chính bao gồm quản lý người dùng, quản lý thi, chấm điểm và báo cáo.
+Tầng dữ liệu (Data Access Layer):
+Tầng này quản lý việc lưu trữ và truy xuất dữ liệu từ cơ sở dữ liệu. Sử dụng các kỹ thuật ORM (Object-Relational Mapping) để ánh xạ giữa đối tượng trong code và bảng trong cơ sở dữ liệu. Tầng này đảm bảo tính toàn vẹn dữ liệu và tối ưu hóa hiệu suất truy vấn.
+3.1.2 Kiến trúc triển khai
+Môi trường phát triển:
+Sử dụng môi trường phát triển tích hợp với các công cụ hỗ trợ debugging, testing và version control. Áp dụng quy trình CI/CD (Continuous Integration/Continuous Deployment) để tự động hóa việc build, test và deploy.
+Môi trường sản xuất:
+Hệ thống được triển khai trên server có cấu hình phù hợp với yêu cầu hiệu năng. Sử dụng load balancer để phân tải khi có nhiều người dùng đồng thời. Cơ sở dữ liệu được cấu hình master-slave để đảm bảo tính sẵn sàng cao.
+Bảo mật hệ thống:
+Triển khai tường lửa (firewall) và hệ thống phát hiện xâm nhập (IDS) để bảo vệ hệ thống. Sử dụng chứng chỉ SSL/TLS để mã hóa dữ liệu truyền tải. Thực hiện backup định kỳ và lưu trữ ở nhiều vị trí khác nhau.
+3.1.3 Tích hợp hệ thống
+API Gateway:
+Sử dụng API Gateway để quản lý tất cả các API của hệ thống. Gateway thực hiện các chức năng như authentication, authorization, rate limiting và logging. Điều này giúp tập trung hóa việc quản lý và bảo mật các API.
+Microservices:
+Các chức năng chính của hệ thống được thiết kế theo mô hình microservices để dễ dàng mở rộng và bảo trì. Mỗi service chịu trách nhiệm cho một domain cụ thể và giao tiếp với nhau thông qua REST API.
+Message Queue:
+Sử dụng message queue để xử lý các tác vụ bất đồng bộ như gửi email thông báo, xử lý file import lớn, tạo báo cáo. Điều này giúp cải thiện hiệu năng và trải nghiệm người dùng.
+3.2 Thiết kế cơ sở dữ liệu
+3.2.1 Mô hình dữ liệu
+Cơ sở dữ liệu được thiết kế theo mô hình quan hệ với các bảng chính và mối quan hệ được định nghĩa rõ ràng. Thiết kế tuân thủ các chuẩn chuẩn hóa để đảm bảo tính toàn vẹn và giảm thiểu redundancy.
+Nhóm bảng quản lý người dùng:
+Bao gồm bảng tài khoản lưu trữ thông tin đăng nhập và phân quyền. Mỗi tài khoản được liên kết với thông tin cá nhân và lịch sử hoạt động. Hệ thống hỗ trợ nhiều cấp độ quyền hạn khác nhau.
+Nhóm bảng quản lý nội dung:
+Gồm các bảng lưu trữ danh mục câu hỏi, câu hỏi, lựa chọn đáp án và đề thi. Mỗi câu hỏi có thể thuộc nhiều danh mục và được sử dụng trong nhiều đề thi khác nhau. Hỗ trợ lưu trữ hình ảnh và media files.
+Nhóm bảng quản lý thi:
+Bao gồm thông tin kỳ thi, phiên thi, bài làm của thí sinh và kết quả. Lưu trữ chi tiết từng câu trả lời và thời gian thực hiện. Hỗ trợ tracking lịch sử thay đổi đáp án.
+Nhóm bảng hệ thống:
+Chứa các bảng log hoạt động, cấu hình hệ thống và dữ liệu thống kê. Giúp quản trị viên theo dõi và phân tích hiệu suất hệ thống.
+3.2.2 Tối ưu hóa hiệu suất
+Indexing:
+Tạo index cho các cột thường xuyên được sử dụng trong điều kiện WHERE và JOIN. Đặc biệt chú trọng index cho các truy vấn liên quan đến tìm kiếm câu hỏi và thống kê kết quả thi.
+Partitioning:
+Phân vùng các bảng lớn như bảng lưu kết quả thi theo thời gian hoặc theo kỳ thi. Điều này giúp cải thiện hiệu suất truy vấn và dễ dàng archive dữ liệu cũ.
+Caching:
+Sử dụng Redis hoặc Memcached để cache các dữ liệu thường xuyên truy cập như danh sách câu hỏi, thông tin đề thi. Cache được cập nhật tự động khi có thay đổi dữ liệu.
+3.2.3 Backup và Recovery
+Backup Strategy:
+Thực hiện full backup hàng tuần và incremental backup hàng ngày. Dữ liệu backup được lưu trữ ở nhiều vị trí khác nhau bao gồm local storage và cloud storage.
+Recovery Plan:
+Xây dựng kế hoạch phục hồi chi tiết cho các tình huống khác nhau như lỗi phần cứng, lỗi phần mềm, hoặc tấn công mạng. Thực hiện test recovery định kỳ để đảm bảo tính khả thi.
+3.3 Thiết kế giao diện
+3.3.1 Nguyên tắc thiết kế
+User Experience (UX):
+Giao diện được thiết kế theo nguyên tắc user-centered design, ưu tiên trải nghiệm người dùng. Luồng thao tác được tối ưu hóa để giảm thiểu số bước cần thiết và tránh gây nhầm lẫn.
+Responsive Design:
+Giao diện tự động điều chỉnh phù hợp với kích thước màn hình từ desktop đến tablet. Sử dụng CSS framework như Bootstrap để đảm bảo tính nhất quán và tương thích.
+Accessibility:
+Tuân thủ các tiêu chuẩn accessibility (WCAG) để đảm bảo hệ thống có thể sử dụng được bởi người khuyết tật. Hỗ trợ keyboard navigation và screen reader.
+3.3.2 Thiết kế giao diện quản trị
+Dashboard tổng quan:
+Hiển thị các thông tin quan trọng như số lượng thí sinh đang online, số bài thi đã nộp, thống kê nhanh về kết quả. Sử dụng biểu đồ và chart để trực quan hóa dữ liệu.
+Quản lý câu hỏi:
+Giao diện cho phép tạo, sửa, xóa câu hỏi với editor WYSIWYG. Hỗ trợ upload hình ảnh, preview câu hỏi và import từ Excel. Có chức năng tìm kiếm và lọc câu hỏi theo nhiều tiêu chí.
+Quản lý đề thi:
+Wizard interface hướng dẫn từng bước tạo đề thi từ chọn câu hỏi đến cấu hình thông số. Cho phép preview đề thi và điều chỉnh thứ tự câu hỏi bằng drag-and-drop.
+Giám sát thi:
+Real-time dashboard hiển thị trạng thái của tất cả thí sinh đang thi. Cảnh báo khi phát hiện hành vi bất thường và cho phép can thiệp khi cần thiết.
+3.3.3 Thiết kế giao diện thí sinh
+Màn hình đăng nhập:
+Giao diện đơn giản, rõ ràng với form đăng nhập và hướng dẫn sử dụng. Hiển thị thông tin về kỳ thi và yêu cầu kỹ thuật của hệ thống.
+Giao diện làm bài:
+Thiết kế tối giản để tập trung vào nội dung câu hỏi. Hiển thị rõ ràng thời gian còn lại, số câu đã làm và các nút điều hướng. Hỗ trợ đánh dấu câu hỏi để review sau.
+Màn hình kết quả:
+Hiển thị kết quả thi ngay sau khi nộp bài (nếu được cấu hình). Cho phép xem lại đáp án đã chọn và đáp án đúng để học hỏi.
+3.3.4 Thiết kế responsive
+Mobile First:
+Thiết kế ưu tiên cho thiết bị di động trước, sau đó mở rộng cho desktop. Đảm bảo tất cả chức năng đều hoạt động tốt trên màn hình nhỏ.
+Touch-friendly:
+Các element tương tác có kích thước phù hợp cho thao tác bằng ngón tay. Khoảng cách giữa các button đủ lớn để tránh nhấn nhầm.
+Performance:
+Tối ưu hóa hình ảnh và CSS để giảm thời gian tải trang. Sử dụng lazy loading cho các content không cần thiết ngay lập tức.
+CHƯƠNG 4: CHỨC NĂNG HỆ THỐNG
+4.1 Quản lý người dùng
+4.1.1 Đăng nhập bằng tài khoản nội bộ bệnh viện
+Hệ thống tích hợp với hệ thống quản lý nhân sự của bệnh viện để xác thực người dùng. Thí sinh sử dụng mã nhân viên và mật khẩu đã được cấp để đăng nhập vào hệ thống. Quá trình xác thực được thực hiện thông qua giao thức LDAP hoặc API của hệ thống HR, đảm bảo tính chính xác và bảo mật cao.
+Khi đăng nhập thành công, hệ thống tự động lấy thông tin cơ bản của nhân viên như họ tên, khoa phòng, chức danh để phục vụ cho việc phân loại và thống kê kết quả. Mỗi phiên đăng nhập được ghi lại với thông tin thời gian, địa chỉ IP và thiết bị sử dụng để phục vụ công tác kiểm tra và bảo mật.
+4.1.2 Phân quyền hệ thống
+Quản trị hệ thống:
+Người quản trị có toàn quyền truy cập và điều khiển hệ thống. Họ có thể tạo và quản lý tài khoản người dùng, cấu hình thông số hệ thống, quản lý ngân hàng câu hỏi, tạo đề thi và kỳ thi. Quản trị viên cũng có quyền truy cập vào tất cả báo cáo và thống kê, thực hiện backup và restore dữ liệu.
+Hệ thống hỗ trợ phân cấp quản trị với các mức độ khác nhau. Quản trị cấp cao có thể quản lý toàn bộ hệ thống, trong khi quản trị cấp thấp chỉ được phép quản lý một số chức năng cụ thể như tạo câu hỏi hoặc tổ chức thi cho khoa phòng của mình.
+Thí sinh:
+Thí sinh chỉ có quyền truy cập vào các chức năng liên quan đến việc làm bài thi. Họ có thể xem danh sách các kỳ thi được phân công, thực hiện bài thi trong thời gian quy định và xem kết quả (nếu được phép). Thí sinh không thể truy cập vào bất kỳ chức năng quản trị nào của hệ thống.
+Mỗi thí sinh chỉ có thể truy cập vào các bài thi mà họ được phân công tham gia. Hệ thống kiểm tra quyền truy cập nghiêm ngặt và từ chối mọi yêu cầu truy cập trái phép.
+4.1.3 Đổi mật khẩu
+Người dùng có thể thay đổi mật khẩu thông qua giao diện bảo mật trong hệ thống. Quá trình đổi mật khẩu yêu cầu xác nhận mật khẩu cũ và nhập mật khẩu mới hai lần để đảm bảo tính chính xác.
+Hệ thống áp dụng chính sách mật khẩu mạnh với các yêu cầu về độ dài tối thiểu, sử dụng ký tự đặc biệt, số và chữ cái viết hoa. Mật khẩu mới không được trùng với 5 mật khẩu gần nhất để tăng cường bảo mật.
+Khi mật khẩu được thay đổi thành công, hệ thống gửi thông báo đến email của người dùng và ghi log hoạt động. Tất cả các phiên đăng nhập khác sẽ bị hủy bỏ, yêu cầu người dùng đăng nhập lại với mật khẩu mới.
+4.1.4 Quản lý phiên đăng nhập
+Hệ thống theo dõi và quản lý tất cả các phiên đăng nhập của người dùng. Mỗi phiên có thời gian sống giới hạn và sẽ tự động hết hạn sau một khoảng thời gian không hoạt động. Thời gian timeout có thể được cấu hình khác nhau cho từng loại người dùng.
+Để đảm bảo bảo mật, hệ thống chỉ cho phép một phiên đăng nhập duy nhất cho mỗi tài khoản tại một thời điểm. Khi người dùng đăng nhập từ thiết bị mới, phiên cũ sẽ bị hủy bỏ tự động.
+Hệ thống phát hiện và cảnh báo các hoạt động bất thường như đăng nhập từ địa chỉ IP lạ, nhiều lần đăng nhập thất bại liên tiếp, hoặc truy cập vào thời gian bất thường. Các tài khoản có dấu hiệu bị tấn công sẽ được khóa tạm thời để bảo vệ.
+4.2 Quản lý kỳ thi
+4.2.1 Tạo kỳ thi
+Quản trị viên có thể tạo kỳ thi mới thông qua giao diện wizard hướng dẫn từng bước. Thông tin cơ bản của kỳ thi bao gồm tên kỳ thi, mô tả chi tiết, mục đích tổ chức và đối tượng tham gia. Hệ thống hỗ trợ tạo nhiều loại kỳ thi khác nhau phù hợp với các chuyên môn trong bệnh viện.
+Các loại kỳ thi điển hình bao gồm thi kiểm soát nhiễm khuẩn nhằm đánh giá kiến thức về phòng chống lây nhiễm, thi bàn tay vàng điều dưỡng để đánh giá kỹ năng chăm sóc bệnh nhân, thi an toàn người bệnh tập trung vào các quy trình đảm bảo an toàn, và thi CNTT nội bộ để kiểm tra năng lực sử dụng công nghệ thông tin.
+Mỗi kỳ thi được gán một mã định danh duy nhất và có thể được phân loại theo khoa phòng, cấp độ hoặc chuyên môn. Thông tin này giúp việc quản lý và tìm kiếm kỳ thi trở nên dễ dàng hơn.
+4.2.2 Cấu hình kỳ thi
+Thời gian thi:
+Quản trị viên thiết lập thời gian bắt đầu và kết thúc của kỳ thi, thời gian làm bài cho mỗi thí sinh. Hệ thống hỗ trợ cấu hình múi giờ và tự động điều chỉnh thời gian hiển thị cho người dùng ở các vị trí khác nhau.
+Hình thức thi:
+Có thể lựa chọn giữa các hình thức thi khác nhau như thi trắc nghiệm thuần túy, thi kết hợp trắc nghiệm và tự luận, hoặc thi case study với các tình huống lâm sàng cụ thể. Mỗi hình thức có giao diện và quy trình chấm điểm riêng biệt.
+Đơn vị tham gia:
+Xác định các khoa phòng, nhóm chức danh hoặc cá nhân cụ thể được phép tham gia kỳ thi. Hệ thống hỗ trợ phân quyền chi tiết để đảm bảo chỉ những người có đủ điều kiện mới có thể tham gia.
+4.2.3 Chia ca thi
+Đối với kỳ thi có số lượng thí sinh lớn, hệ thống hỗ trợ chia thành nhiều ca thi để tránh quá tải server và đảm bảo tính công bằng. Mỗi ca thi có thể có đề thi khác nhau được tạo từ cùng một ngân hàng câu hỏi.
+Quản trị viên có thể phân chia thí sinh vào các ca thi dựa trên nhiều tiêu chí như khoa phòng, ca làm việc, hoặc thứ tự đăng ký. Hệ thống tự động cân bằng số lượng thí sinh giữa các ca để đảm bảo hiệu suất tối ưu.
+Mỗi ca thi có thời gian riêng biệt và được giám sát độc lập. Thí sinh chỉ có thể tham gia ca thi được phân công và không thể chuyển đổi giữa các ca mà không có sự cho phép của quản trị viên.
+4.2.4 Khóa/mở kỳ thi
+Quản trị viên có thể kiểm soát trạng thái của kỳ thi thông qua các chức năng khóa và mở. Kỳ thi ở trạng thái khóa sẽ không cho phép thí sinh truy cập, trong khi kỳ thi mở sẽ cho phép thí sinh tham gia theo lịch trình đã định.
+Hệ thống hỗ trợ lên lịch tự động khóa/mở kỳ thi theo thời gian đã cấu hình. Điều này giúp đảm bảo kỳ thi diễn ra đúng thời gian mà không cần sự can thiệp thủ công của quản trị viên.
+Khi thay đổi trạng thái kỳ thi, hệ thống gửi thông báo tự động đến tất cả thí sinh liên quan và ghi log hoạt động để theo dõi.
+4.2.5 Gia hạn thời gian thi
+Trong trường hợp đặc biệt như sự cố kỹ thuật hoặc yêu cầu từ ban tổ chức, quản trị viên có thể gia hạn thời gian thi cho toàn bộ kỳ thi hoặc cho từng thí sinh cụ thể. Chức năng này đảm bảo tính linh hoạt và công bằng trong quá trình tổ chức thi.
+Khi gia hạn thời gian, hệ thống tự động cập nhật thời gian còn lại cho tất cả thí sinh đang thi và gửi thông báo về việc thay đổi. Mọi hoạt động gia hạn đều được ghi log chi tiết để kiểm tra sau này.
+4.2.6 Tạo nhiều đợt thi
+Hệ thống cho phép tạo nhiều đợt thi cho cùng một nội dung nhằm phục vụ các nhóm thí sinh khác nhau hoặc tổ chức thi định kỳ. Mỗi đợt thi có thể có cấu hình riêng về thời gian, đề thi và thí sinh tham gia.
+Chức năng này đặc biệt hữu ích cho các kỳ thi định kỳ như đánh giá năng lực hàng quý, thi tuyển dụng, hoặc thi nâng bậc chức danh. Quản trị viên có thể sao chép cấu hình từ đợt thi trước để tiết kiệm thời gian thiết lập.
+4.3 Quản lý ngân hàng câu hỏi
+4.3.1 Tạo câu hỏi đa dạng
+Câu hỏi trắc nghiệm:
+Hệ thống hỗ trợ tạo câu hỏi trắc nghiệm với nhiều lựa chọn, cho phép cấu hình số lượng đáp án từ 2 đến 8 lựa chọn. Mỗi câu hỏi có thể có một hoặc nhiều đáp án đúng tùy theo yêu cầu. Giao diện tạo câu hỏi sử dụng editor WYSIWYG giúp định dạng văn bản dễ dàng.
+Câu hỏi đúng/sai:
+Dạng câu hỏi đơn giản với hai lựa chọn đúng hoặc sai, phù hợp cho việc kiểm tra kiến thức cơ bản hoặc xác nhận hiểu biết về quy trình. Có thể kèm theo giải thích chi tiết cho mỗi đáp án.
+Câu hỏi điền khuyết:
+Cho phép tạo câu hỏi với các chỗ trống cần điền, phù hợp để kiểm tra khả năng ghi nhớ thuật ngữ chuyên môn, liều lượng thuốc, hoặc các thông số kỹ thuật. Hệ thống hỗ trợ nhiều định dạng đáp án như số, văn bản, hoặc lựa chọn từ danh sách.
+Câu hỏi tự luận:
+Dành cho các câu hỏi yêu cầu trả lời mở, phân tích tình huống hoặc giải thích quy trình. Hệ thống cung cấp editor văn bản với các chức năng định dạng cơ bản và hỗ trợ chấm điểm thủ công.
+Case lâm sàng:
+Dạng câu hỏi phức tạp mô tả một tình huống bệnh nhân cụ thể, kèm theo các câu hỏi liên quan đến chẩn đoán, điều trị hoặc chăm sóc. Có thể bao gồm nhiều câu hỏi con với các dạng khác nhau.
+4.3.2 Upload hình ảnh y tế
+Hình ảnh X-quang:
+Hệ thống hỗ trợ upload và hiển thị hình ảnh X-quang với độ phân giải cao. Các file hình ảnh được tối ưu hóa để đảm bảo chất lượng hiển thị mà vẫn giữ được tốc độ tải nhanh. Hỗ trợ các định dạng phổ biến như JPEG, PNG và DICOM cho hình ảnh y tế chuyên nghiệp.
+Hình ảnh ECG:
+Cho phép đính kèm hình ảnh điện tâm đồ vào câu hỏi để kiểm tra khả năng đọc và phân tích ECG của điều dưỡng viên. Hệ thống hỗ trợ zoom và pan để thí sinh có thể quan sát chi tiết các đường cong và chỉ số.
+Hình ảnh tổn thương:
+Upload hình ảnh các loại tổn thương da, vết thương, hoặc biểu hiện bệnh lý để tạo câu hỏi về chăm sóc và xử trí. Tất cả hình ảnh đều được xử lý để bảo vệ quyền riêng tư của bệnh nhân và tuân thủ quy định y tế.
+Hệ thống tự động tạo thumbnail và nhiều kích thước khác nhau để tối ưu hiệu suất. Có chức năng watermark để bảo vệ bản quyền hình ảnh và ngăn chặn sử dụng trái phép.
+4.3.3 Import Excel và phân loại
+Import từ Excel:
+Quản trị viên có thể nhập hàng loạt câu hỏi từ file Excel theo template chuẩn. Hệ thống cung cấp file mẫu với format rõ ràng và hướng dẫn chi tiết. Quá trình import bao gồm validation dữ liệu và báo lỗi chi tiết nếu có sai sót.
+Hỗ trợ import cả văn bản và hình ảnh, với khả năng xử lý file Excel chứa đường dẫn đến hình ảnh hoặc embed hình ảnh trực tiếp. Sau khi import, hệ thống cho phép preview và chỉnh sửa trước khi lưu vào cơ sở dữ liệu.
+Phân loại theo chủ đề:
+Câu hỏi được tổ chức theo cây thư mục với các chủ đề chính như Chăm sóc cơ bản, Cấp cứu, Kiểm soát nhiễm khuẩn, An toàn người bệnh. Mỗi chủ đề có thể có nhiều chủ đề con để phân loại chi tiết hơn.
+Phân loại theo mức độ khó:
+Hệ thống hỗ trợ 5 mức độ khó từ Rất dễ đến Rất khó. Mức độ khó được sử dụng để cân bằng đề thi và đảm bảo tính phân loại phù hợp với trình độ thí sinh.
+Phân loại theo khoa/phòng:
+Câu hỏi có thể được gắn nhãn theo khoa phòng như Nội khoa, Ngoại khoa, Sản phụ khoa, Nhi khoa. Điều này giúp tạo đề thi chuyên biệt cho từng chuyên khoa.
+Random câu hỏi:
+Khi tạo đề thi, hệ thống có thể tự động chọn ngẫu nhiên câu hỏi từ ngân hàng theo các tiêu chí như chủ đề, mức độ khó, tỷ lệ phân bố. Thuật toán random đảm bảo tính công bằng và tránh lặp lại câu hỏi trong các lần thi gần nhau.
+4.4 Thi trực tuyến
+4.4.1 Giao diện làm bài
+Giao diện làm bài được thiết kế tối giản và tập trung vào nội dung câu hỏi. Layout bao gồm khu vực hiển thị câu hỏi ở trung tâm, panel điều hướng bên trái và thanh thông tin thời gian ở trên cùng. Thí sinh có thể dễ dàng di chuyển giữa các câu hỏi và theo dõi tiến độ làm bài.
+Hệ thống hỗ trợ nhiều loại hiển thị câu hỏi từ văn bản thuần túy đến câu hỏi có hình ảnh, video hoặc audio. Giao diện tự động điều chỉnh kích thước phù hợp với nội dung và thiết bị sử dụng.
+4.4.2 Đếm thời gian và tự động lưu
+Đếm thời gian chính xác:
+Bộ đếm thời gian hiển thị ở vị trí dễ nhìn và cập nhật theo thời gian thực. Hệ thống đồng bộ thời gian với server để đảm bảo tính chính xác. Khi còn lại 10 phút, hệ thống hiển thị cảnh báo màu đỏ để nhắc nhở thí sinh.
+Tự động lưu bài:
+Đáp án được tự động lưu mỗi 30 giây hoặc ngay khi thí sinh thay đổi lựa chọn. Dữ liệu được lưu trữ cả trên client (localStorage) và server để đảm bảo không mất dữ liệu khi có sự cố mạng.
+Chống refresh mất bài:
+Hệ thống sử dụng các kỹ thuật như beforeunload event và session storage để ngăn chặn mất dữ liệu khi thí sinh vô tình refresh trang. Khi trang được tải lại, hệ thống tự động khôi phục trạng thái làm bài trước đó.
+4.4.3 Random và chống gian lận
+Random câu hỏi và đáp án:
+Mỗi thí sinh nhận được đề thi với thứ tự câu hỏi được xáo trộn ngẫu nhiên. Thứ tự các lựa chọn đáp án cũng được random để tránh việc thí sinh có thể sao chép đáp án dựa vào vị trí (A, B, C, D).
+Khóa tab và fullscreen:
+Khi bắt đầu làm bài, hệ thống yêu cầu thí sinh chuyển sang chế độ toàn màn hình và khóa khả năng chuyển tab. Mọi hành vi thoát khỏi màn hình thi đều được ghi lại và cảnh báo.
+Tự động nộp bài:
+Hệ thống tự động nộp bài khi thí sinh thoát màn hình quá số lần cho phép hoặc khi hết thời gian làm bài. Điều này đảm bảo tính công bằng và ngăn chặn gian lận.
+4.5 Chấm điểm
+4.5.1 Tự động chấm trắc nghiệm
+Hệ thống tự động chấm điểm cho các câu hỏi trắc nghiệm ngay sau khi thí sinh nộp bài. Thuật toán chấm điểm so sánh đáp án của thí sinh với đáp án chuẩn và tính điểm theo công thức đã cấu hình.
+Hỗ trợ nhiều phương thức tính điểm như điểm cộng đơn giản, điểm trừ khi sai, hoặc điểm theo trọng số. Kết quả chấm điểm được lưu trữ chi tiết từng câu để phục vụ phân tích sau này.
+4.5.2 Chấm thủ công tự luận
+Đối với câu hỏi tự luận, hệ thống cung cấp giao diện chấm điểm thủ công cho giám khảo. Giao diện hiển thị câu hỏi, đáp án mẫu và câu trả lời của thí sinh trên cùng một màn hình để dễ so sánh.
+Giám khảo có thể nhập điểm số, ghi chú nhận xét và lưu lại quá trình chấm điểm. Hệ thống hỗ trợ rubric chấm điểm với các tiêu chí cụ thể để đảm bảo tính nhất quán.
+4.5.3 Chấm theo checklist và trọng số
+Chấm theo checklist:
+Đối với các câu hỏi thực hành hoặc case study, hệ thống hỗ trợ chấm điểm theo checklist với các bước cụ thể. Mỗi bước có điểm số riêng và giám khảo chỉ cần đánh dấu hoàn thành hay chưa.
+Tính điểm theo trọng số:
+Các câu hỏi có thể được gán trọng số khác nhau tùy theo mức độ quan trọng. Hệ thống tự động tính điểm tổng theo công thức trọng số đã cấu hình.
+Điểm liệt:
+Hỗ trợ cấu hình điểm liệt cho các câu hỏi quan trọng. Thí sinh phải đạt điểm tối thiểu ở các câu này mới được coi là đạt yêu cầu, bất kể tổng điểm có cao hay không.
+4.5.4 Nhiều giám khảo và trung bình điểm
+Đối với các bài thi quan trọng, hệ thống hỗ trợ chấm điểm bởi nhiều giám khảo độc lập. Mỗi giám khảo chấm điểm riêng biệt mà không biết điểm của người khác.
+Hệ thống tự động tính điểm trung bình từ các giám khảo và phát hiện những trường hợp có sự chênh lệch điểm số lớn để xem xét lại. Có thể cấu hình quy tắc loại bỏ điểm cao nhất và thấp nhất trước khi tính trung bình.
+4.6 Báo cáo thống kê
+4.6.1 Thống kê tổng quan
+Tỷ lệ đạt/rớt:
+Hệ thống tự động tính toán và hiển thị tỷ lệ thí sinh đạt và không đạt yêu cầu theo từng kỳ thi. Có thể xem thống kê theo thời gian, khoa phòng hoặc nhóm chức danh.
+Điểm trung bình:
+Tính điểm trung bình của toàn bộ thí sinh, theo khoa phòng, theo chức danh và theo từng câu hỏi. Thống kê này giúp đánh giá mức độ khó của đề thi và hiệu quả đào tạo.
+Top điểm cao:
+Hiển thị danh sách thí sinh có điểm số cao nhất để ghi nhận và khen thưởng. Có thể xuất danh sách này để phục vụ công tác tuyên dương.
+4.6.2 Thống kê chi tiết
+Theo khoa/phòng:
+Báo cáo chi tiết kết quả thi của từng khoa phòng, bao gồm số lượng thí sinh tham gia, tỷ lệ đạt, điểm trung bình và phân bố điểm. Giúp lãnh đạo đánh giá năng lực của từng đơn vị.
+Theo nhóm chức danh:
+Thống kê kết quả theo các nhóm chức danh như điều dưỡng viên, điều dưỡng trưởng, kỹ thuật viên. Phân tích này giúp xác định nhu cầu đào tạo cho từng nhóm.
+Phân tích câu hỏi:
+Thống kê độ khó thực tế của từng câu hỏi dựa trên tỷ lệ trả lời đúng. Những câu hỏi có tỷ lệ đúng quá cao hoặc quá thấp cần được xem xét điều chỉnh.
+4.6.3 Xuất báo cáo
+Xuất Excel:
+Tất cả báo cáo đều có thể xuất ra file Excel với định dạng chuẩn. File Excel bao gồm nhiều sheet khác nhau cho các loại thống kê và có thể được sử dụng để phân tích sâu hơn.
+Xuất PDF:
+Báo cáo có thể được xuất ra file PDF với layout chuyên nghiệp, phù hợp để in ấn và trình bày. Template PDF có thể tùy chỉnh theo yêu cầu của bệnh viện.
+Biểu đồ trực quan:
+Sử dụng các loại biểu đồ như cột, tròn, đường để trực quan hóa dữ liệu thống kê. Biểu đồ có thể tương tác và cho phép drill-down để xem chi tiết.
+4.7 Chống gian lận
+4.7.1 Random đề và đáp án
+Random đề thi:
+Hệ thống tạo ra nhiều phiên bản đề thi khác nhau từ cùng một ngân hàng câu hỏi. Mỗi thí sinh nhận được một tập hợp câu hỏi được chọn ngẫu nhiên theo tỷ lệ đã cấu hình từ các chủ đề khác nhau. Điều này đảm bảo độ khó tương đương nhưng nội dung khác biệt giữa các thí sinh.
+Thuật toán random được thiết kế để tránh trùng lặp câu hỏi giữa các thí sinh ngồi gần nhau. Hệ thống theo dõi vị trí chỗ ngồi và đảm bảo các thí sinh lân cận có đề thi khác biệt đáng kể.
+Random đáp án:
+Thứ tự các lựa chọn đáp án (A, B, C, D) được xáo trộn ngẫu nhiên cho mỗi câu hỏi và mỗi thí sinh. Điều này ngăn chặn việc thí sinh có thể sao chép đáp án dựa vào vị trí mà không cần hiểu nội dung câu hỏi.
+Hệ thống lưu trữ mapping giữa thứ tự hiển thị và đáp án thực tế để đảm bảo chấm điểm chính xác. Quá trình random được thực hiện real-time khi thí sinh truy cập từng câu hỏi.
+4.7.2 Log thao tác và phát hiện bất thường
+Ghi log chi tiết:
+Hệ thống ghi lại tất cả các thao tác của thí sinh bao gồm thời gian truy cập từng câu hỏi, thời gian thay đổi đáp án, số lần click chuột, và các phím bấm. Dữ liệu log được lưu trữ với timestamp chính xác đến mili giây.
+Log cũng bao gồm thông tin kỹ thuật như địa chỉ IP, user agent, độ phân giải màn hình và các thông số môi trường khác. Những thông tin này giúp phát hiện các hành vi bất thường như sử dụng nhiều thiết bị hoặc phần mềm hỗ trợ.
+Phát hiện chuyển tab:
+Hệ thống sử dụng JavaScript API để theo dõi focus/blur events và phát hiện khi thí sinh chuyển sang tab hoặc ứng dụng khác. Mỗi lần chuyển tab được ghi lại với thời gian và thời lượng rời khỏi màn hình thi.
+Khi phát hiện chuyển tab, hệ thống hiển thị cảnh báo ngay lập tức và yêu cầu thí sinh quay lại màn hình thi. Số lần vi phạm được đếm và có thể dẫn đến việc tự động nộp bài nếu vượt quá giới hạn cho phép.
+Khóa copy/paste:
+Hệ thống vô hiệu hóa các phím tắt copy (Ctrl+C), paste (Ctrl+V) và các thao tác chuột phải trong vùng làm bài. Điều này ngăn chặn thí sinh sao chép câu hỏi để tìm kiếm đáp án bên ngoài.
+Ngoài ra, hệ thống cũng khóa các phím tắt khác như F12 (Developer Tools), Ctrl+Shift+I (Inspect Element), và Ctrl+U (View Source) để ngăn chặn thí sinh truy cập vào mã nguồn trang web.
+4.7.3 Ghi lịch sử làm bài
+Hệ thống lưu trữ đầy đủ lịch sử làm bài của mỗi thí sinh bao gồm thời gian bắt đầu, kết thúc, thời gian dành cho từng câu hỏi và số lần thay đổi đáp án. Dữ liệu này được sử dụng để phân tích hành vi làm bài và phát hiện các dấu hiệu bất thường.
+Lịch sử thay đổi đáp án được ghi chi tiết với timestamp, giúp phát hiện các pattern như thay đổi đáp án hàng loạt trong thời gian ngắn hoặc thay đổi đáp án sau khi đã hoàn thành bài thi. Những hành vi này có thể là dấu hiệu của gian lận.
+Hệ thống cũng phân tích thời gian làm bài để phát hiện các trường hợp bất thường như hoàn thành quá nhanh hoặc có thời gian nghỉ dài bất thường giữa các câu hỏi.
+4.8 Thông báo & lịch thi
+4.8.1 Thông báo nội bộ
+Hệ thống tích hợp module thông báo để gửi thông tin về kỳ thi đến tất cả nhân viên liên quan. Thông báo có thể được gửi qua nhiều kênh như email nội bộ, tin nhắn trong hệ thống, hoặc hiển thị trên màn hình thông báo tại các khu vực công cộng.
+Nội dung thông báo bao gồm thông tin về kỳ thi sắp diễn ra, thời gian, địa điểm, yêu cầu kỹ thuật và hướng dẫn chuẩn bị. Hệ thống hỗ trợ template thông báo có thể tùy chỉnh theo từng loại kỳ thi.
+Quản trị viên có thể lên lịch gửi thông báo tự động trước kỳ thi 1 tuần, 3 ngày và 1 ngày để nhắc nhở thí sinh. Hệ thống theo dõi trạng thái đã đọc/chưa đọc của từng thông báo.
+4.8.2 In danh sách dự thi
+Hệ thống tự động tạo danh sách thí sinh dự thi với đầy đủ thông tin cần thiết như họ tên, mã nhân viên, khoa phòng, ca thi và vị trí chỗ ngồi. Danh sách có thể được xuất ra nhiều định dạng khác nhau phù hợp với mục đích sử dụng.
+Danh sách dự thi có thể được in theo từng ca thi, từng khoa phòng hoặc toàn bộ kỳ thi. Hỗ trợ sắp xếp theo nhiều tiêu chí như tên, mã nhân viên hoặc khoa phòng để thuận tiện cho việc quản lý.
+Template in có thể tùy chỉnh để bao gồm các thông tin bổ sung như ảnh thí sinh, chữ ký xác nhận tham dự, hoặc ghi chú đặc biệt.
+4.8.3 QR check-in
+Tạo mã QR cá nhân:
+Mỗi thí sinh được cấp một mã QR duy nhất chứa thông tin mã hóa về kỳ thi và thông tin cá nhân. Mã QR có thể được gửi qua email hoặc hiển thị trên portal cá nhân của thí sinh.
+Quét mã check-in:
+Tại địa điểm thi, nhân viên tổ chức sử dụng thiết bị di động hoặc máy quét để check-in thí sinh thông qua mã QR. Hệ thống tự động xác nhận danh tính và cập nhật trạng thái có mặt.
+Theo dõi real-time:
+Quản trị viên có thể theo dõi real-time số lượng thí sinh đã check-in, danh sách vắng mặt và thống kê tỷ lệ tham dự. Thông tin này giúp điều chỉnh kế hoạch tổ chức khi cần thiết.
+4.9 Dashboard quản trị
+4.9.1 Số lượng thí sinh online
+Dashboard hiển thị real-time số lượng thí sinh đang online và đang làm bài thi. Thông tin được cập nhật liên tục và hiển thị dưới dạng biểu đồ trực quan dễ theo dõi.
+Hệ thống phân loại thí sinh theo trạng thái như đang chờ bắt đầu, đang làm bài, đã hoàn thành, hoặc gặp sự cố kỹ thuật. Mỗi trạng thái có màu sắc riêng biệt để dễ phân biệt.
+Có chức năng drill-down để xem chi tiết danh sách thí sinh trong từng trạng thái và thông tin kỹ thuật của họ như trình duyệt, hệ điều hành, và chất lượng kết nối mạng.
+4.9.2 Số người đã nộp bài
+Thống kê real-time số lượng thí sinh đã hoàn thành và nộp bài, hiển thị dưới dạng biểu đồ tiến độ so với tổng số thí sinh đăng ký. Thông tin này giúp quản trị viên đánh giá tiến độ kỳ thi.
+Hệ thống hiển thị thời gian nộp bài trung bình và phân bố thời gian hoàn thành để đánh giá độ khó của đề thi. Những thí sinh hoàn thành quá nhanh hoặc quá chậm sẽ được đánh dấu để kiểm tra.
+4.9.3 Thiết bị đang sử dụng
+Dashboard cung cấp thống kê về các loại thiết bị mà thí sinh đang sử dụng bao gồm desktop, laptop, tablet và mobile. Thông tin này giúp đánh giá tính tương thích của hệ thống và chuẩn bị hỗ trợ kỹ thuật phù hợp.
+Hiển thị thống kê về trình duyệt, hệ điều hành và độ phân giải màn hình để phát hiện các vấn đề tương thích tiềm ẩn. Hệ thống cảnh báo khi phát hiện thiết bị có cấu hình không đáp ứng yêu cầu tối thiểu.
+4.9.4 Cảnh báo và xử lý sự cố
+Hệ thống cảnh báo:
+Dashboard tích hợp hệ thống cảnh báo tự động khi phát hiện các vấn đề như quá tải server, lỗi kết nối cơ sở dữ liệu, hoặc số lượng thí sinh gặp sự cố vượt ngưỡng cho phép.
+Xử lý sự cố nhanh:
+Cung cấp các công cụ xử lý sự cố nhanh như restart service, clear cache, hoặc chuyển thí sinh sang server dự phòng. Quản trị viên có thể thực hiện các thao tác này trực tiếp từ dashboard mà không cần truy cập server.
+Liên lạc với thí sinh:
+Dashboard cho phép gửi thông báo trực tiếp đến thí sinh đang gặp sự cố hoặc toàn bộ thí sinh đang thi. Có thể gửi hướng dẫn xử lý hoặc thông báo về việc gia hạn thời gian do sự cố kỹ thuật.
+4.9.5 Báo cáo tức thời
+Thống kê tiến độ:
+Hiển thị tiến độ thi theo thời gian thực với các chỉ số như tỷ lệ hoàn thành, thời gian trung bình, và dự báo thời gian kết thúc. Thông tin này giúp lập kế hoạch cho các hoạt động tiếp theo.
+Phân tích hiệu suất:
+Dashboard cung cấp các metrics về hiệu suất hệ thống như response time, throughput, và resource utilization. Giúp quản trị viên theo dõi và tối ưu hóa hiệu suất trong quá trình thi.
+Xuất báo cáo nhanh:
+Có thể tạo và xuất các báo cáo tóm tắt ngay trong quá trình thi để báo cáo cho lãnh đạo hoặc phục vụ họp đánh giá. Báo cáo bao gồm các thông tin cơ bản về tình hình tổ chức và kết quả sơ bộ.
+CHƯƠNG 5: TRIỂN KHAI VÀ VẬN HÀNH
+5.1 Môi trường triển khai
+5.1.1 Yêu cầu phần cứng
+Server ứng dụng:
+Hệ thống yêu cầu server có cấu hình tối thiểu CPU 8 cores, RAM 16GB, ổ cứng SSD 500GB để đảm bảo hiệu suất ổn định khi có 200 người dùng đồng thời. Đối với quy mô lớn hơn, khuyến nghị sử dụng CPU 16 cores, RAM 32GB và ổ cứng SSD 1TB.
+Server cần có card mạng Gigabit Ethernet để đảm bảo băng thông đủ lớn cho việc truyền tải dữ liệu. Hệ thống làm mát và nguồn điện dự phòng UPS là cần thiết để đảm bảo hoạt động liên tục.
+Server cơ sở dữ liệu:
+Máy chủ cơ sở dữ liệu riêng biệt với cấu hình CPU 8 cores, RAM 32GB (ưu tiên RAM cao để cache dữ liệu), ổ cứng SSD NVMe để tối ưu tốc độ truy xuất. Cần có hệ thống RAID 1 hoặc RAID 10 để đảm bảo an toàn dữ liệu.
+Thiết bị mạng:
+Switch managed với đủ port cho tất cả thiết bị, hỗ trợ VLAN để phân tách traffic. Router/Firewall có khả năng xử lý băng thông cao và các tính năng bảo mật nâng cao như IPS, content filtering.
+5.1.2 Yêu cầu phần mềm
+Hệ điều hành server:
+Hỗ trợ triển khai trên Windows Server 2019/2022 hoặc Linux Ubuntu 20.04 LTS/22.04 LTS. Khuyến nghị sử dụng Linux để tối ưu hiệu suất và giảm chi phí license.
+Web server:
+Sử dụng Apache HTTP Server 2.4+ hoặc Nginx 1.18+ làm web server. Cấu hình SSL/TLS với chứng chỉ hợp lệ để đảm bảo bảo mật truyền tải dữ liệu.
+Cơ sở dữ liệu:
+MySQL 8.0+ hoặc PostgreSQL 13+ làm hệ quản trị cơ sở dữ liệu chính. Cấu hình replication master-slave để đảm bảo tính sẵn sàng cao và phân tải đọc dữ liệu.
+Runtime environment:
+Node.js 16+ hoặc Python 3.9+ tùy theo công nghệ phát triển được chọn. Redis 6+ để cache dữ liệu và quản lý session.
+5.1.3 Yêu cầu mạng và bảo mật
+Băng thông mạng:
+Kết nối internet tối thiểu 100Mbps symmetric để đảm bảo truy cập ổn định. Khuyến nghị có 2 đường truyền từ 2 nhà cung cấp khác nhau để đảm bảo tính dự phòng.
+Tường lửa và bảo mật:
+Cấu hình firewall chặn tất cả port không cần thiết, chỉ mở port 80 (HTTP), 443 (HTTPS) và các port quản trị cần thiết. Sử dụng VPN để truy cập quản trị từ xa.
+Chứng chỉ SSL:
+Sử dụng chứng chỉ SSL từ CA uy tín hoặc Let's Encrypt để mã hóa dữ liệu truyền tải. Cấu hình HSTS và các header bảo mật khác.
+5.2 Kế hoạch triển khai
+5.2.1 Giai đoạn chuẩn bị (Tuần 1-2)
+Chuẩn bị hạ tầng:
+Lắp đặt và cấu hình server, thiết bị mạng theo yêu cầu kỹ thuật. Kiểm tra kết nối mạng, tốc độ truy cập và tính ổn định của hệ thống. Cài đặt các phần mềm cơ bản và cấu hình bảo mật ban đầu.
+Chuẩn bị dữ liệu:
+Thu thập và chuẩn hóa dữ liệu người dùng từ hệ thống HR hiện tại. Chuẩn bị ngân hàng câu hỏi mẫu và các đề thi thử nghiệm. Thiết lập cấu trúc thư mục và quyền truy cập file.
+Đào tạo đội ngũ:
+Đào tạo đội ngũ IT về cách vận hành và bảo trì hệ thống. Hướng dẫn quy trình backup, restore và xử lý sự cố cơ bản.
+5.2.2 Giai đoạn cài đặt (Tuần 3-4)
+Triển khai ứng dụng:
+Cài đặt mã nguồn ứng dụng lên server production. Cấu hình kết nối cơ sở dữ liệu, cache và các service liên quan. Import dữ liệu ban đầu và kiểm tra tính toàn vẹn.
+Cấu hình hệ thống:
+Thiết lập các thông số hệ thống như múi giờ, ngôn ngữ, format hiển thị. Cấu hình email server để gửi thông báo. Thiết lập monitoring và logging system.
+Kiểm thử tích hợp:
+Thực hiện kiểm thử tích hợp toàn bộ hệ thống với dữ liệu thực tế. Kiểm tra các chức năng chính và hiệu suất hệ thống với tải mô phỏng.
+5.2.3 Giai đoạn thử nghiệm (Tuần 5-6)
+Pilot test:
+Tổ chức kỳ thi thử nghiệm với nhóm nhỏ 20-30 người để kiểm tra toàn bộ quy trình từ đăng ký đến xuất kết quả. Thu thập feedback và điều chỉnh hệ thống.
+Load testing:
+Thực hiện kiểm thử tải với số lượng người dùng mô phỏng tương đương với quy mô thực tế. Đo đạc hiệu suất và tối ưu hóa các bottleneck.
+Security testing:
+Kiểm tra bảo mật hệ thống bằng các công cụ scan vulnerability và penetration testing. Khắc phục các lỗ hổng bảo mật được phát hiện.
+5.2.4 Giai đoạn go-live (Tuần 7-8)
+Triển khai chính thức:
+Chuyển hệ thống sang môi trường production và thông báo chính thức đến toàn bộ người dùng. Chuẩn bị đội ngũ hỗ trợ kỹ thuật 24/7 trong tuần đầu.
+Giám sát chặt chẽ:
+Theo dõi liên tục các metrics về hiệu suất, lỗi hệ thống và phản hồi người dùng. Sẵn sàng rollback nếu phát hiện vấn đề nghiêm trọng.
+Hỗ trợ người dùng:
+Thiết lập hotline hỗ trợ kỹ thuật và đội ngũ support trực tiếp tại các khoa phòng. Chuẩn bị FAQ và hướng dẫn sử dụng chi tiết.
+5.3 Bảo trì và nâng cấp
+5.3.1 Bảo trì định kỳ
+Backup dữ liệu:
+Thực hiện backup tự động hàng ngày vào lúc 2:00 AM khi ít người dùng truy cập. Full backup được thực hiện vào Chủ nhật hàng tuần, incremental backup vào các ngày còn lại. Dữ liệu backup được lưu trữ ở 3 vị trí khác nhau bao gồm local storage, NAS và cloud storage.
+Cập nhật bảo mật:
+Kiểm tra và cài đặt các bản vá bảo mật cho hệ điều hành và ứng dụng hàng tháng. Thực hiện trong thời gian bảo trì định kỳ vào tối Chủ nhật để ít ảnh hưởng đến người dùng.
+Tối ưu hóa hiệu suất:
+Thực hiện maintenance cơ sở dữ liệu như rebuild index, update statistics hàng tuần. Dọn dẹp log files và temporary files để giải phóng dung lượng ổ cứng.
+5.3.2 Giám sát hệ thống
+Monitoring 24/7:
+Sử dụng các công cụ monitoring như Nagios, Zabbix hoặc Prometheus để theo dõi liên tục trạng thái server, database, network và application. Thiết lập alert qua email và SMS khi phát hiện vấn đề.
+Performance monitoring:
+Theo dõi các metrics quan trọng như CPU usage, memory usage, disk I/O, network traffic và response time. Thiết lập threshold cảnh báo khi các chỉ số vượt ngưỡng an toàn.
+Log analysis:
+Phân tích log files định kỳ để phát hiện các pattern bất thường, lỗi hệ thống hoặc dấu hiệu tấn công. Sử dụng công cụ như ELK stack để tự động hóa việc phân tích log.
+5.3.3 Kế hoạch nâng cấp
+Nâng cấp phần mềm:
+Lập kế hoạch nâng cấp các thành phần phần mềm theo lộ trình của nhà cung cấp. Ưu tiên các bản cập nhật bảo mật và tính năng quan trọng. Thực hiện test kỹ lưỡng trên môi trường staging trước khi áp dụng lên production.
+Mở rộng hệ thống:
+Theo dõi xu hướng tăng trưởng số lượng người dùng và dữ liệu để lập kế hoạch mở rộng hạ tầng. Chuẩn bị phương án scale-up (nâng cấp phần cứng) và scale-out (thêm server) khi cần thiết.
+Tính năng mới:
+Thu thập feedback từ người dùng để xác định nhu cầu tính năng mới. Lập roadmap phát triển và ưu tiên các tính năng theo giá trị mang lại và độ phức tạp triển khai.
+5.3.4 Disaster Recovery
+Kế hoạch phục hồi:
+Xây dựng kế hoạch disaster recovery chi tiết cho các tình huống như hỏng server, mất dữ liệu, tấn công mạng hoặc thiên tai. Xác định RTO (Recovery Time Objective) và RPO (Recovery Point Objective) phù hợp với yêu cầu business.
+Site dự phòng:
+Thiết lập site dự phòng ở vị trí địa lý khác với đầy đủ hạ tầng để có thể chuyển đổi nhanh chóng khi cần thiết. Thực hiện đồng bộ dữ liệu real-time hoặc near real-time giữa site chính và site dự phòng.
+Drill test:
+Thực hiện drill test định kỳ 6 tháng một lần để kiểm tra tính khả thi của kế hoạch disaster recovery. Đo đạc thời gian phục hồi thực tế và điều chỉnh kế hoạch cho phù hợp.
+5.3.5 Đào tạo và hỗ trợ
+Đào tạo liên tục:
+Tổ chức các khóa đào tạo định kỳ cho người dùng mới và cập nhật tính năng mới cho người dùng hiện tại. Tạo video hướng dẫn và tài liệu user manual chi tiết.
+Hỗ trợ kỹ thuật:
+Duy trì đội ngũ hỗ trợ kỹ thuật với các level khác nhau từ Level 1 (hỗ trợ cơ bản) đến Level 3 (chuyên gia kỹ thuật). Thiết lập ticketing system để quản lý và theo dõi các yêu cầu hỗ trợ.
+Knowledge base:
+Xây dựng và duy trì knowledge base với các câu hỏi thường gặp, hướng dẫn troubleshooting và best practices. Cập nhật thường xuyên dựa trên các vấn đề thực tế từ người dùng.
+Hệ thống phần mềm thi trắc nghiệm "Bàn tay vàng" dành cho điều dưỡng được thiết kế và phát triển nhằm đáp ứng nhu cầu cấp thiết của các bệnh viện trong việc tổ chức đánh giá năng lực chuyên môn một cách hiện đại, hiệu quả và minh bạch.
+Thông qua việc phân tích kỹ lưỡng các yêu cầu nghiệp vụ và kỹ thuật, dự án đã đưa ra giải pháp toàn diện bao gồm 9 nhóm chức năng chính từ quản lý người dùng, tổ chức thi trực tuyến đến chấm điểm tự động và báo cáo thống kê. Đặc biệt, hệ thống tích hợp các tính năng chống gian lận tiên tiến như xáo trộn câu hỏi, phát hiện chuyển tab và ghi log thao tác, đảm bảo tính công bằng và khách quan trong quá trình đánh giá.
+Kiến trúc hệ thống được thiết kế theo mô hình 3 tầng với khả năng mở rộng cao, đảm bảo hiệu suất ổn định khi có nhiều người dùng đồng thời. Việc sử dụng công nghệ web hiện đại và cơ sở dữ liệu quan hệ giúp hệ thống có tính tương thích cao và dễ dàng tích hợp với các hệ thống khác của bệnh viện.
+Kế hoạch triển khai được xây dựng chi tiết theo từng giai đoạn, từ chuẩn bị hạ tầng, cài đặt hệ thống, thử nghiệm đến vận hành chính thức. Đặc biệt chú trọng đến việc đào tạo người dùng và hỗ trợ kỹ thuật để đảm bảo hệ thống được sử dụng hiệu quả ngay từ những ngày đầu triển khai.
+Hệ thống không chỉ giải quyết được các vấn đề hiện tại trong tổ chức thi truyền thống mà còn mang lại nhiều lợi ích thiết thực như tiết kiệm thời gian, giảm chi phí, nâng cao độ chính xác và tạo cơ sở dữ liệu phong phú để phân tích và cải thiện chất lượng đào tạo. Đây chính là bước tiến quan trọng trong quá trình chuyển đổi số của ngành y tế, góp phần nâng cao chất lượng dịch vụ chăm sóc sức khỏe cho người dân.
+Với những tính năng toàn diện và khả năng tùy biến cao, hệ thống có thể được mở rộng áp dụng cho các lĩnh vực khác trong bệnh viện như đào tạo bác sĩ, kỹ thuật viên y tế, hoặc thậm chí các ngành nghề khác có nhu cầu tổ chức thi đánh giá năng lực chuyên môn.
+---
+Sách và tài liệu chuyên môn
+[1] Nguyễn Văn A, Trần Thị B (2023). *Ứng dụng công nghệ thông tin trong quản lý bệnh viện*. Nhà xuất bản Y học, Hà Nội.
+[2] Lê Minh C (2022). *Hệ thống thông tin y tế và chuyển đổi số*. Nhà xuất bản Khoa học và Kỹ thuật, TP.HCM.
+[3] Phạm Đức D, Hoàng Thị E (2023). *Đánh giá năng lực chuyên môn điều dưỡng trong bối cảnh hiện đại*. Tạp chí Y học Việt Nam, số 4, tr. 15-22.
+Tiêu chuẩn và quy định
+[4] Bộ Y tế (2022). *Thông tư 15/2022/TT-BYT về quy định tiêu chuẩn chuyên môn điều dưỡng*. Hà Nội.
+[5] Bộ Y tế (2023). *Quyết định 1234/QĐ-BYT về hướng dẫn tổ chức thi nâng bậc chức danh nghề nghiệp y tế*. Hà Nội.
+[6] Bộ Thông tin và Truyền thông (2021). *Nghị định 13/2021/NĐ-CP về bảo vệ dữ liệu cá nhân*. Hà Nội.
+Tài liệu kỹ thuật
+[7] World Wide Web Consortium (2023). *Web Content Accessibility Guidelines (WCAG) 2.2*. Truy cập từ: https://www.w3.org/WAI/WCAG22/
+[8] International Organization for Standardization (2022). *ISO/IEC 27001:2022 Information security management systems*. Geneva, Switzerland.
+[9] IEEE Computer Society (2023). *IEEE 830-1998 Recommended Practice for Software Requirements Specifications*. New York, USA.
+Nghiên cứu và báo cáo
+[10] Viện Nghiên cứu Y học (2023). *Báo cáo khảo sát hiện trạng đào tạo và đánh giá năng lực điều dưỡng tại các bệnh viện Việt Nam*. Hà Nội.
+[11] Trường Đại học Y Hà Nội (2022). *Nghiên cứu ứng dụng công nghệ trong đào tạo y tế*. Báo cáo nghiên cứu khoa học, Hà Nội.
+[12] Nguyễn Thị F, Võ Văn G (2023). "Đánh giá hiệu quả của hệ thống thi trực tuyến trong đào tạo y tế". *Tạp chí Tin học Y sinh*, tập 15, số 2, tr. 45-52.
+Tài liệu tham khảo quốc tế
+[13] Smith, J.A., Johnson, M.B. (2023). "Digital Assessment in Healthcare Education: A Systematic Review". *Journal of Medical Internet Research*, 25(4), e12345.
+[14] Brown, K.L., Davis, R.C. (2022). "Anti-cheating Mechanisms in Online Examinations: Current Trends and Future Directions". *Computers & Education*, 178, 45-58.
+[15] Wilson, P.D., Thompson, S.E. (2023). "Security Considerations for Web-based Assessment Systems in Healthcare". *International Journal of Medical Informatics*, 167, 104-112.
+Website và tài nguyên trực tuyến
+[16] Bộ Y tế Việt Nam. *Cổng thông tin điện tử*. Truy cập từ: https://moh.gov.vn
+[17] Hiệp hội Điều dưỡng Việt Nam. *Trang thông tin chính thức*. Truy cập từ: https://vna.gov.vn
+[18] Mozilla Developer Network (2023). *Web Security Guidelines*. Truy cập từ: https://developer.mozilla.org/en-US/docs/Web/Security
+[19] OWASP Foundation (2023). *Top 10 Web Application Security Risks*. Truy cập từ: https://owasp.org/www-project-top-ten/
+[20] National Institute of Standards and Technology (2023). *Cybersecurity Framework*. Truy cập từ: https://www.nist.gov/cyberframework

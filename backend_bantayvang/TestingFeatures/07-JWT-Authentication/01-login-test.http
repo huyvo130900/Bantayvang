@@ -1,0 +1,67 @@
+### JWT Authentication Testing
+### Test login endpoint with default admin credentials
+
+# Variables
+@baseUrl = https://localhost:7249
+@adminUsername = admin
+@adminPassword = admin123
+
+### 1. Test Login - Valid Credentials
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{adminUsername}}",
+  "password": "{{adminPassword}}",
+  "rememberMe": false
+}
+
+### 2. Test Login - Invalid Credentials
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "invalid_user",
+  "password": "wrong_password",
+  "rememberMe": false
+}
+
+### 3. Test Login - Empty Credentials
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "",
+  "password": "",
+  "rememberMe": false
+}
+
+### 4. Test Login - SQL Injection Attempt (Security Test)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin'; DROP TABLE TAIKHOAN; --",
+  "password": "admin123",
+  "rememberMe": false
+}
+
+### 5. Test Login - XSS Attempt (Security Test)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "<script>alert('xss')</script>",
+  "password": "admin123",
+  "rememberMe": false
+}
+
+### 6. Test Login - Remember Me Option
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{adminUsername}}",
+  "password": "{{adminPassword}}",
+  "rememberMe": true
+}

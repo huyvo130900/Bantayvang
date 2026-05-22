@@ -1,0 +1,210 @@
+@baseUrl = https://localhost:7293
+
+### Complete Exam Flow Test - From Start to Finish
+
+### PHASE 1: EXAM SETUP
+
+### 1. Create New Exam
+POST {{baseUrl}}/api/exam
+Content-Type: application/json
+
+{
+  "maDeThi": "TEST_FLOW_001",
+  "tenDeThi": "Test Complete Exam Flow",
+  "thoiGianLamBai": 30,
+  "thoiGianBatDau": "2024-12-20T10:00:00",
+  "trangThai": "Active",
+  "danhSachIdCauHoi": [1, 2, 3, 4, 5]
+}
+
+### 2. Get Active Exams (Verify exam was created)
+GET {{baseUrl}}/api/exam/active
+Accept: application/json
+
+### 3. Get Exam Details by Code
+GET {{baseUrl}}/api/exam/code/TEST_FLOW_001
+Accept: application/json
+
+### PHASE 2: STUDENT STARTS EXAM
+
+### 4. Start Exam Session
+POST {{baseUrl}}/api/exam/start
+Content-Type: application/json
+
+{
+  "maDeThi": "TEST_FLOW_001",
+  "thietBiUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "ip": "192.168.1.100"
+}
+
+### 5. Get Exam Questions (Use baithiId from previous response)
+# Replace {baithiId} with actual ID from start exam response
+GET {{baseUrl}}/api/exam/3/questions
+Accept: application/json
+
+### 6. Check Initial Progress
+GET {{baseUrl}}/api/exam/3/progress
+Accept: application/json
+
+### PHASE 3: STUDENT ANSWERS QUESTIONS
+
+### 7. Save Answer for Question 1
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 3,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 1,
+  "daLuu": true
+}
+
+### 8. Save Answer for Question 2
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 3,
+  "idCauHoi": 2,
+  "idLuaChonDaChon": 1,
+  "daLuu": true
+}
+
+### 9. Save Answer for Question 3
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 3,
+  "idCauHoi": 3,
+  "idLuaChonDaChon": 3,
+  "daLuu": true
+}
+
+### 10. Check Progress After Answering
+GET {{baseUrl}}/api/exam/3/progress
+Accept: application/json
+
+### 11. Save Draft Answer (not final)
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 3,
+  "idCauHoi": 4,
+  "idLuaChonDaChon": 1,
+  "daLuu": false
+}
+
+### 12. Update Draft Answer to Final
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 3,
+  "idCauHoi": 4,
+  "idLuaChonDaChon": 2,
+  "daLuu": true
+}
+
+### PHASE 4: ANTI-CHEAT MONITORING
+
+### 13. Log Tab Switch Warning
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 3,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Student switched to Google Chrome tab"
+}
+
+### 14. Log Copy/Paste Warning
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 3,
+  "loaiCanhBao": "COPY_PASTE",
+  "moTa": "Detected copy/paste activity"
+}
+
+### 15. Check Warning Count
+GET {{baseUrl}}/api/exam/3/warnings
+Accept: application/json
+
+### PHASE 5: EXAM SUBMISSION
+
+### 16. Submit Complete Exam
+POST {{baseUrl}}/api/exam/submit
+Content-Type: application/json
+
+{
+  "idBaiThi": 3,
+  "danhSachCauTraLoi": [
+    {
+      "idBaiThi": 3,
+      "idCauHoi": 1,
+      "idLuaChonDaChon": 1,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 3,
+      "idCauHoi": 2,
+      "idLuaChonDaChon": 1,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 3,
+      "idCauHoi": 3,
+      "idLuaChonDaChon": 3,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 3,
+      "idCauHoi": 4,
+      "idLuaChonDaChon": 2,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 3,
+      "idCauHoi": 5,
+      "idLuaChonDaChon": 2,
+      "daLuu": true
+    }
+  ]
+}
+
+### 17. Verify Final Progress (Should show completed)
+GET {{baseUrl}}/api/exam/3/progress
+Accept: application/json
+
+### 18. Try to Access Questions After Submission (Should fail)
+GET {{baseUrl}}/api/exam/3/questions
+Accept: application/json
+
+### 19. Try to Save Answer After Submission (Should fail)
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 3,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 2,
+  "daLuu": true
+}
+
+### PHASE 6: VERIFICATION
+
+### 20. Get Random Questions (Test other functionality)
+GET {{baseUrl}}/api/cauhoi/random?count=5
+Accept: application/json
+
+### SUCCESS CRITERIA:
+# - Exam created successfully
+# - Student can start exam
+# - Questions loaded correctly
+# - Answers saved properly
+# - Warnings logged accurately
+# - Exam submitted successfully
+# - Post-submission access denied
