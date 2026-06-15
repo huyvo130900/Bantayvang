@@ -1,0 +1,78 @@
+// ============================================================
+// FILE: src/features/exam-taking/hooks/use-exam-timer.ts
+// FIX: Bài thi kết thúc ngay khi vào
+//
+// LỖI: initialSeconds = examInfo?.thoiGianConLai ?? 0
+//   → Khi component mount, examInfo chưa load xong → thoiGianConLai = undefined
+//   → initialSeconds = 0 → useEffect thấy remainingSeconds <= 0 → gọi onTimeUp() ngay
+//   → nộp bài luôn dù chưa làm gì!
+//
+// FIX: Chỉ start timer sau khi initialSeconds > 0 lần đầu tiên.
+//   Dùng flag "hasStarted" để không gọi onTimeUp khi initialSeconds vẫn là 0.
+// ============================================================
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+
+interface UseExamTimerOptions {
+  initialSeconds: number
+  onTimeUp: () => void
+}
+
+export function useExamTimer({ initialSeconds, onTimeUp }: UseExamTimerOptions) {
+  const [remainingSeconds, setRemainingSeconds] = useState(initialSeconds)
+  // FIX: track xem timer đã thực sự bắt đầu chưa
+  const hasStartedRef = useRef(false)
+  const onTimeUpRef = useRef(onTimeUp)
+  onTimeUpRef.current = onTimeUp
+
+  // Khi initialSeconds thay đổi từ 0 → giá trị thực, reset timer
+  useEffect(() => {
+    if (initialSeconds > 0) {
+      hasStartedRef.current = true
+      setRemainingSeconds(initialSeconds)
+    }
+  }, [initialSeconds])
+
+  useEffect(() => {
+    // FIX: Không làm gì nếu timer chưa được khởi động (data chưa load)
+    if (!hasStartedRef.current) return
+
+    if (remainingSeconds <= 0) {
+      onTimeUpRef.current()
+      return
+    }
+
+    const interval = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          onTimeUpRef.current()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [remainingSeconds]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const formatTime = useCallback((seconds: number) => {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    }
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }, [])
+
+  const isWarning = remainingSeconds <= 300 && remainingSeconds > 60
+  const isCritical = remainingSeconds <= 60
+
+  return {
+    remainingSeconds,
+    formattedTime: formatTime(remainingSeconds),
+    isWarning,
+    isCritical,
+  }
+}

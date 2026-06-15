@@ -1,0 +1,72 @@
+### Test Categories & Question Types API
+
+@baseUrl = https://localhost:7249
+@accessToken = PASTE_YOUR_TOKEN_HERE
+
+### ===== Categories (Danh muc) =====
+
+### 1. Lấy danh sách danh mục
+GET {{baseUrl}}/api/Category/categories
+Authorization: Bearer {{accessToken}}
+
+### 2. Lấy chi tiết danh mục
+GET {{baseUrl}}/api/Category/categories/1
+Authorization: Bearer {{accessToken}}
+
+### 3. Tạo danh mục mới
+POST {{baseUrl}}/api/Category/categories
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "tenDanhMuc": "Python",
+  "mota": "Câu hỏi về ngôn ngữ Python"
+}
+
+### 4. Cập nhật danh mục
+PUT {{baseUrl}}/api/Category/categories/1
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "tenDanhMuc": "Lập trình C# (Updated)",
+  "mota": "Câu hỏi về C# .NET"
+}
+
+### 5. Xóa danh mục
+DELETE {{baseUrl}}/api/Category/categories/6
+Authorization: Bearer {{accessToken}}
+
+### ===== Question Types (Loai cau hoi) =====
+
+### 6. Lấy danh sách loại câu hỏi
+GET {{baseUrl}}/api/Category/types
+Authorization: Bearer {{accessToken}}
+
+### 7. Lấy chi tiết loại câu hỏi
+GET {{baseUrl}}/api/Category/types/1
+Authorization: Bearer {{accessToken}}
+
+### 8. Tạo loại câu hỏi mới
+POST {{baseUrl}}/api/Category/types
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "tenLoai": "Case Study",
+  "moTa": "Tình huống lâm sàng"
+}
+
+### 9. Cập nhật loại câu hỏi
+PUT {{baseUrl}}/api/Category/types/1
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "tenLoai": "Trắc nghiệm 1 đáp án",
+  "moTa": "Câu hỏi trắc nghiệm chọn 1"
+}
+
+### 10. Xóa loại câu hỏi
+DELETE {{baseUrl}}/api/Category/types/5
+Authorization: Bearer {{accessToken}}

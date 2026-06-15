@@ -1,0 +1,344 @@
+# Performance Integration Tests
+# Tests system performance under various load conditions
+
+### Variables
+@baseUrl = https://localhost:7001/api
+@adminToken = your-admin-token-here
+@teacherToken = your-teacher-token-here
+@studentToken = your-student-token-here
+
+### PERFORMANCE TEST 1: Large Question Set Handling
+
+### Create multiple questions for performance testing
+POST {{baseUrl}}/cauhoi
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "noiDung": "Performance test question 1 - What is the time complexity of binary search?",
+  "idDanhMuc": 1,
+  "idLoai": 1,
+  "mucDo": 3,
+  "dapAnA": "O(n)",
+  "dapAnB": "O(log n)",
+  "dapAnC": "O(n²)",
+  "dapAnD": "O(1)",
+  "dapAnDung": "B",
+  "giaiThich": "Binary search divides the search space in half each time"
+}
+
+@perfQuestion1 = {{$response.body.$.data.id}}
+
+### Create exam with multiple questions (simulate large exam)
+POST {{baseUrl}}/exam
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "tenDeThi": "Performance Test Exam - Large Question Set",
+  "moTa": "Testing performance with multiple questions",
+  "thoiGianLamBai": 120,
+  "soLuongCauHoi": 50,
+  "trangThai": true,
+  "ngayBatDau": "2026-05-20T09:00:00",
+  "ngayKetThuc": "2026-05-20T18:00:00",
+  "cauHoiIds": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
+}
+
+@perfExamId = {{$response.body.$.data.id}}
+
+### PERFORMANCE TEST 2: Rapid Session Creation
+
+### Measure time for session creation
+POST {{baseUrl}}/exam/{{perfExamId}}/start
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{}
+
+@perfSessionId = {{$response.body.$.data.sessionId}}
+
+### PERFORMANCE TEST 3: Bulk Answer Submission
+
+### Submit multiple answers rapidly (simulate fast test-taker)
+POST {{baseUrl}}/exam/{{perfSessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 1,
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 5
+}
+
+### Rapid consecutive answers
+POST {{baseUrl}}/exam/{{perfSessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 2,
+  "dapAnChon": "B",
+  "thoiGianTraLoi": 3
+}
+
+POST {{baseUrl}}/exam/{{perfSessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 3,
+  "dapAnChon": "C",
+  "thoiGianTraLoi": 4
+}
+
+POST {{baseUrl}}/exam/{{perfSessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 4,
+  "dapAnChon": "D",
+  "thoiGianTraLoi": 2
+}
+
+POST {{baseUrl}}/exam/{{perfSessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 5,
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 6
+}
+
+### PERFORMANCE TEST 4: Heavy Anti-Cheat Logging
+
+### Generate multiple anti-cheat events rapidly
+POST {{baseUrl}}/exam/{{perfSessionId}}/anticheat
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "loaiHanhVi": "TAB_SWITCH",
+  "thoiGian": "2026-05-20T10:00:00",
+  "chiTiet": "Performance test - tab switch 1"
+}
+
+POST {{baseUrl}}/exam/{{perfSessionId}}/anticheat
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "loaiHanhVi": "FOCUS_LOST",
+  "thoiGian": "2026-05-20T10:00:05",
+  "chiTiet": "Performance test - focus lost 1"
+}
+
+POST {{baseUrl}}/exam/{{perfSessionId}}/anticheat
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "loaiHanhVi": "COPY_PASTE",
+  "thoiGian": "2026-05-20T10:00:10",
+  "chiTiet": "Performance test - copy paste attempt"
+}
+
+POST {{baseUrl}}/exam/{{perfSessionId}}/anticheat
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "loaiHanhVi": "TAB_SWITCH",
+  "thoiGian": "2026-05-20T10:00:15",
+  "chiTiet": "Performance test - tab switch 2"
+}
+
+POST {{baseUrl}}/exam/{{perfSessionId}}/anticheat
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "loaiHanhVi": "SUSPICIOUS_ACTIVITY",
+  "thoiGian": "2026-05-20T10:00:20",
+  "chiTiet": "Performance test - suspicious behavior"
+}
+
+### PERFORMANCE TEST 5: Large Data Retrieval
+
+### Get all questions (test pagination performance)
+GET {{baseUrl}}/cauhoi?page=1&pageSize=100
+Authorization: Bearer {{teacherToken}}
+
+### Get exam with all questions
+GET {{baseUrl}}/exam/{{perfExamId}}/questions
+Authorization: Bearer {{teacherToken}}
+
+### Get session details with all answers
+GET {{baseUrl}}/exam/{{perfSessionId}}/details
+Authorization: Bearer {{teacherToken}}
+
+### Get all anti-cheat logs
+GET {{baseUrl}}/exam/{{perfSessionId}}/anticheat-logs
+Authorization: Bearer {{teacherToken}}
+
+### PERFORMANCE TEST 6: Complex Query Performance
+
+### Search questions with filters
+GET {{baseUrl}}/cauhoi/search?keyword=performance&mucDo=3&idDanhMuc=1
+Authorization: Bearer {{teacherToken}}
+
+### Get exam statistics (complex aggregation)
+GET {{baseUrl}}/exam/{{perfExamId}}/statistics
+Authorization: Bearer {{teacherToken}}
+
+### Get comprehensive results
+GET {{baseUrl}}/exam/{{perfExamId}}/results
+Authorization: Bearer {{teacherToken}}
+
+### PERFORMANCE TEST 7: Concurrent Load Simulation
+
+### Simulate multiple rapid requests (stress test)
+GET {{baseUrl}}/exam/{{perfSessionId}}/questions
+Authorization: Bearer {{studentToken}}
+
+GET {{baseUrl}}/exam/{{perfSessionId}}/progress
+Authorization: Bearer {{studentToken}}
+
+GET {{baseUrl}}/exam/{{perfSessionId}}/time-remaining
+Authorization: Bearer {{studentToken}}
+
+GET {{baseUrl}}/exam/{{perfSessionId}}/questions
+Authorization: Bearer {{studentToken}}
+
+GET {{baseUrl}}/exam/{{perfSessionId}}/progress
+Authorization: Bearer {{studentToken}}
+
+### PERFORMANCE TEST 8: Memory Usage Test (Large Payloads)
+
+### Submit answer with large explanation
+POST {{baseUrl}}/exam/{{perfSessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 6,
+  "dapAnChon": "B",
+  "thoiGianTraLoi": 45,
+  "ghiChu": "This is a very long note to test memory usage and performance with large text payloads. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+}
+
+### PERFORMANCE TEST 9: Database Transaction Performance
+
+### Rapid answer updates (test transaction handling)
+POST {{baseUrl}}/exam/{{perfSessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 7,
+  "dapAnChon": "A",
+  "thoiGianTraLoi": 10
+}
+
+### Update same answer (test update performance)
+POST {{baseUrl}}/exam/{{perfSessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 7,
+  "dapAnChon": "B",
+  "thoiGianTraLoi": 15
+}
+
+### Update again (test repeated updates)
+POST {{baseUrl}}/exam/{{perfSessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "cauHoiId": 7,
+  "dapAnChon": "C",
+  "thoiGianTraLoi": 20
+}
+
+### PERFORMANCE TEST 10: Submission Performance
+
+### Submit exam (test grading performance)
+POST {{baseUrl}}/exam/{{perfSessionId}}/submit
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{}
+
+### Immediately get results (test calculation speed)
+GET {{baseUrl}}/exam/{{perfSessionId}}/result
+Authorization: Bearer {{studentToken}}
+
+### PERFORMANCE MONITORING ENDPOINTS
+
+### Check system performance metrics
+GET {{baseUrl}}/admin/performance-metrics
+Authorization: Bearer {{adminToken}}
+
+### Check database performance
+GET {{baseUrl}}/admin/database-stats
+Authorization: Bearer {{adminToken}}
+
+### Check memory usage
+GET {{baseUrl}}/admin/memory-usage
+Authorization: Bearer {{adminToken}}
+
+### PERFORMANCE TEST 11: Cleanup Performance
+
+### Test deletion performance
+DELETE {{baseUrl}}/exam/{{perfExamId}}
+Authorization: Bearer {{adminToken}}
+
+### Verify cleanup completed quickly
+GET {{baseUrl}}/exam/{{perfExamId}}
+Authorization: Bearer {{teacherToken}}
+
+### LOAD TEST SIMULATION (Run these in sequence quickly)
+
+### Rapid fire requests to simulate high load
+GET {{baseUrl}}/cauhoi?page=1&pageSize=10
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/cauhoi?page=2&pageSize=10
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/cauhoi?page=3&pageSize=10
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/cauhoi?page=4&pageSize=10
+Authorization: Bearer {{teacherToken}}
+
+GET {{baseUrl}}/cauhoi?page=5&pageSize=10
+Authorization: Bearer {{teacherToken}}
+
+### EXPECTED PERFORMANCE BENCHMARKS:
+# - Question creation: < 200ms
+# - Exam creation with 50 questions: < 500ms
+# - Session start: < 100ms
+# - Answer submission: < 50ms
+# - Anti-cheat logging: < 30ms
+# - Question retrieval (paginated): < 150ms
+# - Exam statistics calculation: < 300ms
+# - Exam submission and grading: < 1000ms
+# - Large data queries: < 500ms
+# - Concurrent requests should not degrade performance significantly
+# - Memory usage should remain stable under load
+# - Database connections should be properly managed
+# - No memory leaks during extended testing
+
+### PERFORMANCE MONITORING NOTES:
+# - Monitor response times for each request
+# - Check for any timeouts or 500 errors
+# - Verify memory usage doesn't grow excessively
+# - Ensure database connections are released properly
+# - Watch for any performance degradation over time
+# - Test with realistic data volumes
+# - Simulate real-world usage patterns

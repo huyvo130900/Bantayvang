@@ -1,0 +1,128 @@
+@BanTayVang.API_HostAddress = http://localhost:5293
+
+### Test Question Management - Get All Questions
+GET {{BanTayVang.API_HostAddress}}/api/cauhoi
+Accept: application/json
+
+### Test Question Management - Create Question
+POST {{BanTayVang.API_HostAddress}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Câu hỏi test về lập trình C#",
+  "diem": 1.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "Đáp án A - Đúng",
+      "laDapAnDung": true,
+      "thuTu": 1
+    },
+    {
+      "noiDung": "Đáp án B - Sai",
+      "laDapAnDung": false,
+      "thuTu": 2
+    },
+    {
+      "noiDung": "Đáp án C - Sai",
+      "laDapAnDung": false,
+      "thuTu": 3
+    },
+    {
+      "noiDung": "Đáp án D - Sai",
+      "laDapAnDung": false,
+      "thuTu": 4
+    }
+  ]
+}
+
+### Test Question Management - Get Question by ID
+GET {{BanTayVang.API_HostAddress}}/api/cauhoi/1
+Accept: application/json
+
+### Test Exam System - Get Active Exams
+GET {{BanTayVang.API_HostAddress}}/api/exam/active
+Accept: application/json
+
+### Test Exam System - Create Exam
+POST {{BanTayVang.API_HostAddress}}/api/exam
+Content-Type: application/json
+
+{
+  "maDeThi": "TEST001",
+  "tenDeThi": "Đề thi thử nghiệm",
+  "thoiGianLamBai": 60,
+  "thoiGianBatDau": "2024-12-20T08:00:00",
+  "trangThai": "Active",
+  "danhSachIdCauHoi": [1, 2, 3]
+}
+
+### Test Exam System - Get Exam by Code
+GET {{BanTayVang.API_HostAddress}}/api/exam/code/TEST001
+Accept: application/json
+
+### Test Exam System - Start Exam
+POST {{BanTayVang.API_HostAddress}}/api/exam/start
+Content-Type: application/json
+
+{
+  "maDeThi": "TEST001",
+  "thietBiUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "ip": "192.168.1.100"
+}
+
+### Test Exam System - Get Exam Questions
+GET {{BanTayVang.API_HostAddress}}/api/exam/1/questions
+Accept: application/json
+
+### Test Exam System - Save Answer
+POST {{BanTayVang.API_HostAddress}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 1,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 1,
+  "daLuu": true
+}
+
+### Test Exam System - Get Exam Progress
+GET {{BanTayVang.API_HostAddress}}/api/exam/1/progress
+Accept: application/json
+
+### Test Exam System - Submit Exam
+POST {{BanTayVang.API_HostAddress}}/api/exam/submit
+Content-Type: application/json
+
+{
+  "idBaiThi": 1,
+  "danhSachCauTraLoi": [
+    {
+      "idBaiThi": 1,
+      "idCauHoi": 1,
+      "idLuaChonDaChon": 1,
+      "daLuu": true
+    }
+  ]
+}
+
+### Test Anti-Cheat - Log Warning
+POST {{BanTayVang.API_HostAddress}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 1,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Thí sinh chuyển tab trong quá trình làm bài"
+}
+
+### Test Anti-Cheat - Get Warning Count
+GET {{BanTayVang.API_HostAddress}}/api/exam/1/warnings
+Accept: application/json
+
+### Test Random Questions
+GET {{BanTayVang.API_HostAddress}}/api/cauhoi/random?count=5&danhMucId=1
+Accept: application/json

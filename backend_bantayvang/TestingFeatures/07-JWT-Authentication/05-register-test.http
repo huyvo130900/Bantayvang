@@ -1,0 +1,84 @@
+### Register Test - Tạo tài khoản mới
+
+@baseUrl = https://localhost:7249
+
+### 1. Register - Tài khoản Student (mặc định)
+POST {{baseUrl}}/api/Auth/register
+Content-Type: application/json
+
+{
+  "username": "student01",
+  "password": "Student@123",
+  "confirmPassword": "Student@123",
+  "email": "student01@bantayvang.vn",
+  "hoTen": "Nguyễn Văn A",
+  "idVaiTro": 3,
+  "maNhanVien": "NV001",
+  "chucDanh": "Học viên",
+  "khoaPhong": "Khoa Nội"
+}
+
+### 2. Register - Tài khoản Teacher
+POST {{baseUrl}}/api/Auth/register
+Content-Type: application/json
+
+{
+  "username": "teacher01",
+  "password": "Teacher@123",
+  "confirmPassword": "Teacher@123",
+  "email": "teacher01@bantayvang.vn",
+  "hoTen": "Trần Thị B",
+  "idVaiTro": 2,
+  "maNhanVien": "GV001",
+  "chucDanh": "Giảng viên",
+  "khoaPhong": "Khoa Đào tạo"
+}
+
+### 3. Register - Trùng username (sẽ lỗi)
+POST {{baseUrl}}/api/Auth/register
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Test@123",
+  "confirmPassword": "Test@123",
+  "email": "test@bantayvang.vn",
+  "hoTen": "Test User",
+  "idVaiTro": 3
+}
+
+### 4. Register - Email không hợp lệ (sẽ lỗi validation)
+POST {{baseUrl}}/api/Auth/register
+Content-Type: application/json
+
+{
+  "username": "user02",
+  "password": "Test@123",
+  "confirmPassword": "Test@123",
+  "email": "invalid-email",
+  "hoTen": "Test User",
+  "idVaiTro": 3
+}
+
+### 5. Register - Mật khẩu xác nhận không khớp
+POST {{baseUrl}}/api/Auth/register
+Content-Type: application/json
+
+{
+  "username": "user03",
+  "password": "Test@123",
+  "confirmPassword": "Different@123",
+  "email": "user03@bantayvang.vn",
+  "hoTen": "Test User",
+  "idVaiTro": 3
+}
+
+### 6. Login với tài khoản vừa đăng ký
+POST {{baseUrl}}/api/Auth/login
+Content-Type: application/json
+
+{
+  "username": "student01",
+  "password": "Student@123",
+  "rememberMe": false
+}

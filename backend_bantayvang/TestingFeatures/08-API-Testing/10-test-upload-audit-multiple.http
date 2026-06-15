@@ -1,0 +1,70 @@
+### Test Upload, Audit Log, Multiple Answers, Rate Limiting
+
+@baseUrl = https://localhost:7249
+@accessToken = PASTE_YOUR_TOKEN_HERE
+
+### ===== UPLOAD =====
+
+### 1. Upload image cho câu hỏi (dùng Postman/Thunder Client)
+# Multipart form-data với key "file"
+POST {{baseUrl}}/api/Upload/image?folder=questions
+Authorization: Bearer {{accessToken}}
+
+### 2. Xóa file đã upload
+DELETE {{baseUrl}}/api/Upload?fileUrl=https://localhost:7249/uploads/questions/abc.jpg
+Authorization: Bearer {{accessToken}}
+
+### ===== MULTIPLE ANSWERS =====
+
+### 3. Lưu nhiều đáp án cho 1 câu (Multiple correct)
+POST {{baseUrl}}/api/Exam/answer-multiple
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "idBaiThi": 1,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": [1, 3, 4],
+  "cauTraLoiTuLuan": null,
+  "daLuu": true
+}
+
+### ===== AUDIT LOG =====
+
+### 4. Lấy log gần nhất
+GET {{baseUrl}}/api/AuditLog/recent?top=50
+Authorization: Bearer {{accessToken}}
+
+### 5. Lấy log của 1 user
+GET {{baseUrl}}/api/AuditLog/user/1?top=50
+Authorization: Bearer {{accessToken}}
+
+### 6. Lấy log của 1 bài thi
+GET {{baseUrl}}/api/AuditLog/exam-session/1
+Authorization: Bearer {{accessToken}}
+
+### 7. Tìm kiếm log theo action type
+GET {{baseUrl}}/api/AuditLog/search?actionType=POST_API_AUTH_LOGIN
+Authorization: Bearer {{accessToken}}
+
+### 8. Tìm kiếm log theo thời gian
+GET {{baseUrl}}/api/AuditLog/search?from=2026-05-20T00:00:00&to=2026-05-22T00:00:00
+Authorization: Bearer {{accessToken}}
+
+### ===== RATE LIMITING =====
+
+### 9. Test rate limit cho login (10 req/phút)
+# Spam request này 11 lần liên tục - request thứ 11 sẽ bị 429
+POST {{baseUrl}}/api/Auth/login
+Content-Type: application/json
+
+{
+  "username": "test",
+  "password": "wrong",
+  "rememberMe": false
+}
+
+### ===== HEALTH CHECK =====
+
+### 10. Health check
+GET {{baseUrl}}/health

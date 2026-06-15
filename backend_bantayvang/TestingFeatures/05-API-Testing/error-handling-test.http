@@ -1,0 +1,331 @@
+@baseUrl = https://localhost:7293
+
+### Error Handling & Edge Cases Testing
+
+### ========================================
+### HTTP STATUS CODE TESTS
+### ========================================
+
+### 1. 404 - Resource Not Found
+GET {{baseUrl}}/api/cauhoi/99999
+Accept: application/json
+
+### 2. 404 - Exam Not Found
+GET {{baseUrl}}/api/exam/code/NONEXISTENT_EXAM
+Accept: application/json
+
+### 3. 400 - Bad Request (Invalid JSON)
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "noiDung": "Invalid JSON - missing closing brace"
+
+### 4. 400 - Bad Request (Missing Required Fields)
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "noiDung": "Question without required idDanhMuc and idLoaiCauHoi"
+}
+
+### 5. 400 - Bad Request (Invalid Data Types)
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": "not_a_number",
+  "idLoaiCauHoi": "also_not_a_number",
+  "noiDung": "Test question",
+  "diem": "not_a_number"
+}
+
+### ========================================
+### BUSINESS LOGIC ERROR TESTS
+### ========================================
+
+### 6. Question with No Correct Answer
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Question with all wrong answers",
+  "diem": 1.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "Wrong answer 1",
+      "laDapAnDung": false,
+      "thuTu": 1
+    },
+    {
+      "noiDung": "Wrong answer 2",
+      "laDapAnDung": false,
+      "thuTu": 2
+    }
+  ]
+}
+
+### 7. Update Question with ID Mismatch
+PUT {{baseUrl}}/api/cauhoi/1
+Content-Type: application/json
+
+{
+  "id": 999,
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "ID mismatch test",
+  "diem": 1.0,
+  "danhSachLuaChon": []
+}
+
+### 8. Start Exam with Invalid Code
+POST {{baseUrl}}/api/exam/start
+Content-Type: application/json
+
+{
+  "maDeThi": "INVALID_EXAM_CODE_12345",
+  "thietBiUserAgent": "Mozilla/5.0",
+  "ip": "192.168.1.100"
+}
+
+### 9. Start Already Completed Exam
+POST {{baseUrl}}/api/exam/start
+Content-Type: application/json
+
+{
+  "maDeThi": "CSHARP001",
+  "thietBiUserAgent": "Mozilla/5.0",
+  "ip": "192.168.1.100"
+}
+
+### 10. Access Exam Questions Without Permission
+GET {{baseUrl}}/api/exam/999/questions
+Accept: application/json
+
+### 11. Save Answer for Non-existent Exam
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 99999,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 1,
+  "daLuu": true
+}
+
+### 12. Save Answer for Completed Exam
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 1,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 2,
+  "daLuu": true
+}
+
+### ========================================
+### VALIDATION ERROR TESTS
+### ========================================
+
+### 13. Question with Negative Score
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Question with negative score",
+  "diem": -1.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "Answer",
+      "laDapAnDung": true,
+      "thuTu": 1
+    }
+  ]
+}
+
+### 14. Question with Score Too High
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Question with score too high",
+  "diem": 15.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "Answer",
+      "laDapAnDung": true,
+      "thuTu": 1
+    }
+  ]
+}
+
+### 15. Question with Empty Content
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "",
+  "diem": 1.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": []
+}
+
+### 16. Question with Too Long Content
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. This content is way too long and should be rejected by validation.",
+  "diem": 1.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "Answer",
+      "laDapAnDung": true,
+      "thuTu": 1
+    }
+  ]
+}
+
+### ========================================
+### CONCURRENT ACCESS TESTS
+### ========================================
+
+### 17. Multiple Save Answer Requests (Rapid fire)
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 1,
+  "daLuu": true
+}
+
+###
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 2,
+  "daLuu": true
+}
+
+###
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 3,
+  "daLuu": true
+}
+
+### 18. Multiple Warning Logs (Rapid fire)
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Rapid test 1"
+}
+
+###
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Rapid test 2"
+}
+
+###
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 2,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "Rapid test 3"
+}
+
+### ========================================
+### MALFORMED REQUEST TESTS
+### ========================================
+
+### 19. Request with SQL Injection Attempt
+GET {{baseUrl}}/api/cauhoi?SearchKeyword='; DROP TABLE CAUHOI; --
+Accept: application/json
+
+### 20. Request with XSS Attempt
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "<script>alert('XSS')</script>",
+  "diem": 1.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "<script>alert('XSS in choice')</script>",
+      "laDapAnDung": true,
+      "thuTu": 1
+    }
+  ]
+}
+
+### 21. Request with Very Large Payload
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Large payload test",
+  "diem": 1.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "A".repeat(10000),
+      "laDapAnDung": true,
+      "thuTu": 1
+    }
+  ]
+}
+
+### SUCCESS CRITERIA:
+# - All error responses have proper HTTP status codes
+# - Error messages are descriptive and helpful
+# - No sensitive information leaked in error responses
+# - System remains stable under error conditions
+# - Malicious requests are properly sanitized
+# - Concurrent requests handled gracefully

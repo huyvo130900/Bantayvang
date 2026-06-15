@@ -1,0 +1,347 @@
+@baseUrl = https://localhost:7293
+
+### Complete API Endpoints Testing
+
+### ========================================
+### QUESTION MANAGEMENT ENDPOINTS
+### ========================================
+
+### 1. GET All Questions (Default pagination)
+GET {{baseUrl}}/api/cauhoi
+Accept: application/json
+
+### 2. GET Questions with Custom Pagination
+GET {{baseUrl}}/api/cauhoi?PageNumber=1&PageSize=5
+Accept: application/json
+
+### 3. GET Question by Valid ID
+GET {{baseUrl}}/api/cauhoi/1
+Accept: application/json
+
+### 4. GET Question by Invalid ID (404 test)
+GET {{baseUrl}}/api/cauhoi/999
+Accept: application/json
+
+### 5. POST Create Question (Valid data)
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "API Test: What is the main method signature in C#?",
+  "diem": 1.0,
+  "doKho": "Trung bình",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "public static void Main(string[] args)",
+      "laDapAnDung": true,
+      "thuTu": 1
+    },
+    {
+      "noiDung": "public void Main(string[] args)",
+      "laDapAnDung": false,
+      "thuTu": 2
+    },
+    {
+      "noiDung": "static void Main(string[] args)",
+      "laDapAnDung": false,
+      "thuTu": 3
+    },
+    {
+      "noiDung": "public static Main(string[] args)",
+      "laDapAnDung": false,
+      "thuTu": 4
+    }
+  ]
+}
+
+### 6. POST Create Question (Invalid - No correct answer)
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Invalid question with no correct answer",
+  "diem": 1.0,
+  "doKho": "Dễ",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "Wrong answer 1",
+      "laDapAnDung": false,
+      "thuTu": 1
+    },
+    {
+      "noiDung": "Wrong answer 2",
+      "laDapAnDung": false,
+      "thuTu": 2
+    }
+  ]
+}
+
+### 7. PUT Update Question (Use ID from create response)
+PUT {{baseUrl}}/api/cauhoi/8
+Content-Type: application/json
+
+{
+  "id": 8,
+  "idDanhMuc": 1,
+  "idLoaiCauHoi": 1,
+  "noiDung": "Updated API Test: What is the main method signature in C#?",
+  "diem": 1.5,
+  "doKho": "Khó",
+  "khoaPhong": "CNTT",
+  "danhSachLuaChon": [
+    {
+      "noiDung": "public static void Main(string[] args)",
+      "laDapAnDung": true,
+      "thuTu": 1
+    },
+    {
+      "noiDung": "public void Main(string[] args)",
+      "laDapAnDung": false,
+      "thuTu": 2
+    }
+  ]
+}
+
+### 8. DELETE Question (Soft delete)
+DELETE {{baseUrl}}/api/cauhoi/8
+Accept: application/json
+
+### 9. GET Random Questions
+GET {{baseUrl}}/api/cauhoi/random?count=3
+Accept: application/json
+
+### 10. GET Random Questions with Category Filter
+GET {{baseUrl}}/api/cauhoi/random?count=2&danhMucId=1
+Accept: application/json
+
+### ========================================
+### EXAM MANAGEMENT ENDPOINTS
+### ========================================
+
+### 11. GET Active Exams
+GET {{baseUrl}}/api/exam/active
+Accept: application/json
+
+### 12. GET Exam by Code (Valid)
+GET {{baseUrl}}/api/exam/code/CSHARP001
+Accept: application/json
+
+### 13. GET Exam by Code (Invalid)
+GET {{baseUrl}}/api/exam/code/INVALID_CODE
+Accept: application/json
+
+### 14. POST Create New Exam
+POST {{baseUrl}}/api/exam
+Content-Type: application/json
+
+{
+  "maDeThi": "API_TEST_001",
+  "tenDeThi": "API Testing Exam",
+  "thoiGianLamBai": 45,
+  "thoiGianBatDau": "2024-12-20T14:00:00",
+  "trangThai": "Active",
+  "danhSachIdCauHoi": [1, 2, 3, 4]
+}
+
+### 15. POST Start Exam (Valid code)
+POST {{baseUrl}}/api/exam/start
+Content-Type: application/json
+
+{
+  "maDeThi": "API_TEST_001",
+  "thietBiUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "ip": "192.168.1.200"
+}
+
+### 16. POST Start Exam (Invalid code)
+POST {{baseUrl}}/api/exam/start
+Content-Type: application/json
+
+{
+  "maDeThi": "NONEXISTENT_CODE",
+  "thietBiUserAgent": "Mozilla/5.0",
+  "ip": "192.168.1.200"
+}
+
+### 17. GET Exam Questions (Use baithiId from start exam)
+GET {{baseUrl}}/api/exam/4/questions
+Accept: application/json
+
+### 18. GET Exam Questions (Invalid baithiId)
+GET {{baseUrl}}/api/exam/999/questions
+Accept: application/json
+
+### 19. POST Save Answer (Valid)
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 4,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 1,
+  "daLuu": true
+}
+
+### 20. POST Save Answer (Invalid baithiId)
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": 999,
+  "idCauHoi": 1,
+  "idLuaChonDaChon": 1,
+  "daLuu": true
+}
+
+### 21. GET Exam Progress
+GET {{baseUrl}}/api/exam/4/progress
+Accept: application/json
+
+### 22. POST Submit Exam
+POST {{baseUrl}}/api/exam/submit
+Content-Type: application/json
+
+{
+  "idBaiThi": 4,
+  "danhSachCauTraLoi": [
+    {
+      "idBaiThi": 4,
+      "idCauHoi": 1,
+      "idLuaChonDaChon": 1,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 4,
+      "idCauHoi": 2,
+      "idLuaChonDaChon": 1,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 4,
+      "idCauHoi": 3,
+      "idLuaChonDaChon": 3,
+      "daLuu": true
+    },
+    {
+      "idBaiThi": 4,
+      "idCauHoi": 4,
+      "idLuaChonDaChon": 1,
+      "daLuu": true
+    }
+  ]
+}
+
+### ========================================
+### ANTI-CHEAT ENDPOINTS
+### ========================================
+
+### 23. POST Log Cheating Warning
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 4,
+  "loaiCanhBao": "TAB_SWITCH",
+  "moTa": "API Test: Student switched tabs during exam"
+}
+
+### 24. GET Warning Count
+GET {{baseUrl}}/api/exam/4/warnings
+Accept: application/json
+
+### 25. POST Multiple Warnings (Stress test)
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 4,
+  "loaiCanhBao": "COPY_PASTE",
+  "moTa": "API Test: Copy paste detected"
+}
+
+###
+POST {{baseUrl}}/api/exam/warning
+Content-Type: application/json
+
+{
+  "idBaiThi": 4,
+  "loaiCanhBao": "RIGHT_CLICK",
+  "moTa": "API Test: Right click attempted"
+}
+
+### 26. GET Final Warning Count
+GET {{baseUrl}}/api/exam/4/warnings
+Accept: application/json
+
+### ========================================
+### SEARCH AND FILTER ENDPOINTS
+### ========================================
+
+### 27. Search Questions by Keyword
+GET {{baseUrl}}/api/cauhoi?SearchKeyword=C%23&PageSize=10
+Accept: application/json
+
+### 28. Filter by Category
+GET {{baseUrl}}/api/cauhoi?IdDanhMuc=1&PageSize=10
+Accept: application/json
+
+### 29. Filter by Difficulty
+GET {{baseUrl}}/api/cauhoi?DoKho=Dễ&PageSize=10
+Accept: application/json
+
+### 30. Combined Filters
+GET {{baseUrl}}/api/cauhoi?IdDanhMuc=1&DoKho=Dễ&SearchKeyword=class&PageSize=10
+Accept: application/json
+
+### ========================================
+### VALIDATION TESTS
+### ========================================
+
+### 31. POST Question with Missing Required Fields
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "noiDung": "Question without required fields"
+}
+
+### 32. POST Question with Invalid Data Types
+POST {{baseUrl}}/api/cauhoi
+Content-Type: application/json
+
+{
+  "idDanhMuc": "invalid",
+  "idLoaiCauHoi": "invalid",
+  "noiDung": "Test question",
+  "diem": "invalid"
+}
+
+### 33. POST Start Exam with Missing Fields
+POST {{baseUrl}}/api/exam/start
+Content-Type: application/json
+
+{
+  "thietBiUserAgent": "Mozilla/5.0"
+}
+
+### 34. POST Save Answer with Invalid Data
+POST {{baseUrl}}/api/exam/answer
+Content-Type: application/json
+
+{
+  "idBaiThi": "invalid",
+  "idCauHoi": "invalid"
+}
+
+### SUCCESS CRITERIA:
+# - All valid requests return 200/201 with proper data structure
+# - All invalid requests return 400/404 with error messages
+# - Response times < 2 seconds for all endpoints
+# - Data consistency maintained across operations
+# - Proper error handling for edge cases
