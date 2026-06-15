@@ -4,35 +4,35 @@
 DECLARE @GiaoVienId INT = (SELECT Id FROM TAIKHOAN WHERE TenDangNhap = 'giaovien1');
 
 -- Lấy ID của các danh mục và loại câu hỏi
-DECLARE @DanhMucCSharp INT = (SELECT Id FROM DANHMUCAUHOI WHERE TenDanhMuc = 'Lập trình C#');
-DECLARE @DanhMucDatabase INT = (SELECT Id FROM DANHMUCAUHOI WHERE TenDanhMuc = 'Cơ sở dữ liệu');
-DECLARE @DanhMucASPNET INT = (SELECT Id FROM DANHMUCAUHOI WHERE TenDanhMuc = 'ASP.NET Core');
-DECLARE @LoaiTracNghiem INT = (SELECT Id FROM LOAICAUHOI WHERE TenLoai = 'Trắc nghiệm');
+DECLARE @DanhMucCSharp INT = (SELECT Id FROM DANHMUCAUHOI WHERE TenDanhMuc = N'Lập trình C#');
+DECLARE @DanhMucDatabase INT = (SELECT Id FROM DANHMUCAUHOI WHERE TenDanhMuc = N'Cơ sở dữ liệu');
+DECLARE @DanhMucASPNET INT = (SELECT Id FROM DANHMUCAUHOI WHERE TenDanhMuc = N'ASP.NET Core');
+DECLARE @LoaiTracNghiem INT = (SELECT Id FROM LOAICAUHOI WHERE TenLoai = N'Trắc nghiệm');
 
 -- Câu hỏi C#
 INSERT INTO CAUHOI (IdDanhMuc, IdLoaiCauHoi, NoiDung, Diem, DoKho, KhoaPhong, NguoiTao, NgayTao, DaXoa) VALUES
-(@DanhMucCSharp, @LoaiTracNghiem, 'Từ khóa nào được sử dụng để khai báo một lớp trong C#?', 1.0, 'Dễ', 'CNTT', @GiaoVienId, GETDATE(), 0),
-(@DanhMucCSharp, @LoaiTracNghiem, 'Phương thức nào được gọi đầu tiên khi một đối tượng được tạo ra?', 1.0, 'Trung bình', 'CNTT', @GiaoVienId, GETDATE(), 0),
-(@DanhMucCSharp, @LoaiTracNghiem, 'Từ khóa nào được sử dụng để kế thừa từ một lớp khác?', 1.0, 'Dễ', 'CNTT', @GiaoVienId, GETDATE(), 0);
+(@DanhMucCSharp, @LoaiTracNghiem, N'Từ khóa nào được sử dụng để khai báo một lớp trong C#?', 1.0, N'Dễ', 'CNTT', @GiaoVienId, GETDATE(), 0),
+(@DanhMucCSharp, @LoaiTracNghiem, N'Phương thức nào được gọi đầu tiên khi một đối tượng được tạo ra?', 1.0, N'Trung bình', 'CNTT', @GiaoVienId, GETDATE(), 0),
+(@DanhMucCSharp, @LoaiTracNghiem, N'Từ khóa nào được sử dụng để kế thừa từ một lớp khác?', 1.0, N'Dễ', 'CNTT', @GiaoVienId, GETDATE(), 0);
 
 -- Câu hỏi Database
 INSERT INTO CAUHOI (IdDanhMuc, IdLoaiCauHoi, NoiDung, Diem, DoKho, KhoaPhong, NguoiTao, NgayTao, DaXoa) VALUES
-(@DanhMucDatabase, @LoaiTracNghiem, 'Lệnh SQL nào được sử dụng để lấy dữ liệu từ bảng?', 1.0, 'Dễ', 'CNTT', @GiaoVienId, GETDATE(), 0),
-(@DanhMucDatabase, @LoaiTracNghiem, 'Khóa chính (Primary Key) có thể có giá trị NULL không?', 1.0, 'Dễ', 'CNTT', @GiaoVienId, GETDATE(), 0);
+(@DanhMucDatabase, @LoaiTracNghiem, N'Lệnh SQL nào được sử dụng để lấy dữ liệu từ bảng?', 1.0, N'Dễ', 'CNTT', @GiaoVienId, GETDATE(), 0),
+(@DanhMucDatabase, @LoaiTracNghiem, N'Khóa chính (Primary Key) có thể có giá trị NULL không?', 1.0, N'Dễ', 'CNTT', @GiaoVienId, GETDATE(), 0);
 
 -- Câu hỏi ASP.NET Core
 INSERT INTO CAUHOI (IdDanhMuc, IdLoaiCauHoi, NoiDung, Diem, DoKho, KhoaPhong, NguoiTao, NgayTao, DaXoa) VALUES
-(@DanhMucASPNET, @LoaiTracNghiem, 'File nào chứa cấu hình chính của ứng dụng ASP.NET Core?', 1.0, 'Trung bình', 'CNTT', @GiaoVienId, GETDATE(), 0),
-(@DanhMucASPNET, @LoaiTracNghiem, 'Attribute nào được sử dụng để định nghĩa route cho Controller?', 1.0, 'Trung bình', 'CNTT', @GiaoVienId, GETDATE(), 0);
+(@DanhMucASPNET, @LoaiTracNghiem, N'File nào chứa cấu hình chính của ứng dụng ASP.NET Core?', 1.0, N'Trung bình', 'CNTT', @GiaoVienId, GETDATE(), 0),
+(@DanhMucASPNET, @LoaiTracNghiem, N'Attribute nào được sử dụng để định nghĩa route cho Controller?', 1.0, N'Trung bình', 'CNTT', @GiaoVienId, GETDATE(), 0);
 
 -- Lấy ID của các câu hỏi vừa tạo
-DECLARE @CauHoi1Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%khai báo một lớp trong C#%');
-DECLARE @CauHoi2Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%được gọi đầu tiên khi một đối tượng%');
-DECLARE @CauHoi3Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%kế thừa từ một lớp khác%');
-DECLARE @CauHoi4Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%lấy dữ liệu từ bảng%');
-DECLARE @CauHoi5Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%Primary Key%');
-DECLARE @CauHoi6Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%cấu hình chính của ứng dụng ASP.NET Core%');
-DECLARE @CauHoi7Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%định nghĩa route cho Controller%');
+DECLARE @CauHoi1Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%khai báo một lớp trong C#%');
+DECLARE @CauHoi2Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%được gọi đầu tiên khi một đối tượng%');
+DECLARE @CauHoi3Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%kế thừa từ một lớp khác%');
+DECLARE @CauHoi4Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%lấy dữ liệu từ bảng%');
+DECLARE @CauHoi5Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%Primary Key%');
+DECLARE @CauHoi6Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%cấu hình chính của ứng dụng ASP.NET Core%');
+DECLARE @CauHoi7Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%định nghĩa route cho Controller%');
 
 -- Lựa chọn cho câu hỏi 1: "Từ khóa nào được sử dụng để khai báo một lớp trong C#?"
 INSERT INTO LUACHON (IdCauHoi, NoiDung, LaDapAnDung, ThuTu) VALUES
@@ -64,10 +64,10 @@ INSERT INTO LUACHON (IdCauHoi, NoiDung, LaDapAnDung, ThuTu) VALUES
 
 -- Lựa chọn cho câu hỏi 5: "Khóa chính (Primary Key) có thể có giá trị NULL không?"
 INSERT INTO LUACHON (IdCauHoi, NoiDung, LaDapAnDung, ThuTu) VALUES
-(@CauHoi5Id, 'Có', 0, 1),
-(@CauHoi5Id, 'Không', 1, 2),
-(@CauHoi5Id, 'Tùy thuộc vào DBMS', 0, 3),
-(@CauHoi5Id, 'Chỉ trong một số trường hợp', 0, 4);
+(@CauHoi5Id, N'Có', 0, 1),
+(@CauHoi5Id, N'Không', 1, 2),
+(@CauHoi5Id, N'Tùy thuộc vào DBMS', 0, 3),
+(@CauHoi5Id, N'Chỉ trong một số trường hợp', 0, 4);
 
 -- Lựa chọn cho câu hỏi 6: "File nào chứa cấu hình chính của ứng dụng ASP.NET Core?"
 INSERT INTO LUACHON (IdCauHoi, NoiDung, LaDapAnDung, ThuTu) VALUES

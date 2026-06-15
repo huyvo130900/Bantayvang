@@ -5,9 +5,9 @@ DECLARE @GiaoVienId INT = (SELECT Id FROM TAIKHOAN WHERE TenDangNhap = 'giaovien
 
 -- Tạo đề thi mẫu
 INSERT INTO DETHI (MaDeThi, TenDeThi, ThoiGianLamBai, TongDiem, ThoiGianBatDau, LinkTruyCap, TrangThai, NguoiTao, NgayTao) VALUES
-('CSHARP001', 'Kiểm tra C# cơ bản', 30, 5.0, DATEADD(HOUR, -1, GETDATE()), '/exam/CSHARP001', 'Active', @GiaoVienId, GETDATE()),
-('DATABASE001', 'Kiểm tra cơ sở dữ liệu', 45, 3.0, DATEADD(HOUR, -2, GETDATE()), '/exam/DATABASE001', 'Active', @GiaoVienId, GETDATE()),
-('ASPNET001', 'Kiểm tra ASP.NET Core', 60, 7.0, DATEADD(DAY, 1, GETDATE()), '/exam/ASPNET001', 'Draft', @GiaoVienId, GETDATE());
+('CSHARP001', N'Kiểm tra C# cơ bản', 30, 5.0, DATEADD(HOUR, -1, GETDATE()), '/exam/CSHARP001', 'Active', @GiaoVienId, GETDATE()),
+('DATABASE001', N'Kiểm tra cơ sở dữ liệu', 45, 3.0, DATEADD(HOUR, -2, GETDATE()), '/exam/DATABASE001', 'Active', @GiaoVienId, GETDATE()),
+('ASPNET001', N'Kiểm tra ASP.NET Core', 60, 7.0, DATEADD(DAY, 1, GETDATE()), '/exam/ASPNET001', 'Draft', @GiaoVienId, GETDATE());
 
 -- Lấy ID của các đề thi vừa tạo
 DECLARE @DeThi1Id INT = (SELECT Id FROM DETHI WHERE MaDeThi = 'CSHARP001');
@@ -15,10 +15,10 @@ DECLARE @DeThi2Id INT = (SELECT Id FROM DETHI WHERE MaDeThi = 'DATABASE001');
 DECLARE @DeThi3Id INT = (SELECT Id FROM DETHI WHERE MaDeThi = 'ASPNET001');
 
 -- Lấy ID của các câu hỏi
-DECLARE @CauHoi1Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%khai báo một lớp trong C#%');
-DECLARE @CauHoi2Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%được gọi đầu tiên khi một đối tượng%');
-DECLARE @CauHoi3Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%kế thừa từ một lớp khác%');
-DECLARE @CauHoi4Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%lấy dữ liệu từ bảng%');
+DECLARE @CauHoi1Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%khai báo một lớp trong C#%');
+DECLARE @CauHoi2Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%được gọi đầu tiên khi một đối tượng%');
+DECLARE @CauHoi3Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%kế thừa từ một lớp khác%');
+DECLARE @CauHoi4Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE N'%lấy dữ liệu từ bảng%');
 DECLARE @CauHoi5Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%Primary Key%');
 DECLARE @CauHoi6Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%cấu hình chính của ứng dụng ASP.NET Core%');
 DECLARE @CauHoi7Id INT = (SELECT Id FROM CAUHOI WHERE NoiDung LIKE '%định nghĩa route cho Controller%');
@@ -82,5 +82,5 @@ INSERT INTO CHITIETLAMBAI (IdBaiThi, IdCauHoi, IdLuaChonDaChon, ThoiGianTraLoi, 
 
 -- Cảnh báo gian lận mẫu
 INSERT INTO CANHBAOGIANLAN (IdBaiThi, LoaiCanhBao, MoTa, ThoiGian, SoLanViPham) VALUES
-(@BaiThi1Id, 'TAB_SWITCH', 'Thí sinh chuyển tab trong quá trình làm bài', DATEADD(MINUTE, -15, GETDATE()), 1),
-(@BaiThi2Id, 'COPY_PASTE', 'Phát hiện hành vi copy/paste', DATEADD(MINUTE, -2, GETDATE()), 1);
+(@BaiThi1Id, 'TAB_SWITCH', N'Thí sinh chuyển tab trong quá trình làm bài', DATEADD(MINUTE, -15, GETDATE()), 1),
+(@BaiThi2Id, 'COPY_PASTE', N'Phát hiện hành vi copy/paste', DATEADD(MINUTE, -2, GETDATE()), 1);

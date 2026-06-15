@@ -9,7 +9,7 @@ UPDATE TAIKHOAN
 SET 
     MatKhau = '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/VjPoyNdO2', -- password: admin123
     Email = ISNULL(Email, 'admin@bantayvang.vn'),
-    HoTen = ISNULL(HoTen, 'Quản trị viên hệ thống'),
+    HoTen = ISNULL(HoTen, N'Quản trị viên hệ thống'),
     MaNhanVien = 'admin',
     IdVaiTro = ISNULL(IdVaiTro, 1), -- Admin role
     TrangThai = 1, -- Active (force set to true)

@@ -122,7 +122,7 @@ BEGIN
         'admin',
         '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/VjPoyNdO2', -- password: admin123
         'admin@bantayvang.vn',
-        'Quản trị viên hệ thống',
+        N'Quản trị viên hệ thống',
         1, -- Admin role
         1, -- Active
         GETDATE()
@@ -141,10 +141,10 @@ BEGIN
     IF NOT EXISTS (SELECT * FROM VAITRO WHERE Id = 1)
     BEGIN
         INSERT INTO VAITRO (Id, MaVaiTro, TenVaiTro, MoTa) VALUES 
-        (1, 'ADMIN', 'Quản trị viên', 'Quản trị viên hệ thống'),
-        (2, 'TEACHER', 'Giảng viên', 'Giảng viên tạo và quản lý đề thi'),
-        (3, 'STUDENT', 'Học viên', 'Học viên tham gia thi'),
-        (4, 'SUPERVISOR', 'Giám sát', 'Giám sát viên theo dõi kỳ thi');
+        (1, 'ADMIN', N'Quản trị viên', N'Quản trị viên hệ thống'),
+        (2, 'TEACHER', N'Giảng viên', N'Giảng viên tạo và quản lý đề thi'),
+        (3, 'STUDENT', N'Học viên', N'Học viên tham gia thi'),
+        (4, 'SUPERVISOR', N'Giám sát', N'Giám sát viên theo dõi kỳ thi');
         
         PRINT 'Default roles created';
     END
