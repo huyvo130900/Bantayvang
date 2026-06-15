@@ -20,6 +20,8 @@ namespace BanTayVang.API.DTOs.User
         public bool? TrangThai { get; set; }
         public DateTime? NgayTao { get; set; }
         public DateTime? LanDangNhapCuoi { get; set; }
+        public string? Email { get; set; }
+        public string? SoDienThoai { get; set; }
     }
 
     /// <summary>
@@ -42,6 +44,8 @@ namespace BanTayVang.API.DTOs.User
         public string? MaNhanVien { get; set; }
         public string? ChucDanh { get; set; }
         public string? KhoaPhong { get; set; }
+        public string? Email { get; set; }
+        public string? SoDienThoai { get; set; }
         public int IdVaiTro { get; set; } = 3;
         /// <summary>Bắt buộc khi IdVaiTro = 5 (DeptManager)</summary>
         public int? IdKhoaQuanLy { get; set; }
@@ -60,6 +64,8 @@ namespace BanTayVang.API.DTOs.User
         public string? MaNhanVien { get; set; }
         public string? ChucDanh { get; set; }
         public string? KhoaPhong { get; set; }
+        public string? Email { get; set; }
+        public string? SoDienThoai { get; set; }
         public int IdVaiTro { get; set; }
         public int? IdKhoaQuanLy { get; set; }
         public bool TrangThai { get; set; }

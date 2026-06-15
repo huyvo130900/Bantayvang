@@ -38,9 +38,11 @@ namespace BanTayVang.API.Repositories.Impl
                 .FirstOrDefaultAsync(u => u.TenDangNhap == username || u.MaNhanVien == username);
         }
 
-        public Task<Taikhoan?> GetByEmailAsync(string email)
+        public async Task<Taikhoan?> GetByEmailAsync(string email)
         {
-            return Task.FromResult<Taikhoan?>(null);
+            if (string.IsNullOrEmpty(email))
+                return null;
+            return await _dbSet.FirstOrDefaultAsync(u => u.Email == email);
         }
 
         public async Task<bool> UsernameExistsAsync(string username, int? excludeUserId = null)
@@ -58,9 +60,19 @@ namespace BanTayVang.API.Repositories.Impl
             return await query.AnyAsync();
         }
 
-        public Task<bool> EmailExistsAsync(string email, int? excludeUserId = null)
+        public async Task<bool> EmailExistsAsync(string email, int? excludeUserId = null)
         {
-            return Task.FromResult(false);
+            if (string.IsNullOrEmpty(email))
+                return false;
+
+            var query = _dbSet.Where(u => u.Email == email);
+            
+            if (excludeUserId.HasValue)
+            {
+                query = query.Where(u => u.Id != excludeUserId.Value);
+            }
+
+            return await query.AnyAsync();
         }
 
         public async Task<List<Taikhoan>> GetByRoleAsync(int roleId)

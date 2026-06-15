@@ -97,10 +97,10 @@ SET IDENTITY_INSERT VAITRO OFF;
 PRINT '  [OK] Seeded roles (ADMIN, STUDENT, DEPT_MANAGER)';
 
 -- Insert default admin user (password: admin123)
--- Hash for admin123: $2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/VjPoyNdO2
+-- Hash for admin123: $2a$12$kXL3AB25B4qVOb4F74qgVuytGFWWlMLve098mc/bZ62cUCJhZ4gzS
 SET IDENTITY_INSERT TAIKHOAN ON;
 INSERT INTO TAIKHOAN (Id, TenDangNhap, MaNhanVien, MatKhau, HoTen, IdVaiTro, TrangThai, NgayTao)
-VALUES (1, 'admin', 'admin', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/VjPoyNdO2', N'Quản trị viên hệ thống', 1, 1, GETDATE());
+VALUES (1, 'admin', 'admin', '$2a$12$kXL3AB25B4qVOb4F74qgVuytGFWWlMLve098mc/bZ62cUCJhZ4gzS', N'Quản trị viên hệ thống', 1, 1, GETDATE());
 SET IDENTITY_INSERT TAIKHOAN OFF;
 PRINT '  [OK] Seeded admin user with employee ID (admin/admin)';
 

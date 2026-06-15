@@ -43,7 +43,7 @@ namespace BanTayVang.API.Services.Impl.Auth
 
             try
             {
-                return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
+                return BCrypt.Net.BCrypt.Verify(password, hashedPassword.Trim());
             }
             catch (Exception ex)
             {

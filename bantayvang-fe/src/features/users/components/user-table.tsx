@@ -40,6 +40,8 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Họ tên</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Username</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Khoa/Phòng</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Số điện thoại</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Email</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Vai trò</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Trạng thái</th>
             <th className="px-4 py-3 text-right font-medium text-gray-600 whitespace-nowrap">Thao tác</th>
@@ -62,6 +64,8 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
                   <span className="text-gray-600">{user.khoaPhong || '—'}</span>
                 )}
               </td>
+              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.soDienThoai || '—'}</td>
+              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.email || '—'}</td>
               <td className="px-4 py-3">
                 <RoleBadge role={user.tenVaiTro} />
               </td>

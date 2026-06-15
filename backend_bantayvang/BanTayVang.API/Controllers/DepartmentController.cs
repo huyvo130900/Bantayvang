@@ -534,30 +534,100 @@ namespace BanTayVang.API.Controllers
                     ?? workbook.Worksheets.First();
 
                 int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
+                if (lastRow < 2)
+                    return BadRequest(new { success = false, message = "File Excel không có dữ liệu" });
+
+                // Detect headers in row 1
+                var headerA = ws.Cell(1, 1).GetString().Trim();
+                var headerB = ws.Cell(1, 2).GetString().Trim();
+
+                bool isNewFormat = false;
+                if (headerA.Equals("STT", StringComparison.OrdinalIgnoreCase) &&
+                    (headerB.Contains("Khoa", StringComparison.OrdinalIgnoreCase) ||
+                     headerB.Contains("phòng", StringComparison.OrdinalIgnoreCase) ||
+                     headerB.Contains("phong", StringComparison.OrdinalIgnoreCase)))
+                {
+                    isNewFormat = true;
+                }
+
+                // Load existing departments into memory to avoid N+1 DB queries and duplicate checking
+                var existingDepartments = await _context.KhoaPhongs.ToListAsync();
+                var existingMaKhoas = new HashSet<string>(existingDepartments.Select(k => k.MaKhoa), StringComparer.OrdinalIgnoreCase);
+                var existingTenKhoas = new HashSet<string>(existingDepartments.Select(k => k.TenKhoa), StringComparer.OrdinalIgnoreCase);
 
                 for (int row = 2; row <= lastRow; row++)
                 {
-                    var maKhoa = ws.Cell(row, 1).GetString().Trim().ToUpper();
-                    var tenKhoa = ws.Cell(row, 2).GetString().Trim();
-                    var trangThaiStr = ws.Cell(row, 3).GetString().Trim();
-                    var moTa = ws.Cell(row, 4).GetString().Trim();
+                    string maKhoa = string.Empty;
+                    string tenKhoa = string.Empty;
+                    bool trangThai = true;
+                    string? moTa = null;
 
-                    if (string.IsNullOrWhiteSpace(maKhoa) && string.IsNullOrWhiteSpace(tenKhoa))
+                    if (isNewFormat)
+                    {
+                        tenKhoa = ws.Cell(row, 2).GetString().Trim();
+                    }
+                    else
+                    {
+                        maKhoa = ws.Cell(row, 1).GetString().Trim().ToUpper();
+                        tenKhoa = ws.Cell(row, 2).GetString().Trim();
+                        var trangThaiStr = ws.Cell(row, 3).GetString().Trim();
+                        moTa = ws.Cell(row, 4).GetString().Trim();
+                        
+                        // Default status is HoatDong if blank
+                        trangThai = string.IsNullOrWhiteSpace(trangThaiStr) || trangThaiStr.Equals("HoatDong", StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(tenKhoa))
                         continue;
 
-                    if (string.IsNullOrWhiteSpace(maKhoa))
-                    { errors.Add($"Dòng {row}: Mã Khoa không được để trống"); continue; }
-                    if (string.IsNullOrWhiteSpace(tenKhoa))
-                    { errors.Add($"Dòng {row}: Tên Khoa không được để trống"); continue; }
-
-                    bool trangThai = string.IsNullOrWhiteSpace(trangThaiStr) || trangThaiStr == "HoatDong";
-
-                    var existing = await _context.KhoaPhongs.FirstOrDefaultAsync(k => k.MaKhoa == maKhoa);
-                    if (existing != null)
+                    // Check duplicate by TenKhoa
+                    if (existingTenKhoas.Contains(tenKhoa))
                     {
                         skipped++;
-                        errors.Add($"Dòng {row}: Mã khoa '{maKhoa}' đã tồn tại — bỏ qua");
+                        errors.Add($"Dòng {row}: Khoa/phòng '{tenKhoa}' đã tồn tại — bỏ qua");
                         continue;
+                    }
+
+                    if (isNewFormat)
+                    {
+                        maKhoa = GenerateMaKhoa(tenKhoa);
+                        if (string.IsNullOrEmpty(maKhoa))
+                        {
+                            errors.Add($"Dòng {row}: Tên Khoa không hợp lệ để tạo Mã Khoa");
+                            continue;
+                        }
+
+                        // Ensure MaKhoa is unique
+                        int suffix = 1;
+                        string baseMaKhoa = maKhoa;
+                        while (existingMaKhoas.Contains(maKhoa))
+                        {
+                            string suffixStr = $"_{suffix}";
+                            if (baseMaKhoa.Length + suffixStr.Length > 50)
+                            {
+                                maKhoa = baseMaKhoa.Substring(0, 50 - suffixStr.Length) + suffixStr;
+                            }
+                            else
+                            {
+                                maKhoa = baseMaKhoa + suffixStr;
+                            }
+                            suffix++;
+                        }
+                    }
+                    else
+                    {
+                        if (string.IsNullOrWhiteSpace(maKhoa))
+                        {
+                            errors.Add($"Dòng {row}: Mã Khoa không được để trống");
+                            continue;
+                        }
+
+                        if (existingMaKhoas.Contains(maKhoa))
+                        {
+                            skipped++;
+                            errors.Add($"Dòng {row}: Mã khoa '{maKhoa}' đã tồn tại — bỏ qua");
+                            continue;
+                        }
                     }
 
                     _context.KhoaPhongs.Add(new KhoaPhong
@@ -568,6 +638,9 @@ namespace BanTayVang.API.Controllers
                         MoTa = string.IsNullOrWhiteSpace(moTa) ? null : moTa,
                         NgayTao = DateTime.Now,
                     });
+
+                    existingMaKhoas.Add(maKhoa);
+                    existingTenKhoas.Add(tenKhoa);
                     created++;
                 }
 
@@ -587,6 +660,75 @@ namespace BanTayVang.API.Controllers
                 _logger.LogError(ex, "Error importing departments from Excel");
                 return StatusCode(500, new { success = false, message = "Lỗi xử lý file: " + ex.Message });
             }
+        }
+
+        private static string RemoveDiacritics(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return string.Empty;
+
+            var normalizedString = text.Normalize(System.Text.NormalizationForm.FormD);
+            var stringBuilder = new System.Text.StringBuilder();
+
+            foreach (var c in normalizedString)
+            {
+                var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+                if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+                {
+                    stringBuilder.Append(c);
+                }
+            }
+
+            var result = stringBuilder.ToString().Normalize(System.Text.NormalizationForm.FormC);
+            var finalBuilder = new System.Text.StringBuilder();
+            foreach (var c in result)
+            {
+                if (c == 'đ') finalBuilder.Append('d');
+                else if (c == 'Đ') finalBuilder.Append('D');
+                else finalBuilder.Append(c);
+            }
+            return finalBuilder.ToString();
+        }
+
+        private static string GenerateMaKhoa(string tenKhoa)
+        {
+            if (string.IsNullOrWhiteSpace(tenKhoa))
+                return string.Empty;
+
+            string noDiacritics = RemoveDiacritics(tenKhoa);
+
+            var sb = new System.Text.StringBuilder();
+            bool lastWasUnderscore = false;
+
+            foreach (char c in noDiacritics)
+            {
+                if (char.IsLetterOrDigit(c))
+                {
+                    sb.Append(char.ToUpperInvariant(c));
+                    lastWasUnderscore = false;
+                }
+                else if (c == ' ' || c == '_' || c == '-' || c == '/' || c == '\\')
+                {
+                    if (!lastWasUnderscore && sb.Length > 0)
+                    {
+                        sb.Append('_');
+                        lastWasUnderscore = true;
+                    }
+                }
+            }
+
+            string result = sb.ToString();
+            if (result.EndsWith("_"))
+                result = result.Substring(0, result.Length - 1);
+
+            if (result.Length > 50)
+            {
+                result = result.Substring(0, 50);
+                if (result.EndsWith("_"))
+                    result = result.Substring(0, result.Length - 1);
+            }
+
+            return result;
         }
     }
 }

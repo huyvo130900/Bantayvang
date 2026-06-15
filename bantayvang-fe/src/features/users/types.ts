@@ -3,6 +3,7 @@ export interface UserDto {
   maNhanVien: string | null
   tenDangNhap: string | null
   email: string | null
+  soDienThoai: string | null
   hoTen: string | null
   chucDanh: string | null
   khoaPhong: string | null
@@ -18,7 +19,8 @@ export interface UserDto {
 export interface CreateUserDto {
   tenDangNhap: string
   matKhau: string
-  email: string
+  email?: string
+  soDienThoai?: string
   hoTen: string
   maNhanVien?: string
   chucDanh?: string
@@ -29,7 +31,8 @@ export interface CreateUserDto {
 }
 
 export interface UpdateUserDto {
-  email: string
+  email?: string
+  soDienThoai?: string
   hoTen: string
   maNhanVien?: string
   chucDanh?: string

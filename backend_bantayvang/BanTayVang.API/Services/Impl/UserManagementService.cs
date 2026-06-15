@@ -136,7 +136,9 @@ namespace BanTayVang.API.Services.Impl
                     IdVaiTro = createDto.IdVaiTro,
                     TrangThai = createDto.TrangThai,
                     NgayTao = DateTime.Now,
-                    IdKhoaQuanLy = createDto.IdVaiTro == 5 ? createDto.IdKhoaQuanLy : null
+                    IdKhoaQuanLy = createDto.IdVaiTro == 5 ? createDto.IdKhoaQuanLy : null,
+                    Email = createDto.Email,
+                    SoDienThoai = createDto.SoDienThoai
                 };
 
                 var saved = await _userRepository.AddAsync(user);
@@ -213,6 +215,8 @@ namespace BanTayVang.API.Services.Impl
                 user.IdVaiTro = updateDto.IdVaiTro;
                 user.TrangThai = updateDto.TrangThai;
                 user.NgayCapNhat = DateTime.Now;
+                user.Email = updateDto.Email;
+                user.SoDienThoai = updateDto.SoDienThoai;
 
                 // Handle new department manager assignment
                 if (updateDto.IdVaiTro == 5 && updateDto.IdKhoaQuanLy.HasValue)
@@ -357,7 +361,9 @@ namespace BanTayVang.API.Services.Impl
                 TenKhoaQuanLy = u.KhoaQuanLy?.TenKhoa,
                 TrangThai = u.TrangThai,
                 NgayTao = u.NgayTao,
-                LanDangNhapCuoi = u.LanDangNhapCuoi
+                LanDangNhapCuoi = u.LanDangNhapCuoi,
+                Email = u.Email,
+                SoDienThoai = u.SoDienThoai
             };
         }
 
@@ -386,12 +392,12 @@ namespace BanTayVang.API.Services.Impl
                 var guide = new (string col, string desc)[]
                 {
                     ("Cột", "Mô tả"),
-                    ("A - Mã nhân viên (*)", "Bắt buộc. Dùng làm mã nhân viên và tên đăng nhập để đăng nhập vào hệ thống. VD: NV001"),
-                    ("B - Mật khẩu (*)", "Bắt buộc. Độ dài tối thiểu 6 ký tự. VD: 123456"),
+                    ("A - STT", "Không cần quan tâm (có thể để trống hoặc điền số thứ tự)"),
+                    ("B - Tài khoản (*)", "Bắt buộc. Dùng làm mã nhân viên và tên đăng nhập để đăng nhập vào hệ thống. VD: NV001"),
                     ("C - Họ tên (*)", "Bắt buộc. Họ và tên đầy đủ của người dùng. VD: Nguyễn Văn A"),
-                    ("D - Chức danh", "Không bắt buộc. Chức vụ hoặc chức danh nghề nghiệp. Nếu để trống sẽ mặc định để trống."),
-                    ("E - Khoa/Phòng", "Không bắt buộc. Tên khoa phòng công tác. VD: Khoa Nội"),
-                    ("F - Vai trò (1-3)", "Bắt buộc hoặc Không bắt buộc. 1 = Quản trị viên, 2 = Quản lý khoa, 3 = Thí sinh. Nếu để trống hoặc không hợp lệ sẽ mặc định có vai trò là Thí sinh (3).")
+                    ("D - Email", "Không bắt buộc. Địa chỉ email liên hệ. VD: nguyenvana@example.com"),
+                    ("E - Số điện thoại", "Không bắt buộc. Số điện thoại liên hệ. VD: 0912345678"),
+                    ("F - Khoa/phòng", "Không bắt buộc. Tên khoa phòng công tác. VD: Khoa Nội")
                 };
 
                 for (int i = 0; i < guide.Length; i++)
@@ -408,8 +414,8 @@ namespace BanTayVang.API.Services.Impl
                 wsGuide.Column(2).Width = 80;
 
                 var ws = workbook.Worksheets.Add("IMPORT_TAI_KHOAN");
-                var headers = new[] { "Mã nhân viên (*)", "Mật khẩu (*)", "Họ tên (*)", "Chức danh", "Khoa/Phòng", "Vai trò (1-3)" };
-                var widths = new[] { 22, 20, 30, 25, 25, 20 };
+                var headers = new[] { "STT", "Tài khoản (*)", "Họ tên (*)", "Email", "Số điện thoại", "Khoa/phòng" };
+                var widths = new[] { 10, 22, 30, 25, 20, 25 };
 
                 for (int c = 0; c < headers.Length; c++)
                 {
@@ -427,9 +433,9 @@ namespace BanTayVang.API.Services.Impl
                 // Add sample data
                 var samples = new[]
                 {
-                    ("NV001", "123456", "Nguyễn Văn A", "Bác sĩ", "Khoa Nội", "3"),
-                    ("NV002", "123456", "Trần Thị B", "Điều dưỡng", "Khoa Ngoại", "2"),
-                    ("NV003", "123456", "Phạm Văn C", "Trưởng khoa", "Khoa Nhi", "1")
+                    ("1", "NV001", "Nguyễn Văn A", "nguyenvana@example.com", "0912345678", "Khoa Nội"),
+                    ("2", "NV002", "Trần Thị B", "tranthib@example.com", "0923456789", "Khoa Ngoại"),
+                    ("3", "NV003", "Phạm Văn C", "phamvanc@example.com", "0934567890", "Khoa Nhi")
                 };
 
                 for (int r = 0; r < samples.Length; r++)
@@ -465,6 +471,31 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
+        private static string NormalizeHeader(string header)
+        {
+            if (string.IsNullOrWhiteSpace(header)) return string.Empty;
+            string lower = header.Trim().ToLower();
+            string[] find = { "á", "à", "ả", "ã", "ạ", "â", "ấ", "ầ", "ẩ", "ẫ", "ậ", "ă", "ắ", "ằ", "ẳ", "ẵ", "ặ",
+                              "é", "è", "ẻ", "ẽ", "ẹ", "ê", "ế", "ề", "ể", "ễ", "ệ",
+                              "í", "ì", "ỉ", "ĩ", "ị",
+                              "ó", "ò", "ỏ", "õ", "ọ", "ô", "ố", "ồ", "ổ", "ỗ", "ộ", "ơ", "ớ", "ờ", "ở", "ỡ", "ợ",
+                              "ú", "ù", "ủ", "ũ", "ụ", "ư", "ứ", "ừ", "ử", "ữ", "ự",
+                              "ý", "ỳ", "ỷ", "ỹ", "ỵ",
+                              "đ" };
+            string[] replace = { "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a",
+                                "e", "e", "e", "e", "e", "e", "e", "e", "e", "e", "e",
+                                "i", "i", "i", "i", "i",
+                                "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o",
+                                "u", "u", "u", "u", "u", "u", "u", "u", "u", "u", "u",
+                                "y", "y", "y", "y", "y",
+                                "d" };
+            for (int i = 0; i < find.Length; i++)
+            {
+                lower = lower.Replace(find[i], replace[i]);
+            }
+            return lower.Replace(" ", "").Replace("/", "");
+        }
+
         public async Task<BaseResponseDto<ExcelImportResultDto>> ImportUsersFromExcelAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -487,16 +518,76 @@ namespace BanTayVang.API.Services.Impl
                     .FirstOrDefault(w => w.Name.Contains("IMPORT") || w.Name.Contains("TAI_KHOAN") || w.Name.Contains("USER"))
                     ?? workbook.Worksheets.First();
 
+                int colTaiKhoan = -1;
+                int colHoTen = -1;
+                int colEmail = -1;
+                int colSoDienThoai = -1;
+                int colKhoaPhong = -1;
+                int colMatKhau = -1;
+                int colVaiTro = -1;
+                int colChucDanh = -1;
+
+                var firstRow = ws.Row(1);
+                int lastCell = firstRow.LastCellUsed()?.Address.ColumnNumber ?? 8;
+                for (int col = 1; col <= lastCell; col++)
+                {
+                    var headerText = NormalizeHeader(firstRow.Cell(col).GetString());
+                    if (string.IsNullOrEmpty(headerText)) continue;
+
+                    if (headerText.Contains("taikhoan") || headerText.Contains("tendangnhap") || headerText.Contains("manhanvien") || headerText.Contains("username"))
+                    {
+                        colTaiKhoan = col;
+                    }
+                    else if (headerText.Contains("hoten") || headerText.Contains("hovaten") || headerText.Contains("fullname") || headerText == "ten" || headerText.Contains("tennhanvien"))
+                    {
+                        colHoTen = col;
+                    }
+                    else if (headerText.Contains("email") || headerText.Contains("thudientu"))
+                    {
+                        colEmail = col;
+                    }
+                    else if (headerText.Contains("sodienthoai") || headerText.Contains("sdt") || headerText.Contains("dienthoai") || headerText.Contains("phone"))
+                    {
+                        colSoDienThoai = col;
+                    }
+                    else if (headerText.Contains("khoaphong") || headerText == "khoa" || headerText == "phong" || headerText.Contains("department"))
+                    {
+                        colKhoaPhong = col;
+                    }
+                    else if (headerText.Contains("matkhau") || headerText.Contains("password"))
+                    {
+                        colMatKhau = col;
+                    }
+                    else if (headerText.Contains("vaitro") || headerText.Contains("role"))
+                    {
+                        colVaiTro = col;
+                    }
+                    else if (headerText.Contains("chucdanh") || headerText.Contains("title"))
+                    {
+                        colChucDanh = col;
+                    }
+                }
+
+                // If fallback required (headers not detected or different format)
+                if (colTaiKhoan == -1) colTaiKhoan = 2; // Column B (Tài khoản)
+                if (colHoTen == -1) colHoTen = 3;       // Column C (Họ tên)
+                if (colEmail == -1) colEmail = 4;       // Column D (Email)
+                if (colSoDienThoai == -1) colSoDienThoai = 5; // Column E (Số điện thoại)
+                if (colKhoaPhong == -1) colKhoaPhong = 6;   // Column F (Khoa/phòng)
+
+                var processedUsernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
 
                 for (int row = 2; row <= lastRow; row++)
                 {
-                    var maNhanVien = ws.Cell(row, 1).GetString().Trim();
-                    var matKhau = ws.Cell(row, 2).GetString().Trim();
-                    var hoTen = ws.Cell(row, 3).GetString().Trim();
-                    var chucDanh = ws.Cell(row, 4).GetString().Trim();
-                    var khoaPhong = ws.Cell(row, 5).GetString().Trim();
-                    var vaiTroStr = ws.Cell(row, 6).GetString().Trim();
+                    var maNhanVien = colTaiKhoan > 0 ? ws.Cell(row, colTaiKhoan).GetString().Trim() : string.Empty;
+                    var matKhau = colMatKhau > 0 ? ws.Cell(row, colMatKhau).GetString().Trim() : string.Empty;
+                    var hoTen = colHoTen > 0 ? ws.Cell(row, colHoTen).GetString().Trim() : string.Empty;
+                    var chucDanh = colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty;
+                    var khoaPhong = colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty;
+                    var vaiTroStr = colVaiTro > 0 ? ws.Cell(row, colVaiTro).GetString().Trim() : string.Empty;
+                    var soDienThoai = colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty;
+                    var email = colEmail > 0 ? ws.Cell(row, colEmail).GetString().Trim() : string.Empty;
 
                     // If all columns are empty, skip row
                     if (string.IsNullOrWhiteSpace(maNhanVien) &&
@@ -504,9 +595,17 @@ namespace BanTayVang.API.Services.Impl
                         string.IsNullOrWhiteSpace(hoTen) &&
                         string.IsNullOrWhiteSpace(chucDanh) &&
                         string.IsNullOrWhiteSpace(khoaPhong) &&
-                        string.IsNullOrWhiteSpace(vaiTroStr))
+                        string.IsNullOrWhiteSpace(vaiTroStr) &&
+                        string.IsNullOrWhiteSpace(soDienThoai) &&
+                        string.IsNullOrWhiteSpace(email))
                     {
                         continue;
+                    }
+
+                    // Default password if not provided
+                    if (string.IsNullOrWhiteSpace(matKhau))
+                    {
+                        matKhau = "123456";
                     }
 
                     // Validations
@@ -514,7 +613,7 @@ namespace BanTayVang.API.Services.Impl
 
                     if (string.IsNullOrWhiteSpace(maNhanVien))
                     {
-                        rowErrors.Add("Mã nhân viên không được để trống");
+                        rowErrors.Add("Mã nhân viên (tài khoản) không được để trống");
                     }
                     if (string.IsNullOrWhiteSpace(matKhau))
                     {
@@ -536,7 +635,15 @@ namespace BanTayVang.API.Services.Impl
                         continue;
                     }
 
-                    // Check if maNhanVien / TenDangNhap already exists
+                    // Check duplicate in the same file
+                    if (processedUsernames.Contains(maNhanVien))
+                    {
+                        resultDto.Failed++;
+                        resultDto.Errors.Add($"Dòng {row}: Mã nhân viên '{maNhanVien}' bị trùng lặp trong file import");
+                        continue;
+                    }
+
+                    // Check if maNhanVien / TenDangNhap already exists in DB
                     var existingUserByUsername = await _context.Taikhoans.FirstOrDefaultAsync(u => u.TenDangNhap == maNhanVien);
                     var existingUserByEmpCode = await _context.Taikhoans.FirstOrDefaultAsync(u => u.MaNhanVien == maNhanVien);
                     if (existingUserByUsername != null || existingUserByEmpCode != null)
@@ -584,10 +691,13 @@ namespace BanTayVang.API.Services.Impl
                         KhoaPhong = finalKhoaPhong,
                         IdVaiTro = idVaiTro,
                         TrangThai = true,
-                        NgayTao = DateTime.Now
+                        NgayTao = DateTime.Now,
+                        SoDienThoai = string.IsNullOrWhiteSpace(soDienThoai) ? null : soDienThoai,
+                        Email = string.IsNullOrWhiteSpace(email) ? null : email
                     };
 
                     _context.Taikhoans.Add(user);
+                    processedUsernames.Add(maNhanVien);
                     resultDto.Success++;
                 }
 

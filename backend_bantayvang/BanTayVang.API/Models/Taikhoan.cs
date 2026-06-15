@@ -20,6 +20,10 @@ public partial class Taikhoan
 
     public string? HoTen { get; set; }
 
+    public string? Email { get; set; }
+
+    public string? SoDienThoai { get; set; }
+
     public int? IdVaiTro { get; set; }
 
     public bool? TrangThai { get; set; }

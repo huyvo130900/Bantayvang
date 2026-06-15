@@ -36,6 +36,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
       tenDangNhap: '', matKhau: '', hoTen: '',
       maNhanVien: '', chucDanh: '', khoaPhong: '',
       idVaiTro: 3, idKhoaQuanLy: null as any, trangThai: true,
+      email: '', soDienThoai: '',
     },
   })
 
@@ -72,6 +73,8 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
         khoaPhong: user.khoaPhong || '', idVaiTro: user.idVaiTro || 3,
         idKhoaQuanLy: user.idKhoaQuanLy || null as any,
         trangThai: user.trangThai ?? true,
+        email: user.email || '',
+        soDienThoai: user.soDienThoai || '',
       })
       setSearchTerm(user.khoaPhong || '')
     } else {
@@ -80,6 +83,8 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
         maNhanVien: '', chucDanh: '', khoaPhong: isUserDeptManager && myKhoa ? myKhoa : '', idVaiTro: 3,
         idKhoaQuanLy: null as any,
         trangThai: true,
+        email: '',
+        soDienThoai: '',
       })
       setSearchTerm(isUserDeptManager && myKhoa ? myKhoa : '')
     }
@@ -207,6 +212,15 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
               )}
             </div>
           </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Số điện thoại" error={form.formState.errors.soDienThoai?.message}>
+              <Input {...form.register('soDienThoai')} placeholder="0912345678" />
+            </Field>
+            <Field label="Email" error={form.formState.errors.email?.message}>
+              <Input {...form.register('email')} placeholder="nguyenvana@example.com" />
+            </Field>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Vai trò *">

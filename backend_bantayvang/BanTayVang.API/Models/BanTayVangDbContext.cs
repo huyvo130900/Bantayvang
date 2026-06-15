@@ -276,6 +276,8 @@ public partial class BanTayVangDbContext : DbContext
             entity.Property(e => e.MaNhanVien).HasMaxLength(50);
             entity.Property(e => e.MatKhau).HasMaxLength(255);
             entity.Property(e => e.TenDangNhap).HasMaxLength(100);
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.SoDienThoai).HasMaxLength(50);
         });
 
         modelBuilder.Entity<TaikhoanVaitro>(entity =>

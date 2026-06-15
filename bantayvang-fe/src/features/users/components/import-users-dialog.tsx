@@ -147,8 +147,8 @@ export function ImportUsersDialog({ open, onClose, onSuccess }: ImportUsersDialo
             <p className="text-xs font-semibold text-gray-600 mb-2">Các cột trong file mẫu:</p>
             <div className="grid grid-cols-2 gap-1">
               {[
-                'maNhanVien *', 'matKhau *', 'hoTen *',
-                'chucDanh', 'khoaPhong', 'vai trò (1-3)',
+                'STT', 'Tài khoản *', 'Họ tên *',
+                'Email', 'Số điện thoại', 'Khoa/phòng'
               ].map((col) => (
                 <div key={col} className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
@@ -156,7 +156,7 @@ export function ImportUsersDialog({ open, onClose, onSuccess }: ImportUsersDialo
                 </div>
               ))}
             </div>
-            <p className="text-xs text-gray-400 mt-2">* Bắt buộc. Vai trò mặc định là 3 (thí sinh) nếu để trống. Vai trò: 1 = quản trị viên, 2 = quản lý khoa, 3 = thí sinh</p>
+            <p className="text-xs text-gray-400 mt-2">* Bắt buộc. Tài khoản dùng làm mã nhân viên. Mật khẩu mặc định là "123456". Vai trò mặc định là Thí sinh.</p>
           </div>
 
           {/* Error */}
