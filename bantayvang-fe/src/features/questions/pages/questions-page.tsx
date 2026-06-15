@@ -11,6 +11,10 @@ import { ImportExcelDialog } from '../components/import-excel-dialog'
 import type { CauhoiDto, QuestionFilterDto } from '../types'
 import type { CreateQuestionFormData } from '../schemas'
 import { ROLES } from '@/lib/constants'
+import { kyThiApi } from '@/features/ky-thi/api'
+import { examsApiExtended } from '@/features/exams/api'
+import type { KyThiDto } from '@/features/ky-thi/types'
+import type { DethiDto } from '@/features/exams/types'
 
 export function QuestionsPage() {
   const dispatch = useAppDispatch()
@@ -24,6 +28,8 @@ export function QuestionsPage() {
   const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || null
 
   const [khoaList, setKhoaList] = useState<string[]>([])
+  const [kyThiList, setKyThiList] = useState<KyThiDto[]>([])
+  const [deThiList, setDeThiList] = useState<DethiDto[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<CauhoiDto | null>(null)
@@ -47,6 +53,23 @@ export function QuestionsPage() {
         })
         .catch(() => {})
     }
+
+    // Fetch exams and tests
+    kyThiApi.getAll()
+      .then((res) => {
+        if (res.data?.success && res.data.data) {
+          setKyThiList(res.data.data)
+        }
+      })
+      .catch(() => {})
+
+    examsApiExtended.getAll()
+      .then((res) => {
+        if (res.data?.success && res.data.data) {
+          setDeThiList(res.data.data)
+        }
+      })
+      .catch(() => {})
   }, [dispatch, isAdmin])
 
   useEffect(() => {
@@ -70,6 +93,10 @@ export function QuestionsPage() {
       // DeptManager không được thay đổi khoaPhong
       if (isDeptManager && myKhoa && 'khoaPhong' in changes) {
         changes = { ...changes, khoaPhong: myKhoa }
+      }
+      // Reset deThiId if kyThiId is explicitly changed/cleared
+      if ('kyThiId' in changes) {
+        changes.deThiId = undefined
       }
       dispatch(setFilter(changes))
     },
@@ -161,6 +188,8 @@ export function QuestionsPage() {
         onImportClick={() => setImportOpen(true)}
         hideKhoaFilter={isDeptManager}
         khoaList={khoaList}
+        kyThiList={kyThiList}
+        deThiList={deThiList}
       />
 
       <QuestionTable

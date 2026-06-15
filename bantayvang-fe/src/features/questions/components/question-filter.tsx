@@ -3,6 +3,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, Plus, Upload, Building2, ChevronDown, Check } from 'lucide-react'
 import type { QuestionFilterDto, LoaicauhoiDto } from '../types'
+import type { KyThiDto } from '@/features/ky-thi/types'
+import type { DethiDto } from '@/features/exams/types'
 
 interface QuestionFilterProps {
   filter: QuestionFilterDto
@@ -13,6 +15,8 @@ interface QuestionFilterProps {
   hideKhoaFilter?: boolean
   // Admin truyền vào danh sách khoa động (lấy từ dữ liệu thực tế)
   khoaList?: string[]
+  kyThiList?: KyThiDto[]
+  deThiList?: DethiDto[]
 }
 
 export function QuestionFilter({
@@ -23,6 +27,8 @@ export function QuestionFilter({
   onImportClick,
   hideKhoaFilter = false,
   khoaList = [],
+  kyThiList = [],
+  deThiList = [],
 }: QuestionFilterProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -167,6 +173,36 @@ export function QuestionFilter({
           <option value="Dễ">Dễ</option>
           <option value="Trung bình">Trung bình</option>
           <option value="Khó">Khó</option>
+        </select>
+
+        {/* Lọc theo kỳ thi */}
+        <select
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm max-w-[180px]"
+          value={filter.kyThiId ?? ''}
+          onChange={(e) =>
+            onFilterChange({ kyThiId: e.target.value ? Number(e.target.value) : undefined, pageNumber: 1 })
+          }
+        >
+          <option value="">Tất cả kỳ thi</option>
+          {kyThiList.map((kt) => (
+            <option key={kt.id} value={kt.id}>{kt.tenKyThi}</option>
+          ))}
+        </select>
+
+        {/* Lọc theo đề thi */}
+        <select
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm max-w-[180px]"
+          value={filter.deThiId ?? ''}
+          onChange={(e) =>
+            onFilterChange({ deThiId: e.target.value ? Number(e.target.value) : undefined, pageNumber: 1 })
+          }
+        >
+          <option value="">Tất cả đề thi</option>
+          {deThiList
+            .filter((dt) => !filter.kyThiId || dt.kyThiId === filter.kyThiId)
+            .map((dt) => (
+              <option key={dt.id} value={dt.id}>{dt.tenDeThi || dt.maDeThi}</option>
+            ))}
         </select>
 
         {/* Lọc trùng lặp - Chỉ hiển thị khi chọn 1 khoa nhất định */}

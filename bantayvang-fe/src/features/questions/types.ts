@@ -47,6 +47,8 @@ export interface QuestionFilterDto {
   khoaPhong?: string
   searchKeyword?: string
   showDuplicatesOnly?: boolean
+  kyThiId?: number
+  deThiId?: number
   pageNumber: number
   pageSize: number
 }

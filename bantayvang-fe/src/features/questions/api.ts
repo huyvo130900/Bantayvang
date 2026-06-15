@@ -18,6 +18,8 @@ const buildQueryString = (filter: QuestionFilterDto): string => {
   if (filter.khoaPhong) params.set('khoaPhong', filter.khoaPhong)
   if (filter.searchKeyword) params.set('searchKeyword', filter.searchKeyword)
   if (filter.showDuplicatesOnly) params.set('showDuplicatesOnly', String(filter.showDuplicatesOnly))
+  if (filter.kyThiId) params.set('kyThiId', String(filter.kyThiId))
+  if (filter.deThiId) params.set('deThiId', String(filter.deThiId))
   return params.toString()
 }
 

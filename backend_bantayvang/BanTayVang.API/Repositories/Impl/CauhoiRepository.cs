@@ -97,6 +97,16 @@ namespace BanTayVang.API.Repositories.Impl
             if (!string.IsNullOrEmpty(filter.SearchKeyword))
                 query = query.Where(c => c.NoiDung!.Contains(filter.SearchKeyword));
 
+            if (filter.KyThiId.HasValue)
+            {
+                query = query.Where(c => c.DethiCauhois.Any(dc => dc.IdDeThiNavigation != null && dc.IdDeThiNavigation.KyThiId == filter.KyThiId.Value));
+            }
+
+            if (filter.DeThiId.HasValue)
+            {
+                query = query.Where(c => c.DethiCauhois.Any(dc => dc.IdDeThi == filter.DeThiId.Value));
+            }
+
             if (filter.ShowDuplicatesOnly == true)
             {
                 query = query.Where(c => !string.IsNullOrEmpty(c.NoiDung) && _context.Cauhois.Any(other => 
@@ -154,6 +164,16 @@ namespace BanTayVang.API.Repositories.Impl
 
             if (!string.IsNullOrEmpty(filter.SearchKeyword))
                 query = query.Where(c => c.NoiDung!.Contains(filter.SearchKeyword));
+
+            if (filter.KyThiId.HasValue)
+            {
+                query = query.Where(c => c.DethiCauhois.Any(dc => dc.IdDeThiNavigation != null && dc.IdDeThiNavigation.KyThiId == filter.KyThiId.Value));
+            }
+
+            if (filter.DeThiId.HasValue)
+            {
+                query = query.Where(c => c.DethiCauhois.Any(dc => dc.IdDeThi == filter.DeThiId.Value));
+            }
 
             if (filter.ShowDuplicatesOnly == true)
             {
