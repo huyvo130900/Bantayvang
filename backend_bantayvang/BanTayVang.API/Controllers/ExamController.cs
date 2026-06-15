@@ -417,13 +417,34 @@ namespace BanTayVang.API.Controllers
             sb.AppendLine("<!DOCTYPE html><html lang='vi'><head><meta charset='UTF-8'>");
             sb.AppendLine("<title>Đề thi: " + System.Net.WebUtility.HtmlEncode(exam.TenDeThi ?? "") + "</title>");
             sb.AppendLine("<style>body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:20px;font-size:13px}");
-            sb.AppendLine("h1{text-align:center;font-size:16px}.header{text-align:center;margin-bottom:20px}");
+            sb.AppendLine(".print-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #000;padding-bottom:12px}");
+            sb.AppendLine(".hospital-brand{display:flex;align-items:center;gap:12px;width:48%}");
+            sb.AppendLine(".hospital-logo{width:55px;height:55px;object-fit:contain;flex-shrink:0}");
+            sb.AppendLine(".hospital-title{text-align:left;line-height:1.3}");
+            sb.AppendLine(".hospital-title .line-parent{font-size:11px;font-weight:normal;text-transform:uppercase;color:#444;margin:0}");
+            sb.AppendLine(".hospital-title .line-child{font-size:13px;font-weight:bold;text-transform:uppercase;color:#000;margin:0}");
+            sb.AppendLine(".exam-info{width:48%;text-align:center;line-height:1.4}");
+            sb.AppendLine(".exam-info h1{font-size:14px;font-weight:bold;margin:0 0 4px;text-transform:uppercase}");
+            sb.AppendLine(".exam-info .meta{font-size:11px;color:#333}");
             sb.AppendLine(".question{margin:12px 0}.choice{margin:4px 0 4px 20px}.correct{font-weight:bold;color:#16a34a}");
             sb.AppendLine("@media print{.no-print{display:none}}");
             sb.AppendLine("</style></head><body>");
-            sb.AppendLine($"<div class='header'><h1>ĐỀ THI: {System.Net.WebUtility.HtmlEncode(exam.TenDeThi ?? "")}</h1>");
-            sb.AppendLine($"<p>Mã đề: <strong>{exam.MaDeThi}</strong> &nbsp;|&nbsp; Thời gian: <strong>{exam.ThoiGianLamBai} phút</strong> &nbsp;|&nbsp; Số câu: <strong>{exam.CauHois?.Count ?? 0}</strong></p>");
-            sb.AppendLine($"<p>Khoa: {System.Net.WebUtility.HtmlEncode(exam.KhoaPhong ?? "—")}</p></div>");
+
+            sb.AppendLine("<div class='print-header'>");
+            sb.AppendLine("  <div class='hospital-brand'>");
+            sb.AppendLine("    <img src='/logoBVND2.png' alt='Logo' class='hospital-logo' />");
+            sb.AppendLine("    <div class='hospital-title'>");
+            sb.AppendLine("      <div class='line-parent'>SỞ Y TẾ TP. HỒ CHÍ MINH</div>");
+            sb.AppendLine("      <div class='line-child'>BỆNH VIỆN NHI ĐỒNG 2</div>");
+            sb.AppendLine("    </div>");
+            sb.AppendLine("  </div>");
+            sb.AppendLine("  <div class='exam-info'>");
+            sb.AppendLine($"    <h1>ĐỀ THI: {System.Net.WebUtility.HtmlEncode(exam.TenDeThi ?? "")}</h1>");
+            sb.AppendLine($"    <div class='meta'>Mã đề: <strong>{exam.MaDeThi}</strong> &nbsp;|&nbsp; Thời gian: <strong>{exam.ThoiGianLamBai} phút</strong> &nbsp;|&nbsp; Số câu: <strong>{exam.CauHois?.Count ?? 0}</strong>");
+            sb.AppendLine($"    <br/>Khoa: <strong>{System.Net.WebUtility.HtmlEncode(exam.KhoaPhong ?? "—")}</strong></div>");
+            sb.AppendLine("  </div>");
+            sb.AppendLine("</div>");
+
             sb.AppendLine("<button class='no-print' onclick='window.print()' style='padding:8px 16px;margin-bottom:12px;cursor:pointer'>🖨 In đề thi</button>");
             sb.AppendLine("<hr/>");
 

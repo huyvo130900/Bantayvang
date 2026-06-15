@@ -392,8 +392,8 @@ namespace BanTayVang.API.Services.Impl
                 var guide = new (string col, string desc)[]
                 {
                     ("Cột", "Mô tả"),
-                    ("A - STT", "Không cần quan tâm (có thể để trống hoặc điền số thứ tự)"),
-                    ("B - Tài khoản (*)", "Bắt buộc. Dùng làm mã nhân viên và tên đăng nhập để đăng nhập vào hệ thống. VD: NV001"),
+                    ("A - STT", "Không bắt buộc. Số thứ tự."),
+                    ("B - Tài khoản (*)", "Bắt buộc. Dùng làm tên đăng nhập và mã nhân viên. VD: NV001"),
                     ("C - Họ tên (*)", "Bắt buộc. Họ và tên đầy đủ của người dùng. VD: Nguyễn Văn A"),
                     ("D - Email", "Không bắt buộc. Địa chỉ email liên hệ. VD: nguyenvana@example.com"),
                     ("E - Số điện thoại", "Không bắt buộc. Số điện thoại liên hệ. VD: 0912345678"),
@@ -471,31 +471,6 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        private static string NormalizeHeader(string header)
-        {
-            if (string.IsNullOrWhiteSpace(header)) return string.Empty;
-            string lower = header.Trim().ToLower();
-            string[] find = { "á", "à", "ả", "ã", "ạ", "â", "ấ", "ầ", "ẩ", "ẫ", "ậ", "ă", "ắ", "ằ", "ẳ", "ẵ", "ặ",
-                              "é", "è", "ẻ", "ẽ", "ẹ", "ê", "ế", "ề", "ể", "ễ", "ệ",
-                              "í", "ì", "ỉ", "ĩ", "ị",
-                              "ó", "ò", "ỏ", "õ", "ọ", "ô", "ố", "ồ", "ổ", "ỗ", "ộ", "ơ", "ớ", "ờ", "ở", "ỡ", "ợ",
-                              "ú", "ù", "ủ", "ũ", "ụ", "ư", "ứ", "ừ", "ử", "ữ", "ự",
-                              "ý", "ỳ", "ỷ", "ỹ", "ỵ",
-                              "đ" };
-            string[] replace = { "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a",
-                                "e", "e", "e", "e", "e", "e", "e", "e", "e", "e", "e",
-                                "i", "i", "i", "i", "i",
-                                "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o",
-                                "u", "u", "u", "u", "u", "u", "u", "u", "u", "u", "u",
-                                "y", "y", "y", "y", "y",
-                                "d" };
-            for (int i = 0; i < find.Length; i++)
-            {
-                lower = lower.Replace(find[i], replace[i]);
-            }
-            return lower.Replace(" ", "").Replace("/", "");
-        }
-
         public async Task<BaseResponseDto<ExcelImportResultDto>> ImportUsersFromExcelAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -518,6 +493,8 @@ namespace BanTayVang.API.Services.Impl
                     .FirstOrDefault(w => w.Name.Contains("IMPORT") || w.Name.Contains("TAI_KHOAN") || w.Name.Contains("USER"))
                     ?? workbook.Worksheets.First();
 
+                int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
+
                 int colTaiKhoan = -1;
                 int colHoTen = -1;
                 int colEmail = -1;
@@ -527,56 +504,68 @@ namespace BanTayVang.API.Services.Impl
                 int colVaiTro = -1;
                 int colChucDanh = -1;
 
+                // Scan headers in Row 1
                 var firstRow = ws.Row(1);
                 int lastCell = firstRow.LastCellUsed()?.Address.ColumnNumber ?? 8;
                 for (int col = 1; col <= lastCell; col++)
                 {
-                    var headerText = NormalizeHeader(firstRow.Cell(col).GetString());
+                    var headerText = firstRow.Cell(col).GetString().Trim().ToLower();
                     if (string.IsNullOrEmpty(headerText)) continue;
 
-                    if (headerText.Contains("taikhoan") || headerText.Contains("tendangnhap") || headerText.Contains("manhanvien") || headerText.Contains("username"))
+                    if (headerText.Contains("tài khoản") || headerText.Contains("taikhoan") || 
+                        headerText.Contains("tên đăng nhập") || headerText.Contains("tendangnhap") || 
+                        headerText.Contains("mã nhân viên") || headerText.Contains("manhanvien") || 
+                        headerText.Contains("username"))
                     {
                         colTaiKhoan = col;
                     }
-                    else if (headerText.Contains("hoten") || headerText.Contains("hovaten") || headerText.Contains("fullname") || headerText == "ten" || headerText.Contains("tennhanvien"))
+                    else if (headerText.Contains("họ tên") || headerText.Contains("hoten") || 
+                             headerText.Contains("họ và tên") || headerText.Contains("fullname") || 
+                             headerText == "tên")
                     {
                         colHoTen = col;
                     }
-                    else if (headerText.Contains("email") || headerText.Contains("thudientu"))
+                    else if (headerText.Contains("email") || headerText.Contains("thư điện tử"))
                     {
                         colEmail = col;
                     }
-                    else if (headerText.Contains("sodienthoai") || headerText.Contains("sdt") || headerText.Contains("dienthoai") || headerText.Contains("phone"))
+                    else if (headerText.Contains("số điện thoại") || headerText.Contains("sodienthoai") || 
+                             headerText.Contains("sđt") || headerText.Contains("điện thoại") || 
+                             headerText.Contains("phone"))
                     {
                         colSoDienThoai = col;
                     }
-                    else if (headerText.Contains("khoaphong") || headerText == "khoa" || headerText == "phong" || headerText.Contains("department"))
+                    else if (headerText.Contains("khoa/phòng") || headerText.Contains("khoaphong") || 
+                             headerText.Contains("khoa phòng") || headerText.Contains("khoa") || 
+                             headerText.Contains("phòng") || headerText.Contains("department"))
                     {
                         colKhoaPhong = col;
                     }
-                    else if (headerText.Contains("matkhau") || headerText.Contains("password"))
+                    else if (headerText.Contains("mật khẩu") || headerText.Contains("matkhau") || 
+                             headerText.Contains("password"))
                     {
                         colMatKhau = col;
                     }
-                    else if (headerText.Contains("vaitro") || headerText.Contains("role"))
+                    else if (headerText.Contains("vai trò") || headerText.Contains("vaitro") || 
+                             headerText.Contains("role"))
                     {
                         colVaiTro = col;
                     }
-                    else if (headerText.Contains("chucdanh") || headerText.Contains("title"))
+                    else if (headerText.Contains("chức danh") || headerText.Contains("chucdanh") || 
+                             headerText.Contains("title"))
                     {
                         colChucDanh = col;
                     }
                 }
 
-                // If fallback required (headers not detected or different format)
-                if (colTaiKhoan == -1) colTaiKhoan = 2; // Column B (Tài khoản)
-                if (colHoTen == -1) colHoTen = 3;       // Column C (Họ tên)
-                if (colEmail == -1) colEmail = 4;       // Column D (Email)
-                if (colSoDienThoai == -1) colSoDienThoai = 5; // Column E (Số điện thoại)
-                if (colKhoaPhong == -1) colKhoaPhong = 6;   // Column F (Khoa/phòng)
+                // Fallbacks matching the new standard layout if headers are not detected
+                if (colTaiKhoan == -1) colTaiKhoan = 2;
+                if (colHoTen == -1) colHoTen = 3;
+                if (colEmail == -1) colEmail = 4;
+                if (colSoDienThoai == -1) colSoDienThoai = 5;
+                if (colKhoaPhong == -1) colKhoaPhong = 6;
 
                 var processedUsernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
 
                 for (int row = 2; row <= lastRow; row++)
                 {
@@ -602,7 +591,7 @@ namespace BanTayVang.API.Services.Impl
                         continue;
                     }
 
-                    // Default password if not provided
+                    // Default password to "123456" if not provided
                     if (string.IsNullOrWhiteSpace(matKhau))
                     {
                         matKhau = "123456";
@@ -635,15 +624,14 @@ namespace BanTayVang.API.Services.Impl
                         continue;
                     }
 
-                    // Check duplicate in the same file
                     if (processedUsernames.Contains(maNhanVien))
                     {
                         resultDto.Failed++;
-                        resultDto.Errors.Add($"Dòng {row}: Mã nhân viên '{maNhanVien}' bị trùng lặp trong file import");
+                        resultDto.Errors.Add($"Dòng {row}: Tài khoản '{maNhanVien}' bị trùng lặp trong file import");
                         continue;
                     }
 
-                    // Check if maNhanVien / TenDangNhap already exists in DB
+                    // Check if maNhanVien / TenDangNhap already exists
                     var existingUserByUsername = await _context.Taikhoans.FirstOrDefaultAsync(u => u.TenDangNhap == maNhanVien);
                     var existingUserByEmpCode = await _context.Taikhoans.FirstOrDefaultAsync(u => u.MaNhanVien == maNhanVien);
                     if (existingUserByUsername != null || existingUserByEmpCode != null)

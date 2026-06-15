@@ -156,7 +156,7 @@ export function ImportUsersDialog({ open, onClose, onSuccess }: ImportUsersDialo
                 </div>
               ))}
             </div>
-            <p className="text-xs text-gray-400 mt-2">* Bắt buộc. Tài khoản dùng làm mã nhân viên. Mật khẩu mặc định là "123456". Vai trò mặc định là Thí sinh.</p>
+            <p className="text-xs text-gray-400 mt-2">* Bắt buộc. Tài khoản dùng làm mã nhân viên đăng nhập. Mật khẩu mặc định là "123456". Vai trò mặc định là Thí sinh.</p>
           </div>
 
           {/* Error */}

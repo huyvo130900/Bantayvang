@@ -75,21 +75,59 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
       line-height: 1.5;
     }
 
-
-    /* Title block: full width, centered */
-    .title-block {
-      width: 100%;
-      text-align: center;
-      margin-bottom: 10px;
+    /* Print Header */
+    .print-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      border-bottom: 2px solid #000;
+      padding-bottom: 12px;
     }
-    .title-block h1 {
-      font-size: 17px;
-      font-weight: bold;
-      margin: 0 0 5px;
+    .hospital-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 48%;
     }
-    .title-block .meta {
-      font-size: 12px;
+    .hospital-logo {
+      width: 55px;
+      height: 55px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    .hospital-title {
+      text-align: left;
+      line-height: 1.3;
+    }
+    .hospital-title .line-parent {
+      font-size: 11px;
+      font-weight: normal;
+      text-transform: uppercase;
       color: #444;
+      margin: 0;
+    }
+    .hospital-title .line-child {
+      font-size: 13px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #000;
+      margin: 0;
+    }
+    .exam-info {
+      width: 48%;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .exam-info h1 {
+      font-size: 14px;
+      font-weight: bold;
+      margin: 0 0 4px;
+      text-transform: uppercase;
+    }
+    .exam-info .meta {
+      font-size: 11px;
+      color: #333;
     }
 
     hr { border: none; border-top: 1px solid #bbb; margin: 20px 0 14px; }
@@ -139,18 +177,23 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
       font-size: 12px;
       padding-left: 4px;
     }
-
-
   </style>
 </head>
 <body>
-  <!-- Title -->
-  <div class="title-block">
-    <h1>${examName}</h1>
-    <div class="meta">Mã đề: <strong>${paperLabel}</strong> &nbsp;|&nbsp; Thời gian: ${exam.thoiGianLamBai} phút &nbsp;|&nbsp; Số câu: ${totalQuestions}</div>
+  <!-- Header with logo and hospital details -->
+  <div class="print-header">
+    <div class="hospital-brand">
+      <img src="${window.location.origin}/logoBVND2.png" alt="Logo" class="hospital-logo" />
+      <div class="hospital-title">
+        <div class="line-parent">SỞ Y TẾ TP. HỒ CHÍ MINH</div>
+        <div class="line-child">BỆNH VIỆN NHI ĐỒNG 2</div>
+      </div>
+    </div>
+    <div class="exam-info">
+      <h1>${examName}</h1>
+      <div class="meta">Mã đề: <strong>${paperLabel}</strong> &nbsp;|&nbsp; Thời gian: ${exam.thoiGianLamBai} phút &nbsp;|&nbsp; Số câu: ${totalQuestions}</div>
+    </div>
   </div>
-
-
 
   <!-- Candidate info fields (no border) -->
   <div class="candidate-info">
