@@ -13,7 +13,7 @@ namespace BanTayVang.API.Configuration
         public string SmtpUsername { get; set; } = string.Empty;
         public string SmtpPassword { get; set; } = string.Empty;
         public string FromEmail { get; set; } = string.Empty;
-        public string FromName { get; set; } = "BanTayVang System";
+        public string FromName { get; set; } = "Hệ thống Kiểm tra nội bộ";
         public bool UseSsl { get; set; } = true;
         public bool EnableEmailSending { get; set; } = false; // Default off for dev
     }

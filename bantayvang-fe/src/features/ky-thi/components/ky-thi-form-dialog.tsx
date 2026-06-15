@@ -220,7 +220,7 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
 
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Tên kỳ thi *</label>
-            <Input {...form.register('tenKyThi')} placeholder="Kỳ thi Bàn tay vàng Q2/2026" />
+            <Input {...form.register('tenKyThi')} placeholder="Kỳ thi nội bộ Q2/2026" />
             {form.formState.errors.tenKyThi && <p className="text-xs text-red-500">{form.formState.errors.tenKyThi.message}</p>}
           </div>
 

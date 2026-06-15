@@ -27,7 +27,7 @@ export function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl backdrop-blur-sm mb-3">
             <span className="text-4xl">🏆</span>
           </div>
-          <h1 className="text-3xl font-bold text-white">Bàn Tay Vàng</h1>
+          <h1 className="text-3xl font-bold text-white">Kiểm tra nội bộ</h1>
           <p className="text-blue-200 text-sm mt-1">Hệ thống thi trực tuyến</p>
         </div>
 

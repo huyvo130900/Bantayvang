@@ -1,4 +1,4 @@
-export const APP_NAME = 'BanTayVang'
+export const APP_NAME = 'Kiểm tra nội bộ'
 
 export const ROLES = {
   ADMIN: 'Admin',

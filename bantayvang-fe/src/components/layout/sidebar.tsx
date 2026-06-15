@@ -56,7 +56,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             />
             <div className="min-w-0">
               <span className="text-xs font-bold text-primary block leading-tight truncate">BỆNH VIỆN NHI ĐỒNG 2</span>
-              <span className="text-[10px] text-gray-400 leading-tight">BanTayVang</span>
+              <span className="text-[10px] text-gray-400 leading-tight">Kiểm tra nội bộ</span>
             </div>
           </div>
         )}
