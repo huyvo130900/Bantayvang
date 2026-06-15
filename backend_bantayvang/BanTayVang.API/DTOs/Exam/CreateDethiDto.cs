@@ -15,7 +15,7 @@ namespace BanTayVang.API.DTOs.Exam
         public int? ThoiGianLamBai { get; set; }
 
         public DateTime? ThoiGianBatDau { get; set; }
-        public string? TrangThai { get; set; } = "Draft";
+        public string? TrangThai { get; set; } = "Active";
 
         /// <summary>
         /// Khoa/phong lấy câu hỏi từ ngân hàng câu hỏi

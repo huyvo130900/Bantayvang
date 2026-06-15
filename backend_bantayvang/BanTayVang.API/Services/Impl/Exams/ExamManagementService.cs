@@ -53,7 +53,6 @@ namespace BanTayVang.API.Services.Impl.Exams
                     {
                         createDto.TenDeThi = kyThi.TenKyThi;
                         createDto.ThoiGianBatDau = kyThi.ThoiGianBatDau;
-                        createDto.TrangThai = kyThi.TrangThai;
                         createDto.KhoaPhong = kyThi.KhoaPhong?.TenKhoa;
 
                         if (kyThi.ThoiGianBatDau.HasValue && kyThi.ThoiGianKetThuc.HasValue)
@@ -245,7 +244,6 @@ namespace BanTayVang.API.Services.Impl.Exams
                     {
                         updateDto.TenDeThi = kyThi.TenKyThi;
                         updateDto.ThoiGianBatDau = kyThi.ThoiGianBatDau;
-                        updateDto.TrangThai = kyThi.TrangThai;
 
                         if (kyThi.ThoiGianBatDau.HasValue && kyThi.ThoiGianKetThuc.HasValue)
                         {
