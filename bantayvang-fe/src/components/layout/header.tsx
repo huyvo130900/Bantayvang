@@ -84,7 +84,7 @@ export function Header() {
 
       <div className="flex items-center gap-2">
         {displayRole && (
-          <div className="flex items-center gap-1.5 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
+          <div className="flex items-center gap-1.5 text-xs bg-[#5b8e23]/10 text-[#5b8e23] px-2.5 py-1 rounded-full font-medium">
             <User className="h-3.5 w-3.5" />
             <span>{displayRole}</span>
           </div>

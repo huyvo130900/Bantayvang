@@ -16,7 +16,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-700 via-blue-600 to-purple-700 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#5b8e23] via-[#70aa30] to-[#426b15] p-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-white/5 rounded-full" />
         <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-white/5 rounded-full" />
@@ -24,11 +24,11 @@ export function LoginPage() {
 
       <div className="relative w-full max-w-md space-y-4">
         <div className="text-center mb-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl backdrop-blur-sm mb-3">
-            <span className="text-4xl">🏆</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-md mb-3 p-2">
+            <img src="/logoBVND2.png" alt="Logo BVND2" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white">Kiểm tra nội bộ</h1>
-          <p className="text-blue-200 text-sm mt-1">Hệ thống thi trực tuyến</p>
+          <p className="text-green-100 text-sm mt-1">Hệ thống thi trực tuyến - Bệnh viện Nhi Đồng 2</p>
         </div>
 
         <Card className="shadow-2xl border-0 backdrop-blur-sm bg-white/95">
@@ -43,8 +43,8 @@ export function LoginPage() {
           </CardContent>
         </Card>
 
-        <div className="flex items-start gap-2.5 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-sm text-blue-100">
-          <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 text-blue-200" />
+        <div className="flex items-start gap-2.5 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-sm text-green-100">
+          <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 text-green-200" />
           <p>
             Tài khoản do <strong>quản trị viên</strong> cấp phát theo mã số cán bộ/học viên.
             Nếu chưa có tài khoản, vui lòng liên hệ bộ phận quản lý.

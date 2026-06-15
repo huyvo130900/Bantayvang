@@ -8,20 +8,20 @@
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    /* Bệnh Viện Nhi Đồng 2 - Green primary #2e8b35 */
-    --primary: oklch(0.52 0.16 145);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.95 0.04 145);
-    --secondary-foreground: oklch(0.25 0.1 145);
-    --muted: oklch(0.96 0.02 145);
-    --muted-foreground: oklch(0.5 0.05 145);
-    --accent: oklch(0.92 0.05 80);
-    --accent-foreground: oklch(0.3 0.1 145);
+    /* Bệnh Viện Nhi Đồng 2 - Green primary rgb(91, 142, 35) (#5b8e23) */
+    --primary: rgb(91, 142, 35);
+    --primary-foreground: rgb(255, 255, 255);
+    --secondary: rgb(240, 246, 235);
+    --secondary-foreground: rgb(91, 142, 35);
+    --muted: rgb(245, 247, 242);
+    --muted-foreground: rgb(120, 135, 105);
+    --accent: rgb(255, 245, 220);
+    --accent-foreground: rgb(91, 142, 35);
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.985 0 0);
-    --border: oklch(0.90 0.03 145);
-    --input: oklch(0.90 0.03 145);
-    --ring: oklch(0.52 0.16 145);
+    --border: rgb(220, 228, 212);
+    --input: rgb(220, 228, 212);
+    --ring: rgb(91, 142, 35);
     --radius: 0.5rem;
   }
 }

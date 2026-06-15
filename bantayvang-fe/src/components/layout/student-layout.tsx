@@ -92,7 +92,7 @@ function StudentNotificationBell() {
     <div className="relative" ref={panelRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative flex items-center justify-center h-9 w-9 rounded-lg text-gray-600 hover:text-primary hover:bg-gray-100 transition-colors"
+        className="relative flex items-center justify-center h-9 w-9 rounded-lg text-white/85 hover:text-white hover:bg-white/15 transition-colors"
         title="Thông báo"
       >
         <Bell className="h-5 w-5" />
@@ -197,20 +197,20 @@ export function StudentLayout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-white px-6 shadow-sm">
+      <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-primary/20 bg-primary px-6 shadow-md text-white">
         <div className="flex items-center gap-3">
           <img
             src="/logoBVND2.png"
             alt="Bệnh Viện Nhi Đồng 2"
-            className="h-9 w-9 object-contain"
+            className="h-9 w-9 object-contain bg-white rounded-md p-0.5"
           />
-          <span className="text-sm font-bold text-primary leading-tight">BỆNH VIỆN NHI ĐỒNG 2</span>
+          <span className="text-sm font-bold text-white leading-tight">BỆNH VIỆN NHI ĐỒNG 2</span>
           <nav className="flex items-center gap-1">
             <NavLink
               to="/dashboard"
               className={({ isActive }) =>
                 `flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
-                  isActive ? 'bg-primary/10 text-primary font-medium' : 'text-gray-600 hover:bg-gray-100'
+                  isActive ? 'bg-white/25 text-white font-medium' : 'text-white/85 hover:bg-white/15 hover:text-white'
                 }`
               }
             >
@@ -221,7 +221,7 @@ export function StudentLayout() {
               to="/exam-waiting"
               className={({ isActive }) =>
                 `flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
-                  isActive ? 'bg-primary/10 text-primary font-medium' : 'text-gray-600 hover:bg-gray-100'
+                  isActive ? 'bg-white/25 text-white font-medium' : 'text-white/85 hover:bg-white/15 hover:text-white'
                 }`
               }
             >
@@ -235,12 +235,12 @@ export function StudentLayout() {
           <StudentNotificationBell />
 
           <div className="text-right">
-            <p className="text-sm font-medium text-gray-800">{user?.hoTen || user?.tenDangNhap}</p>
+            <p className="text-sm font-medium text-white">{user?.hoTen || user?.tenDangNhap}</p>
             {user?.khoaPhong && (
-              <p className="text-xs text-gray-400">{user.khoaPhong}</p>
+              <p className="text-xs text-white/75">{user.khoaPhong}</p>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-600 hover:text-red-600">
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-white/85 hover:text-red-200 hover:bg-white/15">
             <LogOut className="h-4 w-4 mr-1" />
             Đăng xuất
           </Button>
