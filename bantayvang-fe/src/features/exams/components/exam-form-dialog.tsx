@@ -42,6 +42,18 @@ const KHOA_PHONG_OPTIONS = [
 // Chế độ chọn câu hỏi
 type QuestionMode = 'random' | 'manual' | 'import'
 
+const generateDeThiCode = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase()
+  return `DT_${year}${month}${day}_${hours}${minutes}${seconds}_${rand}`
+}
+
 export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa, kyThiList, defaultKyThiId }: ExamFormDialogProps) {
   const currentUser = useAppSelector((state) => state.auth.user)
   const isAdmin = currentUser?.role === ROLES.ADMIN || currentUser?.tenVaiTro === 'Admin'
@@ -85,9 +97,9 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
   })
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
       form.reset({
-        maDeThi: '',
+        maDeThi: generateDeThiCode(),
         tenDeThi: '',
         thoiGianLamBai: 60,
         thoiGianBatDau: '',
@@ -342,7 +354,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
           {/* Basic info */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Mã đề thi *</label>
-            <Input {...form.register('maDeThi')} placeholder="DETHI_001" />
+            <Input {...form.register('maDeThi')} placeholder="DETHI_001" readOnly className="bg-gray-100 cursor-not-allowed" />
             {form.formState.errors.maDeThi && (
               <p className="text-xs text-red-500">{form.formState.errors.maDeThi.message}</p>
             )}

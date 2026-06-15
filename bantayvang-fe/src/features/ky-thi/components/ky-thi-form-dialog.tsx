@@ -30,6 +30,18 @@ const toLocalInputString = (dateStr: string | null | undefined): string => {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
+const generateKyThiCode = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase()
+  return `KT_${year}${month}${day}_${hours}${minutes}${seconds}_${rand}`
+}
+
 export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: KyThiFormDialogProps) {
   const isEdit = !!kyThi
   const currentUser = useAppSelector((state) => state.auth.user)
@@ -90,7 +102,7 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
     } else {
       if (isDeptManager) {
         form.reset({
-          maKyThi: '',
+          maKyThi: generateKyThiCode(),
           tenKyThi: '',
           moTa: '',
           khoaPhongId: currentUser?.idKhoaQuanLy || '' as any,
@@ -102,11 +114,11 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
         })
         setSearchTerm(currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || '')
       } else {
-        form.reset({ maKyThi: '', tenKyThi: '', moTa: '', khoaPhongId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any })
+        form.reset({ maKyThi: generateKyThiCode(), tenKyThi: '', moTa: '', khoaPhongId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any })
         setSearchTerm('Tất cả các khoa')
       }
     }
-  }, [kyThi, form, isDeptManager, currentUser])
+  }, [open, kyThi, form, isDeptManager, currentUser])
 
   if (!open) return null
 
@@ -129,7 +141,7 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Mã kỳ thi *</label>
-              <Input {...form.register('maKyThi')} placeholder="KT_Q2_2026" disabled={isEdit} />
+              <Input {...form.register('maKyThi')} placeholder="KT_Q2_2026" readOnly className="bg-gray-100 cursor-not-allowed" />
               {form.formState.errors.maKyThi && <p className="text-xs text-red-500">{form.formState.errors.maKyThi.message}</p>}
             </div>
             <div className="space-y-1 relative" ref={dropdownRef}>
