@@ -33,7 +33,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
   const form = useForm<CreateUserFormData>({
     resolver: zodResolver(isEdit ? updateUserSchema : createUserSchema) as never,
     defaultValues: {
-      tenDangNhap: '', matKhau: '', email: '', hoTen: '',
+      tenDangNhap: '', matKhau: '', hoTen: '',
       maNhanVien: '', chucDanh: '', khoaPhong: '',
       idVaiTro: 3, idKhoaQuanLy: null as any, trangThai: true,
     },
@@ -67,7 +67,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
     if (user) {
       form.reset({
         tenDangNhap: user.tenDangNhap || '', matKhau: '',
-        email: user.email || '', hoTen: user.hoTen || '',
+        hoTen: user.hoTen || '',
         maNhanVien: user.maNhanVien || '', chucDanh: user.chucDanh || '',
         khoaPhong: user.khoaPhong || '', idVaiTro: user.idVaiTro || 3,
         idKhoaQuanLy: user.idKhoaQuanLy || null as any,
@@ -76,7 +76,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
       setSearchTerm(user.khoaPhong || '')
     } else {
       form.reset({
-        tenDangNhap: '', matKhau: '', email: '', hoTen: '',
+        tenDangNhap: '', matKhau: '', hoTen: '',
         maNhanVien: '', chucDanh: '', khoaPhong: isUserDeptManager && myKhoa ? myKhoa : '', idVaiTro: 3,
         idKhoaQuanLy: null as any,
         trangThai: true,
@@ -93,7 +93,10 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
       void _u; void _p
       onSubmit(updateData as UpdateUserFormData)
     } else {
-      onSubmit(data)
+      onSubmit({
+        ...data,
+        maNhanVien: data.tenDangNhap,
+      })
     }
   }
 
@@ -116,8 +119,8 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
 
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="p-4 space-y-4">
           {!isEdit && (
-            <Field label="Tên đăng nhập *" error={form.formState.errors.tenDangNhap?.message}>
-              <Input {...form.register('tenDangNhap')} placeholder="username" autoComplete="off" />
+            <Field label="Mã nhân viên *" error={form.formState.errors.tenDangNhap?.message}>
+              <Input {...form.register('tenDangNhap')} placeholder="NV001" autoComplete="off" />
             </Field>
           )}
           {!isEdit && (
@@ -129,17 +132,24 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
           <Field label="Họ tên *" error={form.formState.errors.hoTen?.message}>
             <Input {...form.register('hoTen')} placeholder="Nguyễn Văn A" />
           </Field>
-          <Field label="Email *" error={form.formState.errors.email?.message}>
-            <Input {...form.register('email')} type="email" placeholder="email@example.com" />
-          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Mã nhân viên" error={form.formState.errors.maNhanVien?.message}>
-              <Input {...form.register('maNhanVien')} placeholder="NV001" />
-            </Field>
-            <Field label="Chức danh" error={form.formState.errors.chucDanh?.message}>
-              <Input {...form.register('chucDanh')} placeholder="Bác sĩ" />
-            </Field>
+            {isEdit ? (
+              <>
+                <Field label="Mã nhân viên" error={form.formState.errors.maNhanVien?.message}>
+                  <Input {...form.register('maNhanVien')} placeholder="NV001" />
+                </Field>
+                <Field label="Chức danh" error={form.formState.errors.chucDanh?.message}>
+                  <Input {...form.register('chucDanh')} placeholder="Bác sĩ" />
+                </Field>
+              </>
+            ) : (
+              <div className="col-span-2">
+                <Field label="Chức danh" error={form.formState.errors.chucDanh?.message}>
+                  <Input {...form.register('chucDanh')} placeholder="Bác sĩ" />
+                </Field>
+              </div>
+            )}
           </div>
 
           <Field label="Khoa/Phòng (hiển thị)" error={form.formState.errors.khoaPhong?.message}>

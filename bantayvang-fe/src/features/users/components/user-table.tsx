@@ -39,7 +39,6 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
           <tr>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Họ tên</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Username</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Email</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Khoa/Phòng</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Vai trò</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Trạng thái</th>
@@ -56,7 +55,6 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
                 )}
               </td>
               <td className="px-4 py-3 text-gray-600">{user.tenDangNhap}</td>
-              <td className="px-4 py-3 text-gray-600 text-xs">{user.email || '—'}</td>
               <td className="px-4 py-3 text-xs">
                 {user.idVaiTro === 5 && user.tenKhoaQuanLy ? (
                   <span className="text-blue-700 font-medium">{user.tenKhoaQuanLy}</span>

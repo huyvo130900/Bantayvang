@@ -9,6 +9,7 @@ import { QuestionDisplay } from '../components/question-display'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, ChevronLeft, ChevronRight, Send, XCircle } from 'lucide-react'
 import { MAX_CHEATING_WARNINGS } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 import type { BaithiDto, ExamQuestionDto } from '../types'
 
 export function ExamTakingPage() {
@@ -34,6 +35,17 @@ export function ExamTakingPage() {
   const isForceTerminatedRef = useRef(false)
   answersRef.current = answers
   questionsRef.current = questions
+
+  const unansweredQuestions = questions.filter((q) => {
+    const userAns = answers[q.id]
+    if (!userAns) return true
+    const hasChoices = q.danhSachLuaChon && q.danhSachLuaChon.length > 0
+    if (hasChoices) {
+      return userAns.choiceId === null || userAns.choiceId === undefined
+    } else {
+      return !userAns.essay || userAns.essay.trim() === ''
+    }
+  })
 
   const handleSubmitExam = useCallback(async (reason?: string) => {
     if (isSubmittingRef.current) return
@@ -122,7 +134,12 @@ export function ExamTakingPage() {
         const qs = questionsRes.data.data
         setQuestions(qs)
         const initial: Record<number, { choiceId: number | null; essay: string }> = {}
-        qs.forEach((q: ExamQuestionDto) => { initial[q.id] = { choiceId: null, essay: '' } })
+        qs.forEach((q: ExamQuestionDto) => {
+          initial[q.id] = {
+            choiceId: q.idLuaChonDaChon ?? null,
+            essay: q.cauTraLoiTuLuan || '',
+          }
+        })
         setAnswers(initial)
       }
     } catch {
@@ -261,13 +278,74 @@ export function ExamTakingPage() {
 
       {/* Confirm submit modal */}
       {showConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full space-y-4">
-            <h3 className="font-semibold text-gray-900">Xác nhận nộp bài</h3>
-            {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-            <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setShowConfirm(false)}>Hủy</Button>
-              <Button onClick={() => handleSubmitExam()} disabled={isSubmitting}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full space-y-4 border border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "p-2 rounded-full",
+                unansweredQuestions.length > 0 ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
+              )}>
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="font-semibold text-lg text-gray-900">Xác nhận nộp bài</h3>
+            </div>
+
+            {unansweredQuestions.length > 0 ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-amber-50/80 border border-amber-100 rounded-lg text-sm text-amber-800">
+                  <p className="font-semibold text-amber-900">
+                    Cảnh báo: Bạn còn {unansweredQuestions.length} câu hỏi chưa hoàn thành!
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Nhập vào số câu dưới đây để di chuyển nhanh tới câu hỏi chưa làm và bổ sung câu trả lời.
+                  </p>
+                </div>
+
+                {/* Grid of unanswered questions */}
+                <div className="max-h-36 overflow-y-auto border border-amber-100 rounded-lg p-2.5 bg-amber-50/20">
+                  <div className="flex flex-wrap gap-2">
+                    {unansweredQuestions.map((q) => {
+                      const idx = questions.findIndex((item) => item.id === q.id)
+                      return (
+                        <button
+                          key={q.id}
+                          onClick={() => {
+                            setCurrentIndex(idx)
+                            setShowConfirm(false)
+                          }}
+                          className="h-8 min-w-[3.5rem] px-2 bg-white border border-amber-200 hover:border-amber-400 hover:bg-amber-100 rounded text-xs font-semibold text-amber-800 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-0.5"
+                          title={`Chuyển tới câu ${idx + 1}`}
+                        >
+                          Câu {idx + 1}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-500">
+                  Bạn có chắc chắn vẫn muốn nộp bài thi ngay bây giờ không?
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Chúc mừng! Bạn đã hoàn thành tất cả các câu hỏi. Bạn có chắc chắn muốn nộp bài thi ngay bây giờ?
+              </p>
+            )}
+
+            {submitError && <p className="text-sm text-red-600 font-medium">{submitError}</p>}
+            
+            <div className="flex gap-3 justify-end pt-2 border-t border-gray-100">
+              <Button variant="outline" onClick={() => setShowConfirm(false)}>
+                Hủy
+              </Button>
+              <Button 
+                onClick={() => handleSubmitExam()} 
+                disabled={isSubmitting}
+                className={cn(
+                  unansweredQuestions.length > 0 && "bg-amber-600 hover:bg-amber-700 text-white"
+                )}
+              >
                 {isSubmitting ? 'Đang nộp...' : 'Xác nhận nộp'}
               </Button>
             </div>

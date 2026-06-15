@@ -46,7 +46,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                     return new BaseResponseDto<AuthResponseDto>
                     {
                         Success = false,
-                        Message = "Tên đăng nhập và mật khẩu không được để trống"
+                        Message = "Mã nhân viên và mật khẩu không được để trống"
                     };
                 }
 
@@ -57,7 +57,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                     return new BaseResponseDto<AuthResponseDto>
                     {
                         Success = false,
-                        Message = "Tên đăng nhập hoặc mật khẩu không đúng"
+                        Message = "Mã nhân viên hoặc mật khẩu không đúng"
                     };
                 }
 
@@ -77,7 +77,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                     return new BaseResponseDto<AuthResponseDto>
                     {
                         Success = false,
-                        Message = "Tên đăng nhập hoặc mật khẩu không đúng"
+                        Message = "Mã nhân viên hoặc mật khẩu không đúng"
                     };
                 }
 
@@ -122,7 +122,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 {
                     Id = user.Id,
                     Username = user.TenDangNhap ?? string.Empty,
-                    Email = user.Email ?? string.Empty,
+                    Email = string.Empty,
                     FullName = user.HoTen ?? string.Empty,
                     Role = GetRoleName(user.IdVaiTro),
                     IsActive = user.TrangThai ?? false,
@@ -168,18 +168,17 @@ namespace BanTayVang.API.Services.Impl.Auth
         {
             try
             {
-                _logger.LogInformation("Register attempt for username: {Username}, email: {Email}", 
-                    registerDto.Username, registerDto.Email);
+                _logger.LogInformation("Register attempt for username: {Username}", 
+                    registerDto.Username);
 
                 // Input validation
                 if (string.IsNullOrWhiteSpace(registerDto.Username) || 
-                    string.IsNullOrWhiteSpace(registerDto.Password) ||
-                    string.IsNullOrWhiteSpace(registerDto.Email))
+                    string.IsNullOrWhiteSpace(registerDto.Password))
                 {
                     return new BaseResponseDto<AuthResponseDto>
                     {
                         Success = false,
-                        Message = "Tên đăng nhập, mật khẩu và email không được để trống"
+                        Message = "Tên đăng nhập và mật khẩu không được để trống"
                     };
                 }
 
@@ -191,17 +190,6 @@ namespace BanTayVang.API.Services.Impl.Auth
                     {
                         Success = false,
                         Message = "Tên đăng nhập đã tồn tại"
-                    };
-                }
-
-                // Check if email already exists
-                var existingEmail = await _userRepository.GetByUsernameOrEmailAsync(registerDto.Email);
-                if (existingEmail != null)
-                {
-                    return new BaseResponseDto<AuthResponseDto>
-                    {
-                        Success = false,
-                        Message = "Email đã được sử dụng"
                     };
                 }
 
@@ -219,7 +207,6 @@ namespace BanTayVang.API.Services.Impl.Auth
                 {
                     TenDangNhap = registerDto.Username,
                     MatKhau = hashedPassword,
-                    Email = registerDto.Email,
                     HoTen = registerDto.HoTen,
                     IdVaiTro = registerDto.IdVaiTro,
                     MaNhanVien = registerDto.MaNhanVien,
@@ -269,7 +256,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 {
                     Id = savedUser.Id,
                     Username = savedUser.TenDangNhap ?? string.Empty,
-                    Email = savedUser.Email ?? string.Empty,
+                    Email = string.Empty,
                     FullName = savedUser.HoTen ?? string.Empty,
                     Role = GetRoleName(savedUser.IdVaiTro),
                     IsActive = savedUser.TrangThai ?? true,
@@ -359,7 +346,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 {
                     Id = user.Id,
                     Username = user.TenDangNhap ?? string.Empty,
-                    Email = user.Email ?? string.Empty,
+                    Email = string.Empty,
                     FullName = user.HoTen ?? string.Empty,
                     Role = GetRoleName(user.IdVaiTro),
                     IsActive = user.TrangThai ?? false,
@@ -556,7 +543,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 {
                     Id = user.Id,
                     Username = user.TenDangNhap ?? string.Empty,
-                    Email = user.Email ?? string.Empty,
+                    Email = string.Empty,
                     FullName = user.HoTen ?? string.Empty,
                     Role = GetRoleName(user.IdVaiTro),
                     IsActive = user.TrangThai ?? false,
@@ -604,7 +591,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 {
                     Id = user.Id,
                     Username = user.TenDangNhap ?? string.Empty,
-                    Email = user.Email ?? string.Empty,
+                    Email = string.Empty,
                     FullName = user.HoTen ?? string.Empty,
                     Role = GetRoleName(user.IdVaiTro),
                     IsActive = user.TrangThai ?? false,
@@ -684,7 +671,7 @@ namespace BanTayVang.API.Services.Impl.Auth
 
                 // Send email with reset token
                 await _emailService.SendPasswordResetEmailAsync(
-                    user.Email ?? email,
+                    email,
                     user.HoTen ?? user.TenDangNhap ?? "User",
                     resetToken);
 

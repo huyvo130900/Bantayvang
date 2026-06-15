@@ -59,7 +59,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 {
                     new(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new(ClaimTypes.Name, user.TenDangNhap ?? string.Empty),
-                    new(ClaimTypes.Email, user.Email ?? string.Empty),
+                    new(ClaimTypes.Email, string.Empty),
                     new(ClaimTypes.GivenName, user.HoTen ?? string.Empty),
                     new(ClaimTypes.Role, GetUserRole(user.IdVaiTro).ToString()),
                     new("user_id", user.Id.ToString()),

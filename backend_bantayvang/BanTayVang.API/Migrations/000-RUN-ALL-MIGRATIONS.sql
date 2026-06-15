@@ -178,8 +178,9 @@ END
 -- Default admin user (password: admin123)
 IF NOT EXISTS (SELECT * FROM TAIKHOAN WHERE TenDangNhap = 'admin')
 BEGIN
-    INSERT INTO TAIKHOAN (TenDangNhap, MatKhau, Email, HoTen, IdVaiTro, TrangThai, NgayTao)
+    INSERT INTO TAIKHOAN (TenDangNhap, MaNhanVien, MatKhau, Email, HoTen, IdVaiTro, TrangThai, NgayTao)
     VALUES ('admin',
+            'admin',
             '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/VjPoyNdO2',
             'admin@bantayvang.vn',
             N'Quản trị viên hệ thống',
@@ -193,7 +194,8 @@ BEGIN
         TrangThai = 1,
         IdVaiTro = ISNULL(IdVaiTro, 1),
         Email = ISNULL(Email, 'admin@bantayvang.vn'),
-        HoTen = ISNULL(HoTen, N'Quản trị viên hệ thống')
+        HoTen = ISNULL(HoTen, N'Quản trị viên hệ thống'),
+        MaNhanVien = ISNULL(MaNhanVien, 'admin')
     WHERE TenDangNhap = 'admin';
     PRINT '  [OK] Admin user updated';
 END

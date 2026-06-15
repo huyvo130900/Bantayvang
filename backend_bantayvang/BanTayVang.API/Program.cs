@@ -262,6 +262,48 @@ builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.IExamService, BanT
 
 var app = builder.Build();
 
+// Seed Admin user and database schema updates
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<BanTayVangDbContext>();
+        var passwordService = services.GetRequiredService<IPasswordService>();
+
+        // 1. Drop Email column if it exists in the database
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'TAIKHOAN' AND COLUMN_NAME = 'Email')
+            BEGIN
+                ALTER TABLE TAIKHOAN DROP COLUMN Email;
+            END
+        ");
+
+        // 2. Ensure an Admin user exists in the system
+        var adminExists = await context.Taikhoans.AnyAsync(u => u.IdVaiTro == 1);
+        if (!adminExists)
+        {
+            var adminUser = new Taikhoan
+            {
+                TenDangNhap = "admin",
+                MaNhanVien = "admin",
+                MatKhau = passwordService.HashPassword("admin123"),
+                HoTen = "Quản trị viên hệ thống",
+                IdVaiTro = 1,
+                TrangThai = true,
+                NgayTao = DateTime.Now
+            };
+            context.Taikhoans.Add(adminUser);
+            await context.SaveChangesAsync();
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding or updating database schema.");
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

@@ -116,8 +116,9 @@ GO
 -- Create default admin user if not exists
 IF NOT EXISTS (SELECT * FROM TAIKHOAN WHERE TenDangNhap = 'admin')
 BEGIN
-    INSERT INTO TAIKHOAN (TenDangNhap, MatKhau, Email, HoTen, IdVaiTro, TrangThai, NgayTao)
+    INSERT INTO TAIKHOAN (TenDangNhap, MaNhanVien, MatKhau, Email, HoTen, IdVaiTro, TrangThai, NgayTao)
     VALUES (
+        'admin',
         'admin',
         '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/VjPoyNdO2', -- password: admin123
         'admin@bantayvang.vn',

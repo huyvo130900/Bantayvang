@@ -10,7 +10,6 @@ namespace BanTayVang.API.DTOs.User
         public int Id { get; set; }
         public string? MaNhanVien { get; set; }
         public string? TenDangNhap { get; set; }
-        public string? Email { get; set; }
         public string? HoTen { get; set; }
         public string? ChucDanh { get; set; }
         public string? KhoaPhong { get; set; }
@@ -37,10 +36,6 @@ namespace BanTayVang.API.DTOs.User
         public string MatKhau { get; set; } = string.Empty;
 
         [Required]
-        [EmailAddress]
-        public string Email { get; set; } = string.Empty;
-
-        [Required]
         [StringLength(255)]
         public string HoTen { get; set; } = string.Empty;
 
@@ -58,10 +53,6 @@ namespace BanTayVang.API.DTOs.User
     /// </summary>
     public class UpdateUserDto
     {
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; } = string.Empty;
-
         [Required]
         [StringLength(255)]
         public string HoTen { get; set; } = string.Empty;
@@ -85,5 +76,15 @@ namespace BanTayVang.API.DTOs.User
         public bool? TrangThai { get; set; }
         public string? KhoaPhong { get; set; }
         public string? SearchKeyword { get; set; }
+    }
+
+    /// <summary>
+    /// DTO representing the result of user Excel import
+    /// </summary>
+    public class ExcelImportResultDto
+    {
+        public int Success { get; set; }
+        public int Failed { get; set; }
+        public List<string> Errors { get; set; } = new();
     }
 }

@@ -18,8 +18,6 @@ public partial class Taikhoan
 
     public string? KhoaPhong { get; set; }
 
-    public string? Email { get; set; }
-
     public string? HoTen { get; set; }
 
     public int? IdVaiTro { get; set; }

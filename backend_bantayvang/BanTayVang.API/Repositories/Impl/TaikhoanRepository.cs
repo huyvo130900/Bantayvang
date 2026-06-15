@@ -25,7 +25,7 @@ namespace BanTayVang.API.Repositories.Impl
             // → Backend DeptManager scope trả về danh sách rỗng vì filter.KhoaPhong = null.
             return await _dbSet
                 .Include(u => u.KhoaQuanLy)
-                .FirstOrDefaultAsync(u => u.TenDangNhap == usernameOrEmail || u.Email == usernameOrEmail);
+                .FirstOrDefaultAsync(u => u.TenDangNhap == usernameOrEmail || u.MaNhanVien == usernameOrEmail);
         }
 
         public async Task<Taikhoan?> GetByUsernameAsync(string username)
@@ -35,16 +35,12 @@ namespace BanTayVang.API.Repositories.Impl
 
             return await _dbSet
                 .Include(u => u.KhoaQuanLy)
-                .FirstOrDefaultAsync(u => u.TenDangNhap == username);
+                .FirstOrDefaultAsync(u => u.TenDangNhap == username || u.MaNhanVien == username);
         }
 
-        public async Task<Taikhoan?> GetByEmailAsync(string email)
+        public Task<Taikhoan?> GetByEmailAsync(string email)
         {
-            if (string.IsNullOrEmpty(email))
-                return null;
-
-            return await _dbSet
-                .FirstOrDefaultAsync(u => u.Email == email);
+            return Task.FromResult<Taikhoan?>(null);
         }
 
         public async Task<bool> UsernameExistsAsync(string username, int? excludeUserId = null)
@@ -62,19 +58,9 @@ namespace BanTayVang.API.Repositories.Impl
             return await query.AnyAsync();
         }
 
-        public async Task<bool> EmailExistsAsync(string email, int? excludeUserId = null)
+        public Task<bool> EmailExistsAsync(string email, int? excludeUserId = null)
         {
-            if (string.IsNullOrEmpty(email))
-                return false;
-
-            var query = _dbSet.Where(u => u.Email == email);
-            
-            if (excludeUserId.HasValue)
-            {
-                query = query.Where(u => u.Id != excludeUserId.Value);
-            }
-
-            return await query.AnyAsync();
+            return Task.FromResult(false);
         }
 
         public async Task<List<Taikhoan>> GetByRoleAsync(int roleId)

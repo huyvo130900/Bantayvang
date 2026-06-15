@@ -8,9 +8,9 @@ namespace BanTayVang.API.DTOs.Auth
     /// </summary>
     public class LoginDto
     {
-        [Required(ErrorMessage = "Tên đăng nhập không được để trống")]
-        [StringLength(50, MinimumLength = 3, ErrorMessage = "Tên đăng nhập phải từ 3-50 ký tự")]
-        [RegularExpression(@"^[a-zA-Z0-9._@-]+$", ErrorMessage = "Tên đăng nhập chỉ được chứa chữ cái, số và các ký tự ._@-")]
+        [Required(ErrorMessage = "Mã nhân viên không được để trống")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "Mã nhân viên phải từ 3-50 ký tự")]
+        [RegularExpression(@"^[a-zA-Z0-9._@-]+$", ErrorMessage = "Mã nhân viên chỉ được chứa chữ cái, số và các ký tự ._@-")]
         public string Username { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Mật khẩu không được để trống")]

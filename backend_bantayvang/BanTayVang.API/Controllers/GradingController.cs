@@ -307,6 +307,121 @@ namespace BanTayVang.API.Controllers
         }
 
         /// <summary>
+        /// Export các bài thi được chọn ra Excel (kèm theo số lần thi tương ứng hiển thị trên UI)
+        /// </summary>
+        [HttpPost("export-selected")]
+        public async Task<IActionResult> ExportSelected([FromBody] List<SelectedExportItemDto> items)
+        {
+            if (items == null || !items.Any())
+                return BadRequest(new { success = false, message = "Không có dữ liệu để xuất" });
+
+            var baiThiIds = items.Select(i => i.BaiThiId).ToList();
+
+            var baithis = await _db.Baithis
+                .Include(b => b.IdTaiKhoanNavigation)
+                .Include(b => b.IdDeThiNavigation)
+                .Include(b => b.KyThiNavigation)
+                .Where(b => baiThiIds.Contains(b.Id))
+                .ToListAsync();
+
+            // Maintain the original order sent from frontend
+            var orderedBaithis = items
+                .Select(item => new {
+                    Item = item,
+                    Baithi = baithis.FirstOrDefault(b => b.Id == item.BaiThiId)
+                })
+                .Where(x => x.Baithi != null)
+                .ToList();
+
+            if (!orderedBaithis.Any())
+                return NotFound(new { success = false, message = "Không tìm thấy dữ liệu bài thi để xuất" });
+
+            // DeptManager check
+            if (DepartmentAuthHelper.IsDeptManager(User))
+            {
+                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                orderedBaithis = orderedBaithis.Where(x => x.Baithi.IdTaiKhoanNavigation?.KhoaPhong == myKhoa).ToList();
+            }
+
+            if (!orderedBaithis.Any())
+                return NotFound(new { success = false, message = "Không có dữ liệu hợp lệ để xuất" });
+
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+            var ws = workbook.Worksheets.Add("Ket Qua Thi");
+
+            ws.Cell(1, 1).Value = "STT";
+            ws.Cell(1, 2).Value = "Username";
+            ws.Cell(1, 3).Value = "Ho Ten";
+            ws.Cell(1, 4).Value = "Ma Nhan Vien";
+            ws.Cell(1, 5).Value = "Khoa Phong";
+            ws.Cell(1, 6).Value = "Ma De Thi";
+            ws.Cell(1, 7).Value = "Ten De Thi";
+            ws.Cell(1, 8).Value = "Thoi Gian Bat Dau";
+            ws.Cell(1, 9).Value = "Thoi Gian Nop";
+            ws.Cell(1, 10).Value = "Thoi Gian Lam (phut)";
+            ws.Cell(1, 11).Value = "So Cau Dung";
+            ws.Cell(1, 12).Value = "Tong So Cau";
+            ws.Cell(1, 13).Value = "Tong Diem";
+            ws.Cell(1, 14).Value = "Trang Thai";
+            ws.Cell(1, 15).Value = "Lần thi";
+            ws.Cell(1, 16).Value = "Kết quả";
+            ws.Cell(1, 17).Value = "So Canh Bao";
+            ws.Cell(1, 18).Value = "Đánh giá khoa";
+            ws.Cell(1, 19).Value = "Cong Bo Diem";
+
+            var headerRange = ws.Range(1, 1, 1, 19);
+            headerRange.Style.Font.Bold = true;
+            headerRange.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightSteelBlue;
+
+            int row = 2;
+            int stt = 1;
+            foreach (var x in orderedBaithis)
+            {
+                var b = x.Baithi;
+                var duration = (b.ThoiGianNop.HasValue && b.ThoiGianBatDau.HasValue)
+                    ? (int)(b.ThoiGianNop.Value - b.ThoiGianBatDau.Value).TotalMinutes : 0;
+
+                var isPass = b.KyThiNavigation?.SoCauDungToiThieu != null 
+                    ? (b.SoCauDung ?? 0) >= b.KyThiNavigation.SoCauDungToiThieu.Value 
+                    : (b.IdDeThiNavigation?.SoCauDungToiThieu != null 
+                        ? (b.SoCauDung ?? 0) >= b.IdDeThiNavigation.SoCauDungToiThieu.Value 
+                        : true);
+
+                ws.Cell(row, 1).Value = stt++;
+                ws.Cell(row, 2).Value = b.IdTaiKhoanNavigation?.TenDangNhap ?? "";
+                ws.Cell(row, 3).Value = b.IdTaiKhoanNavigation?.HoTen ?? "";
+                ws.Cell(row, 4).Value = b.IdTaiKhoanNavigation?.MaNhanVien ?? "";
+                ws.Cell(row, 5).Value = b.IdTaiKhoanNavigation?.KhoaPhong ?? "";
+                ws.Cell(row, 6).Value = b.MaDeThi ?? b.IdDeThiNavigation?.MaDeThi ?? "";
+                ws.Cell(row, 7).Value = b.IdDeThiNavigation?.TenDeThi ?? "";
+                ws.Cell(row, 8).Value = b.ThoiGianBatDau?.ToString("dd/MM/yyyy HH:mm") ?? "";
+                ws.Cell(row, 9).Value = b.ThoiGianNop?.ToString("dd/MM/yyyy HH:mm") ?? "";
+                ws.Cell(row, 10).Value = duration;
+                ws.Cell(row, 11).Value = b.SoCauDung ?? 0;
+                ws.Cell(row, 12).Value = b.TongSoCau ?? 0;
+                ws.Cell(row, 13).Value = b.SoCauDung ?? 0;
+                ws.Cell(row, 14).Value = b.TrangThai ?? "";
+                ws.Cell(row, 15).Value = x.Item.LanThi;
+                ws.Cell(row, 16).Value = isPass ? "Đạt" : "Không đạt";
+                ws.Cell(row, 17).Value = b.TongSoCanhBao ?? 0;
+                ws.Cell(row, 18).Value = b.DanhGiaKhoa ?? "";
+                ws.Cell(row, 19).Value = (b.CongBoRieng || (b.IdDeThiNavigation?.CongBoKetQua ?? false)) ? "Đã công bố" : "Chưa công bố";
+                row++;
+            }
+
+            ws.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            stream.Position = 0;
+
+            var fileName = $"KetQua_BaoCao_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            return File(stream.ToArray(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName);
+        }
+
+        /// <summary>
         /// Lấy kết quả thi phân cấp theo Kỳ thi (cho DeptManager & Admin)
         /// </summary>
         [HttpGet("by-kythi/{kyThiId}")]

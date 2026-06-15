@@ -45,12 +45,12 @@ export function LoginForm() {
 
       <div className="space-y-2">
         <label htmlFor="username" className="text-sm font-medium text-gray-700">
-          Tên đăng nhập
+          Mã nhân viên
         </label>
         <Input
           id="username"
           {...register('username')}
-          placeholder="Nhập tên đăng nhập"
+          placeholder="Nhập mã nhân viên"
           autoComplete="username"
           aria-invalid={!!errors.username}
         />

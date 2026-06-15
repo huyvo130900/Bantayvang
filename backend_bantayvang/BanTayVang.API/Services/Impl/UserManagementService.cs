@@ -5,6 +5,8 @@ using BanTayVang.API.Repositories.Interfaces;
 using BanTayVang.API.Services.Interfaces;
 using BanTayVang.API.Services.Interfaces.Auth;
 using Microsoft.EntityFrameworkCore;
+using ClosedXML.Excel;
+using Microsoft.AspNetCore.Http;
 
 namespace BanTayVang.API.Services.Impl
 {
@@ -48,8 +50,7 @@ namespace BanTayVang.API.Services.Impl
                     var keyword = filter.SearchKeyword.ToLower();
                     query = query.Where(u => 
                         (u.TenDangNhap ?? "").ToLower().Contains(keyword) ||
-                        (u.HoTen ?? "").ToLower().Contains(keyword) ||
-                        (u.Email ?? "").ToLower().Contains(keyword));
+                        (u.HoTen ?? "").ToLower().Contains(keyword));
                 }
 
                 var pagedUsers = query
@@ -105,11 +106,14 @@ namespace BanTayVang.API.Services.Impl
             {
                 var existing = await _userRepository.GetByUsernameOrEmailAsync(createDto.TenDangNhap);
                 if (existing != null)
-                    return new BaseResponseDto<UserDto> { Success = false, Message = "Tên đăng nhập đã tồn tại" };
+                    return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại" };
 
-                var existingEmail = await _userRepository.GetByUsernameOrEmailAsync(createDto.Email);
-                if (existingEmail != null)
-                    return new BaseResponseDto<UserDto> { Success = false, Message = "Email đã được sử dụng" };
+                if (!string.IsNullOrWhiteSpace(createDto.MaNhanVien))
+                {
+                    var existingByEmpCode = await _context.Taikhoans.FirstOrDefaultAsync(u => u.MaNhanVien == createDto.MaNhanVien);
+                    if (existingByEmpCode != null)
+                        return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại" };
+                }
 
                 // Validate department manager assignment
                 if (createDto.IdVaiTro == 5 && createDto.IdKhoaQuanLy.HasValue)
@@ -125,7 +129,6 @@ namespace BanTayVang.API.Services.Impl
                 {
                     TenDangNhap = createDto.TenDangNhap,
                     MatKhau = _passwordService.HashPassword(createDto.MatKhau),
-                    Email = createDto.Email,
                     HoTen = createDto.HoTen,
                     MaNhanVien = createDto.MaNhanVien,
                     ChucDanh = createDto.ChucDanh,
@@ -175,6 +178,13 @@ namespace BanTayVang.API.Services.Impl
                 if (user == null)
                     return new BaseResponseDto<UserDto> { Success = false, Message = "Không tìm thấy người dùng" };
 
+                if (!string.IsNullOrWhiteSpace(updateDto.MaNhanVien))
+                {
+                    var existingByEmpCode = await _context.Taikhoans.FirstOrDefaultAsync(u => u.MaNhanVien == updateDto.MaNhanVien && u.Id != id);
+                    if (existingByEmpCode != null)
+                        return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại" };
+                }
+
                 // Validate new department manager assignment before proceeding
                 if (updateDto.IdVaiTro == 5 && updateDto.IdKhoaQuanLy.HasValue)
                 {
@@ -196,7 +206,6 @@ namespace BanTayVang.API.Services.Impl
                     }
                 }
 
-                user.Email = updateDto.Email;
                 user.HoTen = updateDto.HoTen;
                 user.MaNhanVien = updateDto.MaNhanVien;
                 user.ChucDanh = updateDto.ChucDanh;
@@ -339,7 +348,6 @@ namespace BanTayVang.API.Services.Impl
                 Id = u.Id,
                 MaNhanVien = u.MaNhanVien,
                 TenDangNhap = u.TenDangNhap,
-                Email = u.Email,
                 HoTen = u.HoTen,
                 ChucDanh = u.ChucDanh,
                 KhoaPhong = u.KhoaPhong,
@@ -362,5 +370,249 @@ namespace BanTayVang.API.Services.Impl
             5 => "DeptManager",
             _ => "Unknown"
         };
+
+        public Task<BaseResponseDto<byte[]>> DownloadImportTemplateAsync()
+        {
+            try
+            {
+                using var workbook = new XLWorkbook();
+
+                var wsGuide = workbook.Worksheets.Add("HUONG_DAN");
+                wsGuide.Cell("A1").Value = "HUỚNG DẪN IMPORT DANH SÁCH TÀI KHOẢN";
+                wsGuide.Cell("A1").Style.Font.Bold = true;
+                wsGuide.Cell("A1").Style.Font.FontSize = 14;
+                wsGuide.Cell("A1").Style.Font.FontColor = XLColor.DarkBlue;
+
+                var guide = new (string col, string desc)[]
+                {
+                    ("Cột", "Mô tả"),
+                    ("A - Mã nhân viên (*)", "Bắt buộc. Dùng làm mã nhân viên và tên đăng nhập để đăng nhập vào hệ thống. VD: NV001"),
+                    ("B - Mật khẩu (*)", "Bắt buộc. Độ dài tối thiểu 6 ký tự. VD: 123456"),
+                    ("C - Họ tên (*)", "Bắt buộc. Họ và tên đầy đủ của người dùng. VD: Nguyễn Văn A"),
+                    ("D - Chức danh", "Không bắt buộc. Chức vụ hoặc chức danh nghề nghiệp. Nếu để trống sẽ mặc định để trống."),
+                    ("E - Khoa/Phòng", "Không bắt buộc. Tên khoa phòng công tác. VD: Khoa Nội"),
+                    ("F - Vai trò (1-3)", "Bắt buộc hoặc Không bắt buộc. 1 = Quản trị viên, 2 = Quản lý khoa, 3 = Thí sinh. Nếu để trống hoặc không hợp lệ sẽ mặc định có vai trò là Thí sinh (3).")
+                };
+
+                for (int i = 0; i < guide.Length; i++)
+                {
+                    wsGuide.Cell(i + 3, 1).Value = guide[i].col;
+                    wsGuide.Cell(i + 3, 2).Value = guide[i].desc;
+                    if (i == 0)
+                    {
+                        wsGuide.Cell(i + 3, 1).Style.Font.Bold = true;
+                        wsGuide.Cell(i + 3, 2).Style.Font.Bold = true;
+                    }
+                }
+                wsGuide.Column(1).Width = 30;
+                wsGuide.Column(2).Width = 80;
+
+                var ws = workbook.Worksheets.Add("IMPORT_TAI_KHOAN");
+                var headers = new[] { "Mã nhân viên (*)", "Mật khẩu (*)", "Họ tên (*)", "Chức danh", "Khoa/Phòng", "Vai trò (1-3)" };
+                var widths = new[] { 22, 20, 30, 25, 25, 20 };
+
+                for (int c = 0; c < headers.Length; c++)
+                {
+                    var cell = ws.Cell(1, c + 1);
+                    cell.Value = headers[c];
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Font.FontColor = XLColor.White;
+                    cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#1F4E78");
+                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                    ws.Column(c + 1).Width = widths[c];
+                }
+                ws.Row(1).Height = 30;
+
+                // Add sample data
+                var samples = new[]
+                {
+                    ("NV001", "123456", "Nguyễn Văn A", "Bác sĩ", "Khoa Nội", "3"),
+                    ("NV002", "123456", "Trần Thị B", "Điều dưỡng", "Khoa Ngoại", "2"),
+                    ("NV003", "123456", "Phạm Văn C", "Trưởng khoa", "Khoa Nhi", "1")
+                };
+
+                for (int r = 0; r < samples.Length; r++)
+                {
+                    ws.Cell(r + 2, 1).Value = samples[r].Item1;
+                    ws.Cell(r + 2, 2).Value = samples[r].Item2;
+                    ws.Cell(r + 2, 3).Value = samples[r].Item3;
+                    ws.Cell(r + 2, 4).Value = samples[r].Item4;
+                    ws.Cell(r + 2, 5).Value = samples[r].Item5;
+                    ws.Cell(r + 2, 6).Value = samples[r].Item6;
+                    for (int c = 1; c <= 6; c++)
+                        ws.Cell(r + 2, c).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                }
+                ws.SheetView.FreezeRows(1);
+
+                using var stream = new MemoryStream();
+                workbook.SaveAs(stream);
+                return Task.FromResult(new BaseResponseDto<byte[]>
+                {
+                    Success = true,
+                    Message = "Tạo file mẫu thành công",
+                    Data = stream.ToArray()
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating user import template");
+                return Task.FromResult(new BaseResponseDto<byte[]>
+                {
+                    Success = false,
+                    Message = "Lỗi khi tạo file mẫu: " + ex.Message
+                });
+            }
+        }
+
+        public async Task<BaseResponseDto<ExcelImportResultDto>> ImportUsersFromExcelAsync(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return new BaseResponseDto<ExcelImportResultDto>
+                {
+                    Success = false,
+                    Message = "File không hợp lệ hoặc rỗng."
+                };
+            }
+
+            var resultDto = new ExcelImportResultDto();
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+                using var workbook = new XLWorkbook(stream);
+
+                var ws = workbook.Worksheets
+                    .FirstOrDefault(w => w.Name.Contains("IMPORT") || w.Name.Contains("TAI_KHOAN") || w.Name.Contains("USER"))
+                    ?? workbook.Worksheets.First();
+
+                int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
+
+                for (int row = 2; row <= lastRow; row++)
+                {
+                    var maNhanVien = ws.Cell(row, 1).GetString().Trim();
+                    var matKhau = ws.Cell(row, 2).GetString().Trim();
+                    var hoTen = ws.Cell(row, 3).GetString().Trim();
+                    var chucDanh = ws.Cell(row, 4).GetString().Trim();
+                    var khoaPhong = ws.Cell(row, 5).GetString().Trim();
+                    var vaiTroStr = ws.Cell(row, 6).GetString().Trim();
+
+                    // If all columns are empty, skip row
+                    if (string.IsNullOrWhiteSpace(maNhanVien) &&
+                        string.IsNullOrWhiteSpace(matKhau) &&
+                        string.IsNullOrWhiteSpace(hoTen) &&
+                        string.IsNullOrWhiteSpace(chucDanh) &&
+                        string.IsNullOrWhiteSpace(khoaPhong) &&
+                        string.IsNullOrWhiteSpace(vaiTroStr))
+                    {
+                        continue;
+                    }
+
+                    // Validations
+                    var rowErrors = new List<string>();
+
+                    if (string.IsNullOrWhiteSpace(maNhanVien))
+                    {
+                        rowErrors.Add("Mã nhân viên không được để trống");
+                    }
+                    if (string.IsNullOrWhiteSpace(matKhau))
+                    {
+                        rowErrors.Add("Mật khẩu không được để trống");
+                    }
+                    else if (matKhau.Length < 6)
+                    {
+                        rowErrors.Add("Mật khẩu phải từ 6 ký tự trở lên");
+                    }
+                    if (string.IsNullOrWhiteSpace(hoTen))
+                    {
+                        rowErrors.Add("Họ tên không được để trống");
+                    }
+
+                    if (rowErrors.Any())
+                    {
+                        resultDto.Failed++;
+                        resultDto.Errors.Add($"Dòng {row}: {string.Join(", ", rowErrors)}");
+                        continue;
+                    }
+
+                    // Check if maNhanVien / TenDangNhap already exists
+                    var existingUserByUsername = await _context.Taikhoans.FirstOrDefaultAsync(u => u.TenDangNhap == maNhanVien);
+                    var existingUserByEmpCode = await _context.Taikhoans.FirstOrDefaultAsync(u => u.MaNhanVien == maNhanVien);
+                    if (existingUserByUsername != null || existingUserByEmpCode != null)
+                    {
+                        resultDto.Failed++;
+                        resultDto.Errors.Add($"Dòng {row}: Mã nhân viên '{maNhanVien}' đã tồn tại trong hệ thống");
+                        continue;
+                    }
+
+                    // Determine role ID
+                    int idVaiTro = 3; // Default is Student (Thí sinh)
+                    if (!string.IsNullOrWhiteSpace(vaiTroStr))
+                    {
+                        if (vaiTroStr == "1")
+                        {
+                            idVaiTro = 1; // Admin
+                        }
+                        else if (vaiTroStr == "2")
+                        {
+                            idVaiTro = 5; // DeptManager
+                        }
+                        else if (vaiTroStr == "3")
+                        {
+                            idVaiTro = 3; // Student
+                        }
+                        else
+                        {
+                            resultDto.Failed++;
+                            resultDto.Errors.Add($"Dòng {row}: Vai trò '{vaiTroStr}' không hợp lệ (chỉ chấp nhận 1, 2, 3)");
+                            continue;
+                        }
+                    }
+
+                    // Set chucDanh to null/empty if left empty
+                    string? finalChucDanh = string.IsNullOrWhiteSpace(chucDanh) ? null : chucDanh;
+                    string? finalKhoaPhong = string.IsNullOrWhiteSpace(khoaPhong) ? null : khoaPhong;
+
+                    var user = new Taikhoan
+                    {
+                        TenDangNhap = maNhanVien,
+                        MaNhanVien = maNhanVien,
+                        MatKhau = _passwordService.HashPassword(matKhau),
+                        HoTen = hoTen,
+                        ChucDanh = finalChucDanh,
+                        KhoaPhong = finalKhoaPhong,
+                        IdVaiTro = idVaiTro,
+                        TrangThai = true,
+                        NgayTao = DateTime.Now
+                    };
+
+                    _context.Taikhoans.Add(user);
+                    resultDto.Success++;
+                }
+
+                if (resultDto.Success > 0)
+                {
+                    await _context.SaveChangesAsync();
+                }
+
+                return new BaseResponseDto<ExcelImportResultDto>
+                {
+                    Success = true,
+                    Message = $"Import hoàn tất. Thành công: {resultDto.Success}, Thất bại: {resultDto.Failed}",
+                    Data = resultDto
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error importing users from Excel");
+                return new BaseResponseDto<ExcelImportResultDto>
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống khi xử lý file: " + ex.Message,
+                    Data = resultDto
+                };
+            }
+        }
     }
 }

@@ -16,5 +16,7 @@ namespace BanTayVang.API.Services.Interfaces
         Task<BaseResponseDto> ActivateUserAsync(int id);
         Task<BaseResponseDto> ResetUserPasswordAsync(int id, string newPassword);
         Task<BaseResponseDto> DeleteUserAsync(int id);
+        Task<BaseResponseDto<byte[]>> DownloadImportTemplateAsync();
+        Task<BaseResponseDto<ExcelImportResultDto>> ImportUsersFromExcelAsync(Microsoft.AspNetCore.Http.IFormFile file);
     }
 }

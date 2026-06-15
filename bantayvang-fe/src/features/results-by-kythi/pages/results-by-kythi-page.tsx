@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import apiClient from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -66,6 +66,8 @@ export function ResultsByKyThiPage() {
   const [visibility, setVisibility] = useState<Record<number, boolean>>({})
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [selectedBaiThiIdByUser, setSelectedBaiThiIdByUser] = useState<Record<string, number>>({})
+  const [selectedDeThiId, setSelectedDeThiId] = useState<number | null>(null)
 
   useEffect(() => {
     loadKyThiList()
@@ -112,6 +114,8 @@ export function ResultsByKyThiPage() {
     setSelectedKyThi(kt)
     setSearch('')
     setFilterXepLoai('')
+    setSelectedBaiThiIdByUser({})
+    setSelectedDeThiId(null)
     loadResults(kt.id)
   }
 
@@ -126,6 +130,39 @@ export function ResultsByKyThiPage() {
     finally { setTogglingId(null) }
   }
 
+  const handleExportResults = async () => {
+    if (!selectedKyThi) return
+    try {
+      const exportItems = filtered.map(c => ({
+        baiThiId: c.selectedAttempt.baiThiId,
+        lanThi: c.attempts.findIndex(a => a.baiThiId === c.selectedAttempt.baiThiId) + 1
+      }))
+
+      if (exportItems.length === 0) {
+        setMsg("Không có dữ liệu hiển thị để xuất Excel")
+        setTimeout(() => setMsg(null), 3000)
+        return
+      }
+
+      const response = await apiClient.post('/Grading/export-selected', exportItems, { responseType: 'blob' })
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      const safeName = selectedKyThi.tenKyThi.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')
+      link.setAttribute('download', `KetQua_KyThi_${safeName}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      
+      setMsg("Đã xuất file Excel thành công")
+      setTimeout(() => setMsg(null), 3000)
+    } catch {
+      setMsg("Không thể xuất file Excel")
+      setTimeout(() => setMsg(null), 3000)
+    }
+  }
+
   // Lấy danh sách khoa từ kỳ thi (admin)
   const khoaList = isAdmin
     ? Array.from(new Set(kyThiList.map(k => k.donViToChuc).filter(Boolean) as string[])).sort()
@@ -138,19 +175,78 @@ export function ResultsByKyThiPage() {
 
   const hasThreshold = selectedKyThi?.soCauDungToiThieu !== undefined && selectedKyThi?.soCauDungToiThieu !== null;
 
-  const filtered = results.filter(r => {
-    const name = r.fullName || r.username || ''
-    const matchSearch = !search ||
-      name.toLowerCase().includes(search.toLowerCase()) ||
-      r.maNhanVien?.toLowerCase().includes(search.toLowerCase())
-    const diem = r.tongDiem
-    const matchFilter = !filterXepLoai || (
-      hasThreshold
-        ? (filterXepLoai === 'Đạt' ? (r.soCauDung ?? 0) >= selectedKyThi!.soCauDungToiThieu! : (r.soCauDung ?? 0) < selectedKyThi!.soCauDungToiThieu!)
-        : (diem !== undefined && getXepLoai(diem) === filterXepLoai)
-    )
-    return matchSearch && matchFilter
-  })
+  // Extract unique exams that have submissions in this campaign
+  const uniqueDeThis = useMemo(() => {
+    const map = new Map<number, { id: number; tenDeThi: string; maDeThi: string }>()
+    results.forEach((r) => {
+      if (r.idDeThi) {
+        map.set(r.idDeThi, {
+          id: r.idDeThi,
+          tenDeThi: r.tenDeThi || '',
+          maDeThi: r.maDeThi || ''
+        })
+      }
+    })
+    return Array.from(map.values())
+  }, [results])
+
+  // Filter raw results by selected exam (if any) before grouping and stats
+  const resultsFilteredByDeThi = useMemo(() => {
+    if (!selectedDeThiId) return results
+    return results.filter((r) => r.idDeThi === selectedDeThiId)
+  }, [results, selectedDeThiId])
+
+  // Group attempts by candidate
+  const groupedCandidates = useMemo(() => {
+    const map: Record<string, ThiSinhResult[]> = {}
+    resultsFilteredByDeThi.forEach((r) => {
+      const key = r.username || r.userId?.toString() || ''
+      if (!map[key]) {
+        map[key] = []
+      }
+      map[key].push(r)
+    })
+
+    return Object.entries(map).map(([key, attempts]) => {
+      const sortedAttempts = [...attempts].sort((a, b) => a.baiThiId - b.baiThiId)
+      return {
+        userKey: key,
+        attempts: sortedAttempts,
+      }
+    })
+  }, [resultsFilteredByDeThi])
+
+  // Get currently selected attempt for each candidate
+  const candidatesWithSelectedAttempt = useMemo(() => {
+    return groupedCandidates.map((c) => {
+      let selectedAttempt = c.attempts.find((a) => a.baiThiId === selectedBaiThiIdByUser[c.userKey])
+      if (!selectedAttempt) {
+        selectedAttempt = c.attempts[c.attempts.length - 1] // Default to latest attempt
+      }
+      return {
+        ...c,
+        selectedAttempt,
+      }
+    })
+  }, [groupedCandidates, selectedBaiThiIdByUser])
+
+  // Filter and search based on selected attempt
+  const filtered = useMemo(() => {
+    return candidatesWithSelectedAttempt.filter(c => {
+      const r = c.selectedAttempt
+      const name = r.fullName || r.username || ''
+      const matchSearch = !search ||
+        name.toLowerCase().includes(search.toLowerCase()) ||
+        r.maNhanVien?.toLowerCase().includes(search.toLowerCase())
+      const diem = r.tongDiem
+      const matchFilter = !filterXepLoai || (
+        hasThreshold
+          ? (filterXepLoai === 'Đạt' ? (r.soCauDung ?? 0) >= selectedKyThi!.soCauDungToiThieu! : (r.soCauDung ?? 0) < selectedKyThi!.soCauDungToiThieu!)
+          : (diem !== undefined && getXepLoai(diem) === filterXepLoai)
+      )
+      return matchSearch && matchFilter
+    })
+  }, [candidatesWithSelectedAttempt, search, filterXepLoai, hasThreshold, selectedKyThi])
 
   const trangThaiColor = (t: string) => ({
     'DangDienRa': 'bg-green-100 text-green-700',
@@ -171,17 +267,17 @@ export function ResultsByKyThiPage() {
     return 'text-red-600 font-semibold'
   }
 
-  const validResults = results.filter(r => r.trangThai !== 'BiBHuyGianLan' && r.tongDiem !== undefined)
+  const validResults = resultsFilteredByDeThi.filter(r => r.trangThai !== 'BiBHuyGianLan' && r.tongDiem !== undefined)
   const avgScore = validResults.length ? (validResults.reduce((s, r) => s + (r.tongDiem ?? 0), 0) / validResults.length) : 0
-  const cheatingCount = results.filter(r => (r.soCanhBao ?? 0) > 0 || (r.soLanGianLan ?? 0) > 0).length
-  const retakeCount = results.filter(r => (r.soLanThiLai ?? 0) > 0).length
+  const cheatingCount = resultsFilteredByDeThi.filter(r => (r.soCanhBao ?? 0) > 0 || (r.soLanGianLan ?? 0) > 0).length
+  const retakeCount = resultsFilteredByDeThi.filter(r => (r.soLanThiLai ?? 0) > 0).length
   const passCount = hasThreshold
-    ? results.filter(r => r.trangThai !== 'BiBHuyGianLan' && (r.soCauDung ?? 0) >= selectedKyThi!.soCauDungToiThieu!).length
+    ? resultsFilteredByDeThi.filter(r => r.trangThai !== 'BiBHuyGianLan' && (r.soCauDung ?? 0) >= selectedKyThi!.soCauDungToiThieu!).length
     : 0;
   const failCount = hasThreshold
-    ? results.filter(r => r.trangThai !== 'BiBHuyGianLan' && (r.soCauDung ?? 0) < selectedKyThi!.soCauDungToiThieu!).length
+    ? resultsFilteredByDeThi.filter(r => r.trangThai !== 'BiBHuyGianLan' && (r.soCauDung ?? 0) < selectedKyThi!.soCauDungToiThieu!).length
     : 0;
-  const passRate = results.length ? (passCount / results.length) * 100 : 0;
+  const passRate = resultsFilteredByDeThi.length ? (passCount / resultsFilteredByDeThi.length) * 100 : 0;
 
   return (
     <div className="flex h-full">
@@ -275,9 +371,11 @@ export function ResultsByKyThiPage() {
                 {selectedKyThi.donViToChuc && (
                   <p className="text-xs text-blue-600 mt-0.5">{selectedKyThi.donViToChuc}</p>
                 )}
-                <p className="text-sm text-gray-500 mt-0.5">{results.length} lượt thi</p>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {groupedCandidates.length} thí sinh ({results.length} lượt thi)
+                </p>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleExportResults}>
                 <Download className="h-4 w-4 mr-2" /> Xuất file Excel
               </Button>
             </div>
@@ -317,6 +415,25 @@ export function ResultsByKyThiPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input placeholder="Tìm thí sinh..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
               </div>
+
+              {uniqueDeThis.length > 0 && (
+                <select
+                  value={selectedDeThiId || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : null
+                    setSelectedDeThiId(val)
+                    setSelectedBaiThiIdByUser({})
+                  }}
+                  className="border rounded-lg px-3 py-2 text-sm text-gray-600 bg-white"
+                >
+                  <option value="">Tất cả đề thi</option>
+                  {uniqueDeThis.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.tenDeThi || d.maDeThi}
+                    </option>
+                  ))}
+                </select>
+              )}
               {hasThreshold ? (
                 <select value={filterXepLoai} onChange={e => setFilterXepLoai(e.target.value)}
                   className="border rounded-lg px-3 py-2 text-sm text-gray-600 bg-white">
@@ -359,7 +476,7 @@ export function ResultsByKyThiPage() {
                   <tbody className="divide-y">
                     {filtered.length === 0 ? (
                       <tr><td colSpan={8} className="text-center py-12 text-gray-400">Chưa có kết quả</td></tr>
-                    ) : filtered.map(r => (
+                    ) : filtered.map(({ userKey, attempts, selectedAttempt: r }) => (
                       <tr key={r.baiThiId} className="hover:bg-gray-50">
                         <td className="px-4 py-3">
                           <p className="font-medium text-gray-800">{r.fullName || r.username || '—'}</p>
@@ -413,12 +530,29 @@ export function ResultsByKyThiPage() {
                           ) : <span className="text-gray-400">0 lần</span>}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <div className="flex flex-col items-center">
-                            <span className="font-semibold text-gray-700">{r.soLanThi ?? 1}</span>
-                            {(r.soLanThi ?? 1) > 1 && (
-                              <span className="text-xs text-blue-500">({(r.soLanThi ?? 1) - 1} thi lại)</span>
-                            )}
-                          </div>
+                          {attempts.length > 1 ? (
+                            <select
+                              className="h-8 rounded-lg border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-blue-400 px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-sm transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                              value={r.baiThiId}
+                              onChange={(e) => {
+                                const baiThiId = Number(e.target.value)
+                                setSelectedBaiThiIdByUser((prev) => ({
+                                  ...prev,
+                                  [userKey]: baiThiId,
+                                }))
+                              }}
+                            >
+                              {attempts.map((attempt, index) => (
+                                <option key={attempt.baiThiId} value={attempt.baiThiId}>
+                                  Lần {index + 1}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-xs font-semibold text-gray-600 border border-gray-200">
+                              Lần 1
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs ${r.danhGiaKhoa ? 'text-gray-700' : 'text-gray-300 italic'}`}>

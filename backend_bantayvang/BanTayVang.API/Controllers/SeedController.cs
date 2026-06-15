@@ -57,8 +57,6 @@ namespace BanTayVang.API.Controllers
                 admin.MatKhau = newHash;
                 admin.TrangThai = true;
                 admin.IdVaiTro = 1;
-                if (string.IsNullOrEmpty(admin.Email))
-                    admin.Email = "admin@bantayvang.vn";
                 if (string.IsNullOrEmpty(admin.HoTen))
                     admin.HoTen = "Quản trị viên hệ thống";
 

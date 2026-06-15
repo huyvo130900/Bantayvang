@@ -97,4 +97,13 @@ namespace BanTayVang.API.DTOs.Grading
         public DateTime? ToDate { get; set; }
         public string? KhoaPhong { get; set; }
     }
+
+    /// <summary>
+    /// Represents an item selected in the UI to be exported to Excel
+    /// </summary>
+    public class SelectedExportItemDto
+    {
+        public int BaiThiId { get; set; }
+        public int LanThi { get; set; }
+    }
 }

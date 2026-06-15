@@ -98,6 +98,32 @@ namespace BanTayVang.API.Controllers
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }
+
+        [HttpGet("import-template")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<IActionResult> DownloadImportTemplate()
+        {
+            var result = await _userService.DownloadImportTemplateAsync();
+            if (!result.Success || result.Data == null)
+            {
+                return BadRequest(BaseResponseDto.FailureResult(result.Message));
+            }
+            return File(result.Data,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "MauImportTaiKhoan.xlsx");
+        }
+
+        [HttpPost("import")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<BaseResponseDto<ExcelImportResultDto>>> ImportUsers(IFormFile file)
+        {
+            var result = await _userService.ImportUsersFromExcelAsync(file);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
     }
 
     public class ResetPasswordRequest
