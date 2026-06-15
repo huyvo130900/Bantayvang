@@ -226,6 +226,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
             <Field label="Vai trò *">
               <select
                 {...form.register('idVaiTro', { valueAsNumber: true })}
+                value={form.watch('idVaiTro')}
                 onChange={e => {
                   form.setValue('idVaiTro', parseInt(e.target.value))
                 }}

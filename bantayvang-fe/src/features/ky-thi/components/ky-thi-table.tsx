@@ -53,6 +53,7 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
       <table className="w-full text-sm">
         <thead className="bg-gray-50 border-b">
           <tr>
+            <th className="px-4 py-3 text-center font-medium text-gray-600 whitespace-nowrap">Quản lý</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Mã kỳ thi</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Tên kỳ thi</th>
             {showKhoa && (
@@ -71,12 +72,28 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
         <tbody className="divide-y">
           {kyThis.map((k) => (
             <tr key={k.id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-4 py-3 text-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onView(k)}
+                  className="h-8 gap-1.5 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 shrink-0 font-medium whitespace-nowrap"
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  Quản lý đề
+                </Button>
+              </td>
               <td className="px-4 py-3 font-mono text-xs text-gray-600">{k.maKyThi}</td>
               <td className="px-4 py-3">
-                <p className="font-medium text-gray-900">{k.tenKyThi}</p>
+                <button
+                  onClick={() => onView(k)}
+                  className="font-medium text-primary hover:underline text-left focus:outline-none transition-colors"
+                >
+                  {k.tenKyThi}
+                </button>
                 {/* Chỉ hiện donViToChuc dưới tên khi KHÔNG hiện cột Khoa riêng */}
                 {!showKhoa && k.donViToChuc && (
-                  <p className="text-xs text-gray-400">{k.donViToChuc}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{k.donViToChuc}</p>
                 )}
               </td>
               {showKhoa && (
@@ -127,15 +144,6 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center justify-end gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onView(k)}
-                    className="h-8 gap-1.5 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 shrink-0 font-medium"
-                  >
-                    <ClipboardList className="h-3.5 w-3.5" />
-                    Quản lý đề
-                  </Button>
                   <Button variant="ghost" size="icon" title="Sửa kỳ thi" onClick={() => onEdit(k)} className="h-8 w-8 text-gray-400 hover:text-yellow-600">
                     <Pencil className="h-4 w-4" />
                   </Button>

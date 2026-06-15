@@ -209,6 +209,7 @@ export function QuestionsPage() {
         onSubmit={handleFormSubmit}
         isLoading={submitting}
         defaultKhoaPhong={isDeptManager && myKhoa ? myKhoa : undefined}
+        khoaList={khoaList}
       />
 
       <ImportExcelDialog

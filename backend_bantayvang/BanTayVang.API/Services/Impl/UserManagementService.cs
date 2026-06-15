@@ -141,6 +141,12 @@ namespace BanTayVang.API.Services.Impl
                     SoDienThoai = createDto.SoDienThoai
                 };
 
+                // Add to role mapping table to maintain database integrity
+                user.TaikhoanVaitros.Add(new TaikhoanVaitro
+                {
+                    IdVaiTro = createDto.IdVaiTro
+                });
+
                 var saved = await _userRepository.AddAsync(user);
 
                 // Auto-assign DeptManager to KhoaPhong and sync KhoaPhong string from Khoa name
@@ -206,6 +212,18 @@ namespace BanTayVang.API.Services.Impl
                         oldKhoa.DeptManagerId = null;
                         oldKhoa.NgayCapNhat = DateTime.Now;
                     }
+                }
+
+                // Update role mapping if role changed
+                if (user.IdVaiTro != updateDto.IdVaiTro)
+                {
+                    var oldRoleMappings = _context.TaikhoanVaitros.Where(tv => tv.IdTaiKhoan == user.Id);
+                    _context.TaikhoanVaitros.RemoveRange(oldRoleMappings);
+
+                    user.TaikhoanVaitros.Add(new TaikhoanVaitro
+                    {
+                        IdVaiTro = updateDto.IdVaiTro
+                    });
                 }
 
                 user.HoTen = updateDto.HoTen;
@@ -487,96 +505,159 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 using var stream = file.OpenReadStream();
-                using var workbook = new XLWorkbook(stream);
+                var rawRows = new List<(int Row, string MaNhanVien, string MatKhau, string HoTen, string ChucDanh, string KhoaPhong, string VaiTroStr, string SoDienThoai, string Email)>();
 
-                var ws = workbook.Worksheets
-                    .FirstOrDefault(w => w.Name.Contains("IMPORT") || w.Name.Contains("TAI_KHOAN") || w.Name.Contains("USER"))
-                    ?? workbook.Worksheets.First();
-
-                int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
-
-                int colTaiKhoan = -1;
-                int colHoTen = -1;
-                int colEmail = -1;
-                int colSoDienThoai = -1;
-                int colKhoaPhong = -1;
-                int colMatKhau = -1;
-                int colVaiTro = -1;
-                int colChucDanh = -1;
-
-                // Scan headers in Row 1
-                var firstRow = ws.Row(1);
-                int lastCell = firstRow.LastCellUsed()?.Address.ColumnNumber ?? 8;
-                for (int col = 1; col <= lastCell; col++)
+                if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                 {
-                    var headerText = firstRow.Cell(col).GetString().Trim().ToLower();
-                    if (string.IsNullOrEmpty(headerText)) continue;
+                    using var reader = new StreamReader(stream);
+                    var config = new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture)
+                    {
+                        HasHeaderRecord = true,
+                        MissingFieldFound = null,
+                        HeaderValidated = null,
+                        BadDataFound = null,
+                    };
+                    using var csv = new CsvHelper.CsvReader(reader, config);
+                    csv.Read();
+                    csv.ReadHeader();
+                    var headerRecord = csv.HeaderRecord;
 
-                    if (headerText.Contains("tài khoản") || headerText.Contains("taikhoan") || 
-                        headerText.Contains("tên đăng nhập") || headerText.Contains("tendangnhap") || 
-                        headerText.Contains("mã nhân viên") || headerText.Contains("manhanvien") || 
-                        headerText.Contains("username"))
+                    int colTaiKhoan = -1, colHoTen = -1, colEmail = -1, colSoDienThoai = -1, colKhoaPhong = -1;
+                    int colMatKhau = -1, colVaiTro = -1, colChucDanh = -1;
+
+                    if (headerRecord != null)
                     {
-                        colTaiKhoan = col;
+                        for (int col = 0; col < headerRecord.Length; col++)
+                        {
+                            var rawHeaderText = headerRecord[col] ?? string.Empty;
+                            var headerText = RemoveSign4Vietnamese(rawHeaderText).ToLowerInvariant();
+                            if (string.IsNullOrEmpty(headerText)) continue;
+
+                            if (headerText.Contains("tai khoan") || headerText.Contains("username") || 
+                                headerText.Contains("ten dang nhap") || headerText.Contains("ma nhan vien"))
+                                colTaiKhoan = col;
+                            else if (headerText.Contains("ho ten") || headerText.Contains("fullname") || 
+                                     headerText.Contains("ho va ten") || headerText == "ten")
+                                colHoTen = col;
+                            else if (headerText.Contains("email") || headerText.Contains("thu dien tu"))
+                                colEmail = col;
+                            else if (headerText.Contains("so dien thoai") || headerText.Contains("sdt") || 
+                                     headerText.Contains("dien thoai") || headerText.Contains("phone"))
+                                colSoDienThoai = col;
+                            else if (headerText.Contains("khoa/phong") || headerText.Contains("khoaphong") || 
+                                     headerText.Contains("khoa phong") || headerText.Contains("khoa") || 
+                                     headerText.Contains("phong") || headerText.Contains("department"))
+                                colKhoaPhong = col;
+                            else if (headerText.Contains("mat khau") || headerText.Contains("password"))
+                                colMatKhau = col;
+                            else if (headerText.Contains("vai tro") || headerText.Contains("role"))
+                                colVaiTro = col;
+                            else if (headerText.Contains("chuc danh") || headerText.Contains("title"))
+                                colChucDanh = col;
+                        }
                     }
-                    else if (headerText.Contains("họ tên") || headerText.Contains("hoten") || 
-                             headerText.Contains("họ và tên") || headerText.Contains("fullname") || 
-                             headerText == "tên")
+
+                    if (colTaiKhoan == -1) colTaiKhoan = 1;
+                    if (colHoTen == -1) colHoTen = 2;
+                    if (colEmail == -1) colEmail = 3;
+                    if (colSoDienThoai == -1) colSoDienThoai = 4;
+                    if (colKhoaPhong == -1) colKhoaPhong = 5;
+
+                    int row = 1;
+                    while (csv.Read())
                     {
-                        colHoTen = col;
+                        row++;
+                        rawRows.Add((
+                            Row: row,
+                            MaNhanVien: colTaiKhoan >= 0 && colTaiKhoan < csv.Parser.Count ? csv.GetField(colTaiKhoan)?.Trim() ?? string.Empty : string.Empty,
+                            MatKhau: colMatKhau >= 0 && colMatKhau < csv.Parser.Count ? csv.GetField(colMatKhau)?.Trim() ?? string.Empty : string.Empty,
+                            HoTen: colHoTen >= 0 && colHoTen < csv.Parser.Count ? csv.GetField(colHoTen)?.Trim() ?? string.Empty : string.Empty,
+                            ChucDanh: colChucDanh >= 0 && colChucDanh < csv.Parser.Count ? csv.GetField(colChucDanh)?.Trim() ?? string.Empty : string.Empty,
+                            KhoaPhong: colKhoaPhong >= 0 && colKhoaPhong < csv.Parser.Count ? csv.GetField(colKhoaPhong)?.Trim() ?? string.Empty : string.Empty,
+                            VaiTroStr: colVaiTro >= 0 && colVaiTro < csv.Parser.Count ? csv.GetField(colVaiTro)?.Trim() ?? string.Empty : string.Empty,
+                            SoDienThoai: colSoDienThoai >= 0 && colSoDienThoai < csv.Parser.Count ? csv.GetField(colSoDienThoai)?.Trim() ?? string.Empty : string.Empty,
+                            Email: colEmail >= 0 && colEmail < csv.Parser.Count ? csv.GetField(colEmail)?.Trim() ?? string.Empty : string.Empty
+                        ));
                     }
-                    else if (headerText.Contains("email") || headerText.Contains("thư điện tử"))
+                }
+                else
+                {
+                    using var workbook = new XLWorkbook(stream);
+                    var ws = workbook.Worksheets
+                        .FirstOrDefault(w => w.Name.Contains("IMPORT") || w.Name.Contains("TAI_KHOAN") || w.Name.Contains("USER"))
+                        ?? workbook.Worksheets.First();
+
+                    int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
+
+                    int colTaiKhoan = -1, colHoTen = -1, colEmail = -1, colSoDienThoai = -1, colKhoaPhong = -1;
+                    int colMatKhau = -1, colVaiTro = -1, colChucDanh = -1;
+
+                    var firstRow = ws.Row(1);
+                    int lastCell = firstRow.LastCellUsed()?.Address.ColumnNumber ?? 8;
+                    for (int col = 1; col <= lastCell; col++)
                     {
-                        colEmail = col;
+                        var rawHeaderText = firstRow.Cell(col).GetString();
+                        var headerText = RemoveSign4Vietnamese(rawHeaderText).ToLowerInvariant();
+                        if (string.IsNullOrEmpty(headerText)) continue;
+
+                        if (headerText.Contains("tai khoan") || headerText.Contains("username") || 
+                            headerText.Contains("ten dang nhap") || headerText.Contains("ma nhan vien"))
+                            colTaiKhoan = col;
+                        else if (headerText.Contains("ho ten") || headerText.Contains("fullname") || 
+                                 headerText.Contains("ho va ten") || headerText == "ten")
+                            colHoTen = col;
+                        else if (headerText.Contains("email") || headerText.Contains("thu dien tu"))
+                            colEmail = col;
+                        else if (headerText.Contains("so dien thoai") || headerText.Contains("sdt") || 
+                                 headerText.Contains("dien thoai") || headerText.Contains("phone"))
+                            colSoDienThoai = col;
+                        else if (headerText.Contains("khoa/phong") || headerText.Contains("khoaphong") || 
+                                 headerText.Contains("khoa phong") || headerText.Contains("khoa") || 
+                                 headerText.Contains("phong") || headerText.Contains("department"))
+                            colKhoaPhong = col;
+                        else if (headerText.Contains("mat khau") || headerText.Contains("password"))
+                            colMatKhau = col;
+                        else if (headerText.Contains("vai tro") || headerText.Contains("role"))
+                            colVaiTro = col;
+                        else if (headerText.Contains("chuc danh") || headerText.Contains("title"))
+                            colChucDanh = col;
                     }
-                    else if (headerText.Contains("số điện thoại") || headerText.Contains("sodienthoai") || 
-                             headerText.Contains("sđt") || headerText.Contains("điện thoại") || 
-                             headerText.Contains("phone"))
+
+                    if (colTaiKhoan == -1) colTaiKhoan = 2;
+                    if (colHoTen == -1) colHoTen = 3;
+                    if (colEmail == -1) colEmail = 4;
+                    if (colSoDienThoai == -1) colSoDienThoai = 5;
+                    if (colKhoaPhong == -1) colKhoaPhong = 6;
+
+                    for (int row = 2; row <= lastRow; row++)
                     {
-                        colSoDienThoai = col;
-                    }
-                    else if (headerText.Contains("khoa/phòng") || headerText.Contains("khoaphong") || 
-                             headerText.Contains("khoa phòng") || headerText.Contains("khoa") || 
-                             headerText.Contains("phòng") || headerText.Contains("department"))
-                    {
-                        colKhoaPhong = col;
-                    }
-                    else if (headerText.Contains("mật khẩu") || headerText.Contains("matkhau") || 
-                             headerText.Contains("password"))
-                    {
-                        colMatKhau = col;
-                    }
-                    else if (headerText.Contains("vai trò") || headerText.Contains("vaitro") || 
-                             headerText.Contains("role"))
-                    {
-                        colVaiTro = col;
-                    }
-                    else if (headerText.Contains("chức danh") || headerText.Contains("chucdanh") || 
-                             headerText.Contains("title"))
-                    {
-                        colChucDanh = col;
+                        rawRows.Add((
+                            Row: row,
+                            MaNhanVien: colTaiKhoan > 0 ? ws.Cell(row, colTaiKhoan).GetString().Trim() : string.Empty,
+                            MatKhau: colMatKhau > 0 ? ws.Cell(row, colMatKhau).GetString().Trim() : string.Empty,
+                            HoTen: colHoTen > 0 ? ws.Cell(row, colHoTen).GetString().Trim() : string.Empty,
+                            ChucDanh: colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty,
+                            KhoaPhong: colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty,
+                            VaiTroStr: colVaiTro > 0 ? ws.Cell(row, colVaiTro).GetString().Trim() : string.Empty,
+                            SoDienThoai: colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty,
+                            Email: colEmail > 0 ? ws.Cell(row, colEmail).GetString().Trim() : string.Empty
+                        ));
                     }
                 }
 
-                // Fallbacks matching the new standard layout if headers are not detected
-                if (colTaiKhoan == -1) colTaiKhoan = 2;
-                if (colHoTen == -1) colHoTen = 3;
-                if (colEmail == -1) colEmail = 4;
-                if (colSoDienThoai == -1) colSoDienThoai = 5;
-                if (colKhoaPhong == -1) colKhoaPhong = 6;
-
                 var processedUsernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                for (int row = 2; row <= lastRow; row++)
+                foreach (var r in rawRows)
                 {
-                    var maNhanVien = colTaiKhoan > 0 ? ws.Cell(row, colTaiKhoan).GetString().Trim() : string.Empty;
-                    var matKhau = colMatKhau > 0 ? ws.Cell(row, colMatKhau).GetString().Trim() : string.Empty;
-                    var hoTen = colHoTen > 0 ? ws.Cell(row, colHoTen).GetString().Trim() : string.Empty;
-                    var chucDanh = colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty;
-                    var khoaPhong = colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty;
-                    var vaiTroStr = colVaiTro > 0 ? ws.Cell(row, colVaiTro).GetString().Trim() : string.Empty;
-                    var soDienThoai = colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty;
-                    var email = colEmail > 0 ? ws.Cell(row, colEmail).GetString().Trim() : string.Empty;
+                    int row = r.Row;
+                    var maNhanVien = r.MaNhanVien;
+                    var matKhau = r.MatKhau;
+                    var hoTen = r.HoTen;
+                    var chucDanh = r.ChucDanh;
+                    var khoaPhong = r.KhoaPhong;
+                    var vaiTroStr = r.VaiTroStr;
+                    var soDienThoai = r.SoDienThoai;
+                    var email = r.Email;
 
                     // If all columns are empty, skip row
                     if (string.IsNullOrWhiteSpace(maNhanVien) &&
@@ -645,29 +726,40 @@ namespace BanTayVang.API.Services.Impl
                     int idVaiTro = 3; // Default is Student (Thí sinh)
                     if (!string.IsNullOrWhiteSpace(vaiTroStr))
                     {
-                        if (vaiTroStr == "1")
+                        var normalizedRole = RemoveSign4Vietnamese(vaiTroStr).ToLowerInvariant();
+                        if (normalizedRole == "1" || normalizedRole.Contains("quan tri") || normalizedRole.Contains("admin"))
                         {
                             idVaiTro = 1; // Admin
                         }
-                        else if (vaiTroStr == "2")
+                        else if (normalizedRole == "2" || normalizedRole.Contains("quan ly") || normalizedRole.Contains("dept") || normalizedRole.Contains("manager"))
                         {
                             idVaiTro = 5; // DeptManager
                         }
-                        else if (vaiTroStr == "3")
+                        else if (normalizedRole == "3" || normalizedRole.Contains("thi sinh") || normalizedRole.Contains("student") || normalizedRole.Contains("hoc vien") || normalizedRole.Contains("sinh vien"))
                         {
                             idVaiTro = 3; // Student
                         }
                         else
                         {
-                            resultDto.Failed++;
-                            resultDto.Errors.Add($"Dòng {row}: Vai trò '{vaiTroStr}' không hợp lệ (chỉ chấp nhận 1, 2, 3)");
-                            continue;
+                            // Unrecognized role defaults to Student (Thí sinh) as requested
+                            idVaiTro = 3;
                         }
                     }
 
                     // Set chucDanh to null/empty if left empty
                     string? finalChucDanh = string.IsNullOrWhiteSpace(chucDanh) ? null : chucDanh;
                     string? finalKhoaPhong = string.IsNullOrWhiteSpace(khoaPhong) ? null : khoaPhong;
+
+                    // Auto-assign DeptManager to KhoaPhong
+                    int? idKhoaQuanLy = null;
+                    if (idVaiTro == 5 && !string.IsNullOrEmpty(finalKhoaPhong))
+                    {
+                        var khoa = await _context.KhoaPhongs.FirstOrDefaultAsync(k => k.TenKhoa == finalKhoaPhong);
+                        if (khoa != null)
+                        {
+                            idKhoaQuanLy = khoa.Id;
+                        }
+                    }
 
                     var user = new Taikhoan
                     {
@@ -678,11 +770,18 @@ namespace BanTayVang.API.Services.Impl
                         ChucDanh = finalChucDanh,
                         KhoaPhong = finalKhoaPhong,
                         IdVaiTro = idVaiTro,
+                        IdKhoaQuanLy = idKhoaQuanLy,
                         TrangThai = true,
                         NgayTao = DateTime.Now,
                         SoDienThoai = string.IsNullOrWhiteSpace(soDienThoai) ? null : soDienThoai,
                         Email = string.IsNullOrWhiteSpace(email) ? null : email
                     };
+
+                    // Add to role mapping table to maintain database integrity
+                    user.TaikhoanVaitros.Add(new TaikhoanVaitro
+                    {
+                        IdVaiTro = idVaiTro
+                    });
 
                     _context.Taikhoans.Add(user);
                     processedUsernames.Add(maNhanVien);
@@ -711,6 +810,30 @@ namespace BanTayVang.API.Services.Impl
                     Data = resultDto
                 };
             }
+        }
+
+        private static string RemoveSign4Vietnamese(string utf8String)
+        {
+            if (string.IsNullOrWhiteSpace(utf8String)) return string.Empty;
+
+            // Normalize to FormD (decomposed) so that diacritics are separated
+            string formD = utf8String.Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder();
+
+            foreach (char ch in formD)
+            {
+                var uc = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+                // Keep only non-diacritic characters
+                if (uc != System.Globalization.UnicodeCategory.NonSpacingMark)
+                {
+                    sb.Append(ch);
+                }
+            }
+
+            // Replace 'đ' and 'Đ' manually as they are not standard Unicode diacritics
+            string result = sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+            result = result.Replace('đ', 'd').Replace('Đ', 'D');
+            return result.Trim();
         }
     }
 }

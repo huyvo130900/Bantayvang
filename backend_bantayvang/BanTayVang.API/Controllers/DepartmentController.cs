@@ -6,6 +6,8 @@ using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
+using ExcelDataReader;
 
 namespace BanTayVang.API.Controllers
 {
@@ -66,7 +68,14 @@ namespace BanTayVang.API.Controllers
                 {
                     Success = true,
                     Message = $"Lấy danh sách khoa thành công ({total} khoa)",
-                    Data = items
+                    Data = items,
+                    Pagination = new PaginationDto
+                    {
+                        PageNumber = page,
+                        PageSize = pageSize,
+                        TotalRecords = total,
+                        TotalPages = (int)Math.Ceiling((double)total / pageSize)
+                    }
                 });
             }
             catch (Exception ex)
@@ -515,85 +524,285 @@ namespace BanTayVang.API.Controllers
         /// POST /api/Department/import
         /// Import danh sách Khoa/Phòng từ file Excel (Admin only)
         /// </summary>
+        private class DepartmentImportRecord
+        {
+            public int Row { get; set; }
+            public string TenKhoa { get; set; } = string.Empty;
+            public string MaKhoa { get; set; } = string.Empty;
+            public string TrangThai { get; set; } = string.Empty;
+            public string MoTa { get; set; } = string.Empty;
+        }
+
+        /// <summary>
+        /// POST /api/Department/import
+        /// Import danh sách Khoa/Phòng từ file Excel/CSV (Admin only)
+        /// </summary>
         [HttpPost("import")]
         public async Task<IActionResult> ImportDepartments(IFormFile file)
         {
             if (file == null || file.Length == 0)
-                return BadRequest(new { success = false, message = "File không hợp lệ" });
+                return BadRequest(new { success = false, message = "File không hợp lệ hoặc rỗng" });
 
             var errors = new List<string>();
+            var records = new List<DepartmentImportRecord>();
             int created = 0, skipped = 0;
 
             try
             {
                 using var stream = file.OpenReadStream();
-                using var workbook = new XLWorkbook(stream);
 
-                var ws = workbook.Worksheets
-                    .FirstOrDefault(w => w.Name.Contains("IMPORT") || w.Name.Contains("KHOA"))
-                    ?? workbook.Worksheets.First();
-
-                int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
-                if (lastRow < 2)
-                    return BadRequest(new { success = false, message = "File Excel không có dữ liệu" });
-
-                // Detect headers in row 1
-                var headerA = ws.Cell(1, 1).GetString().Trim();
-                var headerB = ws.Cell(1, 2).GetString().Trim();
-
-                bool isNewFormat = false;
-                if (headerA.Equals("STT", StringComparison.OrdinalIgnoreCase) &&
-                    (headerB.Contains("Khoa", StringComparison.OrdinalIgnoreCase) ||
-                     headerB.Contains("phòng", StringComparison.OrdinalIgnoreCase) ||
-                     headerB.Contains("phong", StringComparison.OrdinalIgnoreCase)))
+                if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                 {
-                    isNewFormat = true;
+                    using var reader = new StreamReader(stream);
+                    var config = new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture)
+                    {
+                        HasHeaderRecord = true,
+                        MissingFieldFound = null,
+                        HeaderValidated = null,
+                        BadDataFound = null,
+                    };
+                    using var csv = new CsvHelper.CsvReader(reader, config);
+                    csv.Read();
+                    csv.ReadHeader();
+                    var headerRecord = csv.HeaderRecord;
+
+                    int colTenKhoa = -1, colMaKhoa = -1, colTrangThai = -1, colMoTa = -1;
+                    if (headerRecord != null)
+                    {
+                        for (int col = 0; col < headerRecord.Length; col++)
+                        {
+                            var headerText = headerRecord[col]?.Trim() ?? string.Empty;
+                            if (string.IsNullOrEmpty(headerText)) continue;
+
+                            if (headerText.Contains("Mã Khoa", StringComparison.OrdinalIgnoreCase) || 
+                                headerText.Contains("Ma Khoa", StringComparison.OrdinalIgnoreCase))
+                            {
+                                colMaKhoa = col;
+                            }
+                            else if (headerText.Contains("Trạng thái", StringComparison.OrdinalIgnoreCase) || 
+                                     headerText.Contains("Trang thai", StringComparison.OrdinalIgnoreCase))
+                            {
+                                colTrangThai = col;
+                            }
+                            else if (headerText.Contains("Mô tả", StringComparison.OrdinalIgnoreCase) || 
+                                     headerText.Contains("Mo ta", StringComparison.OrdinalIgnoreCase))
+                            {
+                                colMoTa = col;
+                            }
+                            else if (headerText.Contains("khoa", StringComparison.OrdinalIgnoreCase) || 
+                                     headerText.Contains("phòng", StringComparison.OrdinalIgnoreCase) || 
+                                     headerText.Contains("phong", StringComparison.OrdinalIgnoreCase) ||
+                                     headerText.Contains("department", StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (colTenKhoa == -1) colTenKhoa = col;
+                            }
+                        }
+                    }
+
+                    if (colTenKhoa == -1 && headerRecord != null)
+                    {
+                        if (headerRecord.Length == 1)
+                        {
+                            colTenKhoa = 0;
+                        }
+                        else if (headerRecord.Length == 2)
+                        {
+                            var h1 = headerRecord[0]?.Trim() ?? string.Empty;
+                            var h2 = headerRecord[1]?.Trim() ?? string.Empty;
+                            if (h1.Equals("STT", StringComparison.OrdinalIgnoreCase) || double.TryParse(h1, out _))
+                            {
+                                colTenKhoa = 1;
+                            }
+                            else if (h2.Equals("STT", StringComparison.OrdinalIgnoreCase) || double.TryParse(h2, out _))
+                            {
+                                colTenKhoa = 0;
+                            }
+                            else
+                            {
+                                colTenKhoa = 1;
+                                colMaKhoa = 0;
+                            }
+                        }
+                    }
+
+                    if (colTenKhoa == -1)
+                    {
+                        return BadRequest(new { success = false, message = "Không tìm thấy cột chứa tên Khoa/Phòng trong file CSV (cột cần có tiêu đề chứa chữ 'Khoa' hoặc 'Phòng')" });
+                    }
+
+                    int csvRowNumber = 1;
+                    while (csv.Read())
+                    {
+                        csvRowNumber++;
+                        string ten = colTenKhoa >= 0 && colTenKhoa < csv.Parser.Count ? csv.GetField(colTenKhoa)?.Trim() ?? string.Empty : string.Empty;
+                        if (string.IsNullOrWhiteSpace(ten)) continue;
+
+                        string ma = colMaKhoa >= 0 && colMaKhoa < csv.Parser.Count ? csv.GetField(colMaKhoa)?.Trim() ?? string.Empty : string.Empty;
+                        string tt = colTrangThai >= 0 && colTrangThai < csv.Parser.Count ? csv.GetField(colTrangThai)?.Trim() ?? string.Empty : string.Empty;
+                        string mt = colMoTa >= 0 && colMoTa < csv.Parser.Count ? csv.GetField(colMoTa)?.Trim() ?? string.Empty : string.Empty;
+
+                        records.Add(new DepartmentImportRecord
+                        {
+                            Row = csvRowNumber,
+                            TenKhoa = ten,
+                            MaKhoa = ma,
+                            TrangThai = tt,
+                            MoTa = mt
+                        });
+                    }
+                }
+                else
+                {
+                    System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                    using var reader = ExcelReaderFactory.CreateReader(stream);
+                    var result = reader.AsDataSet(new ExcelDataSetConfiguration()
+                    {
+                        ConfigureDataTable = (_) => new ExcelDataTableConfiguration()
+                        {
+                            UseHeaderRow = true
+                        }
+                    });
+
+                    var table = result.Tables.Cast<DataTable>()
+                        .FirstOrDefault(t => t.TableName.Contains("IMPORT", StringComparison.OrdinalIgnoreCase) || 
+                                             t.TableName.Contains("KHOA", StringComparison.OrdinalIgnoreCase))
+                        ?? result.Tables.Cast<DataTable>().FirstOrDefault();
+
+                    if (table == null || table.Rows.Count == 0)
+                        return BadRequest(new { success = false, message = "File Excel không có dữ liệu" });
+
+                    int colTenKhoa = -1, colMaKhoa = -1, colTrangThai = -1, colMoTa = -1;
+                    for (int col = 0; col < table.Columns.Count; col++)
+                    {
+                        var headerText = table.Columns[col].ColumnName.Trim();
+                        if (string.IsNullOrEmpty(headerText)) continue;
+
+                        if (headerText.Contains("Mã Khoa", StringComparison.OrdinalIgnoreCase) || 
+                            headerText.Contains("Ma Khoa", StringComparison.OrdinalIgnoreCase))
+                        {
+                            colMaKhoa = col;
+                        }
+                        else if (headerText.Contains("Trạng thái", StringComparison.OrdinalIgnoreCase) || 
+                                 headerText.Contains("Trang thai", StringComparison.OrdinalIgnoreCase))
+                        {
+                            colTrangThai = col;
+                        }
+                        else if (headerText.Contains("Mô tả", StringComparison.OrdinalIgnoreCase) || 
+                                 headerText.Contains("Mo ta", StringComparison.OrdinalIgnoreCase))
+                        {
+                            colMoTa = col;
+                        }
+                        else if (headerText.Contains("khoa", StringComparison.OrdinalIgnoreCase) || 
+                                 headerText.Contains("phòng", StringComparison.OrdinalIgnoreCase) || 
+                                 headerText.Contains("phong", StringComparison.OrdinalIgnoreCase) ||
+                                 headerText.Contains("department", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (colTenKhoa == -1)
+                            {
+                                colTenKhoa = col;
+                            }
+                            else
+                            {
+                                var prevText = table.Columns[colTenKhoa].ColumnName.Trim();
+                                bool prevHasBoth = prevText.Contains("khoa", StringComparison.OrdinalIgnoreCase) && 
+                                                   (prevText.Contains("phòng", StringComparison.OrdinalIgnoreCase) || prevText.Contains("phong", StringComparison.OrdinalIgnoreCase));
+                                bool currHasBoth = headerText.Contains("khoa", StringComparison.OrdinalIgnoreCase) && 
+                                                   (headerText.Contains("phòng", StringComparison.OrdinalIgnoreCase) || headerText.Contains("phong", StringComparison.OrdinalIgnoreCase));
+                                if (currHasBoth && !prevHasBoth)
+                                {
+                                    colTenKhoa = col;
+                                }
+                            }
+                        }
+                    }
+
+                    if (colTenKhoa == -1)
+                    {
+                        if (table.Columns.Count == 1)
+                        {
+                            colTenKhoa = 0;
+                        }
+                        else if (table.Columns.Count == 2)
+                        {
+                            var h1 = table.Columns[0].ColumnName.Trim();
+                            var h2 = table.Columns[1].ColumnName.Trim();
+                            if (h1.Equals("STT", StringComparison.OrdinalIgnoreCase) || double.TryParse(h1, out _))
+                            {
+                                colTenKhoa = 1;
+                            }
+                            else if (h2.Equals("STT", StringComparison.OrdinalIgnoreCase) || double.TryParse(h2, out _))
+                            {
+                                colTenKhoa = 0;
+                            }
+                            else
+                            {
+                                colTenKhoa = 1;
+                                colMaKhoa = 0;
+                            }
+                        }
+                    }
+
+                    if (colTenKhoa == -1)
+                    {
+                        return BadRequest(new { success = false, message = "Không tìm thấy cột chứa tên Khoa/Phòng trong file Excel (cột cần có tiêu đề chứa chữ 'Khoa' hoặc 'Phòng')" });
+                    }
+
+                    for (int i = 0; i < table.Rows.Count; i++)
+                    {
+                        var rowData = table.Rows[i];
+                        string ten = rowData[colTenKhoa]?.ToString()?.Trim() ?? string.Empty;
+                        if (string.IsNullOrWhiteSpace(ten)) continue;
+
+                        string ma = colMaKhoa != -1 ? rowData[colMaKhoa]?.ToString()?.Trim() ?? string.Empty : string.Empty;
+                        string tt = colTrangThai != -1 ? rowData[colTrangThai]?.ToString()?.Trim() ?? string.Empty : string.Empty;
+                        string mt = colMoTa != -1 ? rowData[colMoTa]?.ToString()?.Trim() ?? string.Empty : string.Empty;
+
+                        records.Add(new DepartmentImportRecord
+                        {
+                            Row = i + 2,
+                            TenKhoa = ten,
+                            MaKhoa = ma,
+                            TrangThai = tt,
+                            MoTa = mt
+                        });
+                    }
                 }
 
-                // Load existing departments into memory to avoid N+1 DB queries and duplicate checking
+                // Load existing departments into memory to avoid duplicate checking
                 var existingDepartments = await _context.KhoaPhongs.ToListAsync();
                 var existingMaKhoas = new HashSet<string>(existingDepartments.Select(k => k.MaKhoa), StringComparer.OrdinalIgnoreCase);
                 var existingTenKhoas = new HashSet<string>(existingDepartments.Select(k => k.TenKhoa), StringComparer.OrdinalIgnoreCase);
 
-                for (int row = 2; row <= lastRow; row++)
+                foreach (var rec in records)
                 {
-                    string maKhoa = string.Empty;
-                    string tenKhoa = string.Empty;
-                    bool trangThai = true;
-                    string? moTa = null;
+                    string tenKhoa = rec.TenKhoa;
+                    string maKhoa = rec.MaKhoa.ToUpper();
+                    string moTa = rec.MoTa;
+                    string trangThaiStr = rec.TrangThai;
 
-                    if (isNewFormat)
-                    {
-                        tenKhoa = ws.Cell(row, 2).GetString().Trim();
-                    }
-                    else
-                    {
-                        maKhoa = ws.Cell(row, 1).GetString().Trim().ToUpper();
-                        tenKhoa = ws.Cell(row, 2).GetString().Trim();
-                        var trangThaiStr = ws.Cell(row, 3).GetString().Trim();
-                        moTa = ws.Cell(row, 4).GetString().Trim();
-                        
-                        // Default status is HoatDong if blank
-                        trangThai = string.IsNullOrWhiteSpace(trangThaiStr) || trangThaiStr.Equals("HoatDong", StringComparison.OrdinalIgnoreCase);
-                    }
-
-                    if (string.IsNullOrWhiteSpace(tenKhoa))
-                        continue;
+                    bool trangThai = string.IsNullOrWhiteSpace(trangThaiStr) || 
+                                     trangThaiStr.Equals("HoatDong", StringComparison.OrdinalIgnoreCase) ||
+                                     trangThaiStr.Equals("Hoạt động", StringComparison.OrdinalIgnoreCase) ||
+                                     trangThaiStr.Equals("Hoat Dong", StringComparison.OrdinalIgnoreCase) ||
+                                     trangThaiStr.Equals("1") ||
+                                     trangThaiStr.Equals("true", StringComparison.OrdinalIgnoreCase);
 
                     // Check duplicate by TenKhoa
                     if (existingTenKhoas.Contains(tenKhoa))
                     {
                         skipped++;
-                        errors.Add($"Dòng {row}: Khoa/phòng '{tenKhoa}' đã tồn tại — bỏ qua");
+                        errors.Add($"Dòng {rec.Row}: Khoa/phòng '{tenKhoa}' đã tồn tại — bỏ qua");
                         continue;
                     }
 
-                    if (isNewFormat)
+                    bool isAutoGenerateMaKhoa = string.IsNullOrEmpty(maKhoa);
+                    if (isAutoGenerateMaKhoa)
                     {
                         maKhoa = GenerateMaKhoa(tenKhoa);
                         if (string.IsNullOrEmpty(maKhoa))
                         {
-                            errors.Add($"Dòng {row}: Tên Khoa không hợp lệ để tạo Mã Khoa");
+                            skipped++;
+                            errors.Add($"Dòng {rec.Row}: Tên Khoa không hợp lệ để tạo Mã Khoa");
                             continue;
                         }
 
@@ -616,16 +825,10 @@ namespace BanTayVang.API.Controllers
                     }
                     else
                     {
-                        if (string.IsNullOrWhiteSpace(maKhoa))
-                        {
-                            errors.Add($"Dòng {row}: Mã Khoa không được để trống");
-                            continue;
-                        }
-
                         if (existingMaKhoas.Contains(maKhoa))
                         {
                             skipped++;
-                            errors.Add($"Dòng {row}: Mã khoa '{maKhoa}' đã tồn tại — bỏ qua");
+                            errors.Add($"Dòng {rec.Row}: Mã khoa '{maKhoa}' đã tồn tại — bỏ qua");
                             continue;
                         }
                     }
@@ -657,7 +860,7 @@ namespace BanTayVang.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error importing departments from Excel");
+                _logger.LogError(ex, "Error importing departments from file");
                 return StatusCode(500, new { success = false, message = "Lỗi xử lý file: " + ex.Message });
             }
         }

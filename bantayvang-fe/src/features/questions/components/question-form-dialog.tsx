@@ -18,6 +18,7 @@ interface QuestionFormDialogProps {
   onSubmit: (data: CreateQuestionFormData) => void
   isLoading: boolean
   defaultKhoaPhong?: string
+  khoaList?: string[]
 }
 
 export function QuestionFormDialog({
@@ -28,6 +29,7 @@ export function QuestionFormDialog({
   onSubmit,
   isLoading,
   defaultKhoaPhong,
+  khoaList = [],
 }: QuestionFormDialogProps) {
   const isEdit = !!question
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -97,7 +99,7 @@ export function QuestionFormDialog({
 
   useEffect(() => {
     const defaults = getDefaults(question)
-    if (!question && defaultKhoaPhong) {
+    if (defaultKhoaPhong) {
       defaults.khoaPhong = defaultKhoaPhong
     }
     form.reset(defaults)
@@ -224,22 +226,19 @@ export function QuestionFormDialog({
               <label className="text-sm font-medium text-gray-700">Khoa/Phòng</label>
               <select
                 {...form.register('khoaPhong')}
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                disabled={!!defaultKhoaPhong}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-75 disabled:bg-gray-100"
               >
-                <option value="">-- Chọn khoa/phòng --</option>
-                <option value="Khoa KSNK">Khoa KSNK</option>
-                <option value="Khoa Nội">Khoa Nội</option>
-                <option value="Khoa Ngoại">Khoa Ngoại</option>
-                <option value="Khoa Sản">Khoa Sản</option>
-                <option value="Khoa Nhi">Khoa Nhi</option>
-                <option value="Khoa Cấp cứu">Khoa Cấp cứu</option>
-                <option value="Khoa ICU">Khoa ICU</option>
-                <option value="Khoa Dược">Khoa Dược</option>
-                <option value="Khoa Xét nghiệm">Khoa Xét nghiệm</option>
-                <option value="Khoa Chẩn đoán hình ảnh">Khoa Chẩn đoán hình ảnh</option>
-                <option value="Phòng Hành chính">Phòng Hành chính</option>
-                <option value="Lập trình C#">Lập trình C#</option>
-                <option value="CNTT">CNTT</option>
+                {defaultKhoaPhong ? (
+                  <option value={defaultKhoaPhong}>{defaultKhoaPhong}</option>
+                ) : (
+                  <>
+                    <option value="">-- Chọn khoa/phòng --</option>
+                    {khoaList.map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
             <div className="space-y-1">

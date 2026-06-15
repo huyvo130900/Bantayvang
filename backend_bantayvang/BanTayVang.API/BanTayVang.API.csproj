@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="12.0.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+    <PackageReference Include="CsvHelper" Version="33.1.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.27" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.27">
       <PrivateAssets>all</PrivateAssets>
@@ -25,6 +26,10 @@
     <!-- Excel & Email packages -->
     <PackageReference Include="ClosedXML" Version="0.102.2" />
     <PackageReference Include="MailKit" Version="4.3.0" />
+
+    <!-- ExcelDataReader for old .xls and .xlsb files -->
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
 
     <!-- SignalR for real-time -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="8.0.0" />

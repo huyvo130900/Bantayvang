@@ -1,9 +1,9 @@
-// Base API response from backend
 export interface ApiResponse<T = unknown> {
   success: boolean
   message: string
   data?: T
   errors?: string[]
+  pagination?: PaginationDto
 }
 
 // Pagination

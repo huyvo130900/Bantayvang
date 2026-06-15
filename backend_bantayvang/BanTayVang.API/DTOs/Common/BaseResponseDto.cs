@@ -6,6 +6,7 @@ namespace BanTayVang.API.DTOs.Common
         public string Message { get; set; } = string.Empty;
         public T? Data { get; set; }
         public List<string> Errors { get; set; } = new();
+        public PaginationDto? Pagination { get; set; }
 
         public BaseResponseDto()
         {

@@ -5,7 +5,7 @@ import type { DepartmentDto } from '../types'
 import type { UserDto } from '@/features/users/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Search, Building2, User, Edit, Trash2, UserPlus, UserX, RefreshCw, Upload, Download, FileSpreadsheet } from 'lucide-react'
+import { Plus, Search, Building2, User, Edit, Trash2, UserPlus, UserX, RefreshCw, Upload, Download, FileSpreadsheet, X, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export function DepartmentsPage() {
   const [departments, setDepartments] = useState<DepartmentDto[]>([])
@@ -27,11 +27,22 @@ export function DepartmentsPage() {
   // ✨ Import Excel
   const [importing, setImporting] = useState(false)
   const importRef = useRef<HTMLInputElement>(null)
+  const [importResult, setImportResult] = useState<{
+    success: number
+    failed: number
+    errors: string[]
+  } | null>(null)
 
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  useEffect(() => { load() }, []) // eslint-disable-line
+  // Phân trang
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalRecords, setTotalRecords] = useState(0)
+
+  useEffect(() => { load(1) }, []) // eslint-disable-line
 
   // Auto clear messages
   useEffect(() => {
@@ -41,11 +52,16 @@ export function DepartmentsPage() {
     }
   }, [success, error])
 
-  const load = async () => {
+  const load = async (pageNum = page) => {
     setLoading(true)
     try {
-      const res = await departmentApi.getAll({ search })
+      const res = await departmentApi.getAll({ search, page: pageNum, pageSize })
       setDepartments(res.data.data || [])
+      if (res.data.pagination) {
+        setPage(res.data.pagination.pageNumber)
+        setTotalPages(res.data.pagination.totalPages)
+        setTotalRecords(res.data.pagination.totalRecords)
+      }
     } catch { setError('Không thể tải danh sách khoa') }
     finally { setLoading(false) }
   }
@@ -142,11 +158,16 @@ export function DepartmentsPage() {
     if (!window.confirm(`Import khoa/phòng từ file "${file.name}"?`)) return
 
     setImporting(true)
+    setError(null)
+    setSuccess(null)
     try {
       const res = await departmentApi.importDepartments(file)
       const data = res.data
-      setSuccess(`Import thành công ${data.created} khoa. Bỏ qua: ${data.skipped}.${data.errors?.length ? ` (${data.errors.length} lỗi — xem console)` : ''}`)
-      if (data.errors?.length) console.warn('Import warnings:', data.errors)
+      setImportResult({
+        success: data.created || 0,
+        failed: data.skipped || 0,
+        errors: data.errors || []
+      })
       load()
     } catch (err: unknown) {
       setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Import thất bại')
@@ -165,7 +186,7 @@ export function DepartmentsPage() {
           <p className="text-sm text-gray-500 mt-1">Phân quyền quản lý theo khoa</p>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
-          <Button variant="outline" size="sm" onClick={load}>
+          <Button variant="outline" size="sm" onClick={() => load(1)}>
             <RefreshCw className="h-4 w-4 mr-1" /> Làm mới
           </Button>
           {/* ✨ Template download */}
@@ -185,7 +206,7 @@ export function DepartmentsPage() {
           <input
             ref={importRef}
             type="file"
-            accept=".xlsx,.xls"
+            accept=".xlsx,.xls,.xlsm,.xlsb,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.ms-excel.sheet.macroEnabled.12,application/vnd.ms-excel.sheet.binary.macroEnabled.12,text/csv"
             className="hidden"
             onChange={handleImportFile}
           />
@@ -211,9 +232,9 @@ export function DepartmentsPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input placeholder="Tìm kiếm khoa..." value={search} onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && load()} className="pl-9" />
+            onKeyDown={e => e.key === 'Enter' && load(1)} className="pl-9" />
         </div>
-        <Button variant="outline" onClick={load}>Tìm</Button>
+        <Button variant="outline" onClick={() => load(1)}>Tìm</Button>
       </div>
 
       {/* ===== Form Tạo/Sửa Khoa ===== */}
@@ -394,6 +415,97 @@ export function DepartmentsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 bg-white p-4 rounded-xl border">
+          <p className="text-sm text-gray-500">
+            Trang {page} / {totalPages} · Tổng số {totalRecords} khoa/phòng
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => load(page - 1)}
+              disabled={page <= 1 || loading}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Trước
+            </Button>
+            <span className="text-sm font-medium w-8 text-center">{page}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => load(page + 1)}
+              disabled={page >= totalPages || loading}
+            >
+              Sau
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Dialog Kết quả Import ===== */}
+      {importResult && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b shrink-0 bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-green-600" />
+                <h2 className="text-lg font-semibold text-gray-800">Kết quả nhập Khoa/Phòng</h2>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setImportResult(null)} className="rounded-full hover:bg-gray-100">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Content body */}
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              <div className={`rounded-xl p-4 border ${importResult.failed === 0 ? 'bg-green-50 border-green-200' : 'bg-yellow-50/75 border-yellow-200'}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  {importResult.failed === 0 ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  )}
+                  <p className="text-sm font-semibold text-gray-800">Thông tin import</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                  <div className="bg-white rounded-lg p-3 text-center border border-green-100 shadow-sm">
+                    <p className="text-2xl font-bold text-green-600">{importResult.success}</p>
+                    <p className="text-xs font-medium text-gray-500 mt-0.5">Thành công</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 text-center border border-red-100 shadow-sm">
+                    <p className="text-2xl font-bold text-red-500">{importResult.failed}</p>
+                    <p className="text-xs font-medium text-gray-500 mt-0.5">Thất bại/Bỏ qua</p>
+                  </div>
+                </div>
+
+                {importResult.failed > 0 && importResult.errors.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    <p className="text-xs font-semibold text-red-700">Chi tiết lỗi các dòng thất bại:</p>
+                    <div className="bg-white border border-red-100 rounded-lg p-2.5 max-h-48 overflow-y-auto space-y-1 shadow-inner">
+                      {importResult.errors.map((e, i) => (
+                        <div key={i} className="text-xs flex items-start gap-1.5 text-red-600 py-0.5 border-b border-red-50 last:border-0 last:pb-0">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5 shrink-0" />
+                          <span className="leading-relaxed">{e}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end p-4 border-t shrink-0 bg-gray-50/50">
+              <Button onClick={() => setImportResult(null)}>Đóng</Button>
+            </div>
+          </div>
         </div>
       )}
 

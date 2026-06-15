@@ -118,9 +118,17 @@ namespace BanTayVang.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Policy = "AdminOnly")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto>> DeleteQuestion(int id)
         {
+            // DeptManager: check ownership
+            if (DepartmentAuthHelper.IsDeptManager(User))
+            {
+                var existing = await _cauhoiService.GetQuestionByIdAsync(id);
+                if (existing.Data != null && !DepartmentAuthHelper.CanAccessKhoa(User, existing.Data.KhoaPhong))
+                    return Forbid();
+            }
+
             var userId = DepartmentAuthHelper.GetUserId(User) ?? 0;
             var result = await _cauhoiService.DeleteQuestionAsync(id, userId);
             if (!result.Success) return BadRequest(result);
