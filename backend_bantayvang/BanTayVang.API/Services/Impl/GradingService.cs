@@ -423,7 +423,9 @@ namespace BanTayVang.API.Services.Impl
                 ThoiGianBatDau = baithi.ThoiGianBatDau,
                 ThoiGianNop = baithi.ThoiGianNop,
                 DurationMinutes = duration,
-                TongDiem = baithi.SoCauDung,
+                TongDiem = baithi.TongSoCau.HasValue && baithi.TongSoCau.Value > 0
+                    ? Math.Round((double)(baithi.SoCauDung ?? 0) / baithi.TongSoCau.Value * 10, 2)
+                    : 0,
                 SoCauDung = baithi.SoCauDung,
                 TongSoCau = baithi.TongSoCau,
                 TrangThai = baithi.TrangThai,
@@ -511,7 +513,9 @@ namespace BanTayVang.API.Services.Impl
                 ThoiGianBatDau = baithi.ThoiGianBatDau,
                 ThoiGianNop = baithi.ThoiGianNop,
                 DurationMinutes = duration,
-                TongDiem = baithi.SoCauDung,
+                TongDiem = baithi.TongSoCau.HasValue && baithi.TongSoCau.Value > 0
+                    ? Math.Round((double)(baithi.SoCauDung ?? 0) / baithi.TongSoCau.Value * 10, 2)
+                    : 0,
                 SoCauDung = baithi.SoCauDung,
                 TongSoCau = baithi.TongSoCau,
                 TrangThai = baithi.TrangThai,
@@ -666,7 +670,9 @@ namespace BanTayVang.API.Services.Impl
                         ThoiGianBatDau = b.ThoiGianBatDau,
                         ThoiGianNop = b.ThoiGianNop,
                         DurationMinutes = duration,
-                        TongDiem = b.SoCauDung,
+                        TongDiem = b.TongSoCau.HasValue && b.TongSoCau.Value > 0
+                            ? Math.Round((double)(b.SoCauDung ?? 0) / b.TongSoCau.Value * 10, 2)
+                            : 0,
                         SoCauDung = b.SoCauDung,
                         TongSoCau = b.TongSoCau,
                         TrangThai = b.TrangThai,

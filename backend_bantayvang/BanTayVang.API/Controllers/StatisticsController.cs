@@ -33,12 +33,12 @@ namespace BanTayVang.API.Controllers
         }
 
         /// <summary>
-        /// Thống kê chi tiết của một đề thi
+        /// Thống kê chi tiết của một kỳ thi
         /// </summary>
-        [HttpGet("exam/{examId}")]
-        public async Task<ActionResult<BaseResponseDto<ExamStatisticsDto>>> GetExamStatistics(int examId)
+        [HttpGet("kythi/{kyThiId}")]
+        public async Task<ActionResult<BaseResponseDto<ExamStatisticsDto>>> GetExamStatistics(int kyThiId)
         {
-            var result = await _statisticsService.GetExamStatisticsAsync(examId);
+            var result = await _statisticsService.GetExamStatisticsAsync(kyThiId);
             if (!result.Success) return NotFound(result);
             return Ok(result);
         }

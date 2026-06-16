@@ -68,6 +68,8 @@ export function ResultsByKyThiPage() {
   const [msg, setMsg] = useState<string | null>(null)
   const [selectedBaiThiIdByUser, setSelectedBaiThiIdByUser] = useState<Record<string, number>>({})
   const [selectedDeThiId, setSelectedDeThiId] = useState<number | null>(null)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [selectedExportDeThiId, setSelectedExportDeThiId] = useState<number | null>(null)
 
   useEffect(() => {
     loadKyThiList()
@@ -130,16 +132,41 @@ export function ResultsByKyThiPage() {
     finally { setTogglingId(null) }
   }
 
-  const handleExportResults = async () => {
+  const handleExportResults = async (deThiId: number | null) => {
     if (!selectedKyThi) return
     try {
-      const exportItems = filtered.map(c => ({
+      const targetResults = deThiId
+        ? results.filter(r => r.idDeThi === deThiId)
+        : results
+
+      const map: Record<string, ThiSinhResult[]> = {}
+      targetResults.forEach((r) => {
+        const key = r.username || r.userId?.toString() || ''
+        if (!map[key]) {
+          map[key] = []
+        }
+        map[key].push(r)
+      })
+
+      const grouped = Object.entries(map).map(([key, attempts]) => {
+        const sortedAttempts = [...attempts].sort((a, b) => a.baiThiId - b.baiThiId)
+        let selectedAttempt = sortedAttempts.find((a) => a.baiThiId === selectedBaiThiIdByUser[key])
+        if (!selectedAttempt) {
+          selectedAttempt = sortedAttempts[sortedAttempts.length - 1]
+        }
+        return {
+          attempts: sortedAttempts,
+          selectedAttempt,
+        }
+      })
+
+      const exportItems = grouped.map(c => ({
         baiThiId: c.selectedAttempt.baiThiId,
         lanThi: c.attempts.findIndex(a => a.baiThiId === c.selectedAttempt.baiThiId) + 1
       }))
 
       if (exportItems.length === 0) {
-        setMsg("Không có dữ liệu hiển thị để xuất Excel")
+        setMsg("Không có dữ liệu để xuất Excel")
         setTimeout(() => setMsg(null), 3000)
         return
       }
@@ -149,7 +176,16 @@ export function ResultsByKyThiPage() {
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
-      const safeName = selectedKyThi.tenKyThi.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')
+      
+      let suffix = ""
+      if (deThiId) {
+        const deThiObj = uniqueDeThis.find(d => d.id === deThiId)
+        if (deThiObj) {
+          suffix = "_" + (deThiObj.tenDeThi || deThiObj.maDeThi)
+        }
+      }
+      const rawName = `${selectedKyThi.tenKyThi}${suffix}`
+      const safeName = rawName.replace(/[^a-zA-Z0-9\s_]/g, '').replace(/\s+/g, '_')
       link.setAttribute('download', `KetQua_KyThi_${safeName}.xlsx`)
       document.body.appendChild(link)
       link.click()
@@ -267,17 +303,17 @@ export function ResultsByKyThiPage() {
     return 'text-red-600 font-semibold'
   }
 
-  const validResults = resultsFilteredByDeThi.filter(r => r.trangThai !== 'BiBHuyGianLan' && r.tongDiem !== undefined)
-  const avgScore = validResults.length ? (validResults.reduce((s, r) => s + (r.tongDiem ?? 0), 0) / validResults.length) : 0
-  const cheatingCount = resultsFilteredByDeThi.filter(r => (r.soCanhBao ?? 0) > 0 || (r.soLanGianLan ?? 0) > 0).length
-  const retakeCount = resultsFilteredByDeThi.filter(r => (r.soLanThiLai ?? 0) > 0).length
+  const validCandidates = candidatesWithSelectedAttempt.map(c => c.selectedAttempt).filter(r => r.trangThai !== 'BiBHuyGianLan' && r.tongDiem !== undefined)
+  const avgScore = validCandidates.length ? (validCandidates.reduce((s, r) => s + (r.tongDiem ?? 0), 0) / validCandidates.length) : 0
+  const cheatingCount = candidatesWithSelectedAttempt.filter(c => (c.selectedAttempt.soCanhBao ?? 0) > 0 || (c.selectedAttempt.soLanGianLan ?? 0) > 0).length
+  const retakeCount = candidatesWithSelectedAttempt.reduce((s, c) => s + (c.selectedAttempt.soLanThiLai ?? 0), 0)
   const passCount = hasThreshold
-    ? resultsFilteredByDeThi.filter(r => r.trangThai !== 'BiBHuyGianLan' && (r.soCauDung ?? 0) >= selectedKyThi!.soCauDungToiThieu!).length
+    ? candidatesWithSelectedAttempt.map(c => c.selectedAttempt).filter(r => r.trangThai !== 'BiBHuyGianLan' && (r.soCauDung ?? 0) >= selectedKyThi!.soCauDungToiThieu!).length
     : 0;
   const failCount = hasThreshold
-    ? resultsFilteredByDeThi.filter(r => r.trangThai !== 'BiBHuyGianLan' && (r.soCauDung ?? 0) < selectedKyThi!.soCauDungToiThieu!).length
+    ? candidatesWithSelectedAttempt.map(c => c.selectedAttempt).filter(r => r.trangThai !== 'BiBHuyGianLan' && (r.soCauDung ?? 0) < selectedKyThi!.soCauDungToiThieu!).length
     : 0;
-  const passRate = resultsFilteredByDeThi.length ? (passCount / resultsFilteredByDeThi.length) * 100 : 0;
+  const passRate = candidatesWithSelectedAttempt.length ? (passCount / candidatesWithSelectedAttempt.length) * 100 : 0;
 
   return (
     <div className="flex h-full">
@@ -372,10 +408,17 @@ export function ResultsByKyThiPage() {
                   <p className="text-xs text-blue-600 mt-0.5">{selectedKyThi.donViToChuc}</p>
                 )}
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {groupedCandidates.length} thí sinh ({results.length} lượt thi)
+                  {groupedCandidates.length} thí sinh ({resultsFilteredByDeThi.length} lượt thi)
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={handleExportResults}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedExportDeThiId(null)
+                  setIsExportModalOpen(true)
+                }}
+              >
                 <Download className="h-4 w-4 mr-2" /> Xuất file Excel
               </Button>
             </div>
@@ -386,13 +429,13 @@ export function ResultsByKyThiPage() {
             <div className="grid grid-cols-4 gap-4">
               {(hasThreshold
                 ? [
-                    { label: 'Tổng lượt thi', value: results.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50', sub: 'Toàn bộ kỳ thi' },
+                    { label: 'Tổng lượt thi', value: resultsFilteredByDeThi.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50', sub: 'Toàn bộ kỳ thi' },
                     { label: 'Thí sinh Đạt', value: passCount, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50', sub: 'Số thí sinh đạt' },
                     { label: 'Thí sinh Không đạt', value: failCount, icon: XCircle, color: 'text-rose-500', bg: 'bg-rose-50', sub: 'Số thí sinh không đạt' },
                     { label: 'Tỷ lệ đạt', value: `${passRate.toFixed(1)}%`, icon: Trophy, color: 'text-indigo-500', bg: 'bg-indigo-50', sub: 'Tỷ lệ phần trăm đạt' },
                   ]
                 : [
-                    { label: 'Tổng lượt thi', value: results.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50', sub: 'Toàn bộ kỳ thi' },
+                    { label: 'Tổng lượt thi', value: resultsFilteredByDeThi.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50', sub: 'Toàn bộ kỳ thi' },
                     { label: 'Điểm TB', value: avgScore.toFixed(2), icon: Trophy, color: 'text-green-500', bg: 'bg-green-50', sub: 'Điểm số trung bình' },
                     { label: 'Có gian lận', value: cheatingCount, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50', sub: 'Số ca cảnh báo' },
                     { label: 'Thi lại', value: retakeCount, icon: RefreshCw, color: 'text-orange-500', bg: 'bg-orange-50', sub: 'Lượt thi lại' },
@@ -584,6 +627,70 @@ export function ResultsByKyThiPage() {
           </div>
         )}
       </div>
+
+      {/* Export Selection Modal */}
+      {isExportModalOpen && selectedKyThi && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-xl border max-w-md w-full overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50/50">
+              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                <Download className="h-5 w-5 text-blue-500" /> Xuất kết quả ra Excel
+              </h3>
+              <button
+                onClick={() => setIsExportModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-500">
+                Chọn đề thi bạn muốn xuất kết quả Excel cho kỳ thi <span className="font-semibold text-gray-700">"{selectedKyThi.tenKyThi}"</span>.
+              </p>
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Chọn đề thi</label>
+                <select
+                  value={selectedExportDeThiId || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : null
+                    setSelectedExportDeThiId(val)
+                  }}
+                  className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition-all"
+                >
+                  <option value="">Tất cả đề thi ({uniqueDeThis.length})</option>
+                  {uniqueDeThis.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.tenDeThi || d.maDeThi}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setIsExportModalOpen(false)}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={() => {
+                  handleExportResults(selectedExportDeThiId)
+                  setIsExportModalOpen(false)
+                }}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Xuất Excel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

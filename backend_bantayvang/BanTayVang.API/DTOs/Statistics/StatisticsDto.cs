@@ -31,9 +31,9 @@ namespace BanTayVang.API.DTOs.Statistics
     /// </summary>
     public class ExamStatisticsDto
     {
-        public int ExamId { get; set; }
-        public string? MaDeThi { get; set; }
-        public string? TenDeThi { get; set; }
+        public int KyThiId { get; set; }
+        public string? MaKyThi { get; set; }
+        public string? TenKyThi { get; set; }
         public int TotalParticipants { get; set; }
         public int CompletedCount { get; set; }
         public int InProgressCount { get; set; }

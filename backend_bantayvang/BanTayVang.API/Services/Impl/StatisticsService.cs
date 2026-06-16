@@ -34,8 +34,8 @@ namespace BanTayVang.API.Services.Impl
                 };
 
                 var completedScores = await _context.Baithis
-                    .Where(b => b.TrangThai == "Completed" && b.TongDiem != null)
-                    .Select(b => b.TongDiem!.Value)
+                    .Where(b => b.TrangThai == "Completed" && b.TongDiem != null && b.TongSoCau != null && b.TongSoCau > 0)
+                    .Select(b => (double)b.TongDiem.GetValueOrDefault() / b.TongSoCau.GetValueOrDefault() * 10)
                     .ToListAsync();
 
                 dashboard.AverageScore = completedScores.Any() ? completedScores.Average() : 0;
@@ -76,35 +76,73 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto<ExamStatisticsDto>> GetExamStatisticsAsync(int examId)
+        public async Task<BaseResponseDto<ExamStatisticsDto>> GetExamStatisticsAsync(int kyThiId)
         {
             try
             {
-                var exam = await _context.Dethis.FirstOrDefaultAsync(d => d.Id == examId);
-                if (exam == null)
-                    return new BaseResponseDto<ExamStatisticsDto> { Success = false, Message = "Không tìm thấy đề thi" };
+                var kyThi = await _context.KyThis.FirstOrDefaultAsync(k => k.Id == kyThiId);
+                if (kyThi == null)
+                    return new BaseResponseDto<ExamStatisticsDto> { Success = false, Message = "Không tìm thấy kỳ thi" };
 
                 var submissions = await _context.Baithis
-                    .Where(b => b.IdDeThi == examId)
+                    .Include(b => b.IdDeThiNavigation)
+                    .Where(b => b.IdKyThi == kyThiId)
                     .ToListAsync();
 
-                var completed = submissions.Where(b => b.TrangThai == "Completed").ToList();
-                var scores = completed.Where(b => b.TongDiem.HasValue).Select(b => b.TongDiem!.Value).ToList();
+                // Group by participant to get unique candidate attempts
+                var latestSubmissions = submissions
+                    .Where(b => b.IdTaiKhoan != null)
+                    .GroupBy(b => b.IdTaiKhoan!.Value)
+                    .Select(g => g.OrderByDescending(b => b.Id).First())
+                    .ToList();
+
+                var latestCompletedSubmissions = submissions
+                    .Where(b => b.IdTaiKhoan != null && b.TrangThai == "Completed")
+                    .GroupBy(b => b.IdTaiKhoan!.Value)
+                    .Select(g => g.OrderByDescending(b => b.Id).First())
+                    .ToList();
+
+                // Normalize scores to a 10-point scale based on correct answers and total questions
+                var scores = latestCompletedSubmissions
+                    .Where(b => b.TongDiem.HasValue && b.TongSoCau.HasValue && b.TongSoCau.Value > 0)
+                    .Select(b => (double)b.TongDiem.GetValueOrDefault() / b.TongSoCau.GetValueOrDefault() * 10)
+                    .ToList();
+
+                var passCount = 0;
+                var failCount = 0;
+                foreach (var b in latestCompletedSubmissions)
+                {
+                    var threshold = kyThi.SoCauDungToiThieu ?? b.IdDeThiNavigation?.SoCauDungToiThieu;
+                    bool isPass;
+                    if (threshold.HasValue)
+                    {
+                        isPass = (b.SoCauDung ?? 0) >= threshold.Value;
+                    }
+                    else
+                    {
+                        var totalQuestions = b.TongSoCau ?? 10;
+                        var defaultThreshold = totalQuestions > 0 ? (double)totalQuestions / 2 : 5;
+                        isPass = (b.SoCauDung ?? 0) >= defaultThreshold;
+                    }
+
+                    if (isPass) passCount++;
+                    else failCount++;
+                }
 
                 var stats = new ExamStatisticsDto
                 {
-                    ExamId = exam.Id,
-                    MaDeThi = exam.MaDeThi,
-                    TenDeThi = exam.TenDeThi,
-                    TotalParticipants = submissions.Count,
-                    CompletedCount = completed.Count,
-                    InProgressCount = submissions.Count(b => b.TrangThai == "InProgress"),
+                    KyThiId = kyThi.Id,
+                    MaKyThi = kyThi.MaKyThi,
+                    TenKyThi = kyThi.TenKyThi,
+                    TotalParticipants = latestSubmissions.Count,
+                    CompletedCount = latestCompletedSubmissions.Count,
+                    InProgressCount = latestSubmissions.Count(s => !latestCompletedSubmissions.Any(c => c.IdTaiKhoan == s.IdTaiKhoan)),
                     AverageScore = scores.Any() ? scores.Average() : 0,
                     HighestScore = scores.Any() ? scores.Max() : 0,
                     LowestScore = scores.Any() ? scores.Min() : 0,
-                    PassCount = scores.Count(s => s >= 5),
-                    FailCount = scores.Count(s => s < 5),
-                    PassRate = scores.Any() ? (double)scores.Count(s => s >= 5) / scores.Count * 100 : 0
+                    PassCount = passCount,
+                    FailCount = failCount,
+                    PassRate = latestCompletedSubmissions.Any() ? (double)passCount / latestCompletedSubmissions.Count * 100 : 0
                 };
 
                 // Score distribution
