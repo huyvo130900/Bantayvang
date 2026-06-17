@@ -512,13 +512,12 @@ export function ResultsByKyThiPage() {
                       </th>
                       <th className="text-center px-4 py-3 font-medium text-gray-600 whitespace-nowrap">⚠ Gian lận</th>
                       <th className="text-center px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Lần thi</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Đánh giá khoa</th>
                       <th className="text-center px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Công bố điểm</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {filtered.length === 0 ? (
-                      <tr><td colSpan={8} className="text-center py-12 text-gray-400">Chưa có kết quả</td></tr>
+                      <tr><td colSpan={7} className="text-center py-12 text-gray-400">Chưa có kết quả</td></tr>
                     ) : filtered.map(({ userKey, attempts, selectedAttempt: r }) => (
                       <tr key={r.baiThiId} className="hover:bg-gray-50">
                         <td className="px-4 py-3">
@@ -596,11 +595,6 @@ export function ResultsByKyThiPage() {
                               Lần 1
                             </span>
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`text-xs ${r.danhGiaKhoa ? 'text-gray-700' : 'text-gray-300 italic'}`}>
-                            {r.danhGiaKhoa || 'Chưa đánh giá'}
-                          </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <button

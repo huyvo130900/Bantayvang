@@ -33,7 +33,7 @@ interface StatCardProps {
   bgColor?: string
 }
 
-function StatCard({ icon: Icon, label, value, sub, color = 'text-primary', bgColor = 'bg-primary/10' }: StatCardProps) {
+function StatCard({ icon: Icon, label, value, sub, color = 'text-green-600', bgColor = 'bg-green-50' }: StatCardProps) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 flex items-start gap-3 shadow-sm">
       <div className={`p-2 rounded-lg ${bgColor}`}>
@@ -484,7 +484,7 @@ function StudentDashboard() {
                         )}
                         <button
                           onClick={() => navigate(`/exam-result/${baithiId}`)}
-                          className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20"
+                          className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors border border-green-200"
                         >
                           <Eye className="h-3.5 w-3.5" />
                           Xem kết quả

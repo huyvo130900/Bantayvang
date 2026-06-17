@@ -10,8 +10,8 @@ function StatCard({
   label,
   value,
   sub,
-  color = 'text-primary',
-  bgColor = 'bg-primary/10',
+  color = 'text-green-600',
+  bgColor = 'bg-green-50',
 }: {
   icon: React.ElementType
   label: string

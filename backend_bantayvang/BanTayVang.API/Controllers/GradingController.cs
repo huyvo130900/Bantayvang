@@ -366,10 +366,9 @@ namespace BanTayVang.API.Controllers
             ws.Cell(1, 15).Value = "Lần thi";
             ws.Cell(1, 16).Value = "Kết quả";
             ws.Cell(1, 17).Value = "So Canh Bao";
-            ws.Cell(1, 18).Value = "Đánh giá khoa";
-            ws.Cell(1, 19).Value = "Cong Bo Diem";
+            ws.Cell(1, 18).Value = "Cong Bo Diem";
 
-            var headerRange = ws.Range(1, 1, 1, 19);
+            var headerRange = ws.Range(1, 1, 1, 18);
             headerRange.Style.Font.Bold = true;
             headerRange.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightSteelBlue;
 
@@ -404,8 +403,7 @@ namespace BanTayVang.API.Controllers
                 ws.Cell(row, 15).Value = x.Item.LanThi;
                 ws.Cell(row, 16).Value = isPass ? "Đạt" : "Không đạt";
                 ws.Cell(row, 17).Value = b.TongSoCanhBao ?? 0;
-                ws.Cell(row, 18).Value = b.DanhGiaKhoa ?? "";
-                ws.Cell(row, 19).Value = (b.CongBoRieng || (b.IdDeThiNavigation?.CongBoKetQua ?? false)) ? "Đã công bố" : "Chưa công bố";
+                ws.Cell(row, 18).Value = (b.CongBoRieng || (b.IdDeThiNavigation?.CongBoKetQua ?? false)) ? "Đã công bố" : "Chưa công bố";
                 row++;
             }
 
