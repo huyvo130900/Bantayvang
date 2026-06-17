@@ -58,12 +58,13 @@ namespace BanTayVang.API.Services.Impl.Import
                         continue;
                     }
 
-                    if (!isExamImport)
+                    // Kiểm tra trùng lặp với CSDL (chỉ kiểm tra nếu không phải "Không thuộc ngân hàng")
+                    if (khoaPhong != "Không thuộc ngân hàng")
                     {
                         var existingQuestion = await _cauhoiRepository.FindDuplicateAsync(noiDungChuan, khoaPhong);
                         if (existingQuestion != null)
                         {
-                            errors.Add($"Dòng {rowNumber}: Câu hỏi tự luận đã tồn tại (Id: {existingQuestion.Id}) — \"{noiDung}\" — bỏ qua.");
+                            errors.Add($"Dòng {rowNumber}: Câu hỏi tự luận đã tồn tại trong CSDL (Id: {existingQuestion.Id}) — \"{noiDung}\"");
                             continue;
                         }
                     }

@@ -6,7 +6,7 @@ import { GenerateExamsDialog } from '../components/generate-exams-dialog'
 import type { KyThiDto, CreateKyThiDto } from '../types'
 import type { CreateKyThiFormData } from '../schemas'
 import { Button } from '@/components/ui/button'
-import { Plus, ArrowLeft, RefreshCw, Building2, Sparkles } from 'lucide-react'
+import { Plus, ArrowLeft, RefreshCw, Building2, Sparkles, Search } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
 import { fetchActiveExams } from '@/features/exams/slice'
 import { ROLES } from '@/lib/constants'
@@ -44,6 +44,9 @@ export function KyThiPage() {
   const [submitting, setSubmitting] = useState(false)
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [khoaFilter, setKhoaFilter] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [examSearchQuery, setExamSearchQuery] = useState('')
+
 
   // Detail view state
   const [selectedKyThi, setSelectedKyThi] = useState<KyThiDto | null>(null)
@@ -255,6 +258,19 @@ export function KyThiPage() {
     ? scopedKyThis.filter((k) => k.tenKhoa === khoaFilter)
     : scopedKyThis
 
+  const finalFilteredKyThis = khoaFiltered.filter(k => 
+    !searchQuery.trim() ||
+    k.tenKyThi?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    k.maKyThi?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const filteredExams = exams.filter(e => 
+    !examSearchQuery.trim() ||
+    e.tenDeThi?.toLowerCase().includes(examSearchQuery.toLowerCase()) ||
+    e.maDeThi?.toLowerCase().includes(examSearchQuery.toLowerCase())
+  )
+
+
   // ---- DETAIL VIEW ----
   if (selectedKyThi) {
     if (statsExam) {
@@ -331,9 +347,19 @@ export function KyThiPage() {
             </div>
           </div>
 
-          <div className="p-5">
+          <div className="p-5 space-y-4">
+            <div className="relative max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm đề thi..."
+                value={examSearchQuery}
+                onChange={(e) => setExamSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
+              />
+            </div>
             <ExamTable
-              exams={exams}
+              exams={filteredExams}
               isLoading={loadingExams}
               showKhoa={false}
               onViewAssignments={handleViewAssignments}
@@ -344,6 +370,7 @@ export function KyThiPage() {
               onViewStats={(exam) => setStatsExam(exam)}
             />
           </div>
+
         </div>
 
         <KyThiFormDialog
@@ -445,24 +472,35 @@ export function KyThiPage() {
         </div>
       )}
 
-      {/* Filter trạng thái */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* Filter trạng thái & Tìm kiếm */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm kỳ thi..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
+          />
+        </div>
+
         <label className="text-sm text-gray-600">Lọc trạng thái:</label>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="h-9 rounded-md border border-gray-200 px-2 text-sm"
+          className="h-9 rounded-md border border-gray-200 px-2 text-sm bg-white"
         >
           <option value="">Tất cả</option>
           {STATUS_OPTIONS.map((s) => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </select>
-        <span className="text-sm text-gray-400">{khoaFiltered.length} kỳ thi</span>
+        <span className="text-sm text-gray-400">{finalFilteredKyThis.length} kỳ thi</span>
       </div>
 
       <KyThiTable
-        kyThis={khoaFiltered}
+        kyThis={finalFilteredKyThis}
         isLoading={isLoading}
         showKhoa={isAdmin && khoaFilter === null}
         onView={handleViewKyThi}
@@ -470,6 +508,7 @@ export function KyThiPage() {
         onDelete={handleDeleteKyThi}
         onChangeStatus={handleChangeStatus}
       />
+
 
       <KyThiFormDialog
         open={formOpen}

@@ -95,13 +95,13 @@ namespace BanTayVang.API.Services.Impl.Import
                         continue;
                     }
 
-                    // Nếu không phải import cho đề thi, mới kiểm tra trùng lặp với CSDL
-                    if (!isExamImport)
+                    // Kiểm tra trùng lặp với CSDL (chỉ kiểm tra nếu không phải "Không thuộc ngân hàng")
+                    if (khoaPhong != "Không thuộc ngân hàng")
                     {
                         var existingQuestion = await _cauhoiRepository.FindDuplicateAsync(noiDungChuan, khoaPhong);
                         if (existingQuestion != null)
                         {
-                            errors.Add($"Dòng {rowNumber}: Câu hỏi đã tồn tại (Id: {existingQuestion.Id}) — \"{noiDung}\" — bỏ qua.");
+                            errors.Add($"Dòng {rowNumber}: Câu hỏi đã tồn tại trong CSDL (Id: {existingQuestion.Id}) — \"{noiDung}\"");
                             continue;
                         }
                     }

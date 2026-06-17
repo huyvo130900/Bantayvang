@@ -70,6 +70,8 @@ export function ResultsByKyThiPage() {
   const [selectedDeThiId, setSelectedDeThiId] = useState<number | null>(null)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [selectedExportDeThiId, setSelectedExportDeThiId] = useState<number | null>(null)
+  const [kyThiSearch, setKyThiSearch] = useState('')
+
 
   useEffect(() => {
     loadKyThiList()
@@ -204,10 +206,16 @@ export function ResultsByKyThiPage() {
     ? Array.from(new Set(kyThiList.map(k => k.donViToChuc).filter(Boolean) as string[])).sort()
     : []
 
-  // Lọc kỳ thi theo khoa (admin)
-  const filteredKyThiList = isAdmin && khoaFilter
+  // Lọc kỳ thi theo khoa (admin) và từ khóa tìm kiếm
+  const filteredKyThiList = (isAdmin && khoaFilter
     ? kyThiList.filter(k => k.donViToChuc === khoaFilter)
     : kyThiList
+  ).filter(k =>
+    !kyThiSearch.trim() ||
+    k.tenKyThi?.toLowerCase().includes(kyThiSearch.toLowerCase()) ||
+    k.maKyThi?.toLowerCase().includes(kyThiSearch.toLowerCase())
+  )
+
 
   const hasThreshold = selectedKyThi?.soCauDungToiThieu !== undefined && selectedKyThi?.soCauDungToiThieu !== null;
 
@@ -327,6 +335,21 @@ export function ResultsByKyThiPage() {
             <p className="text-xs text-blue-500 mt-1">📋 {myKhoa}</p>
           )}
         </div>
+
+        {/* Search campaigns */}
+        <div className="px-4 py-3 border-b">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm kỳ thi..."
+              value={kyThiSearch}
+              onChange={(e) => setKyThiSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-gray-50/50"
+            />
+          </div>
+        </div>
+
 
         {/* Admin: filter khoa */}
         {isAdmin && khoaList.length > 0 && (

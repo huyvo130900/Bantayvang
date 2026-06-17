@@ -11,6 +11,7 @@ import { useAppSelector } from '@/app/hooks'
 import { ROLES } from '@/lib/constants'
 import { kyThiApi } from '@/features/ky-thi/api'
 import type { KyThiDto } from '@/features/ky-thi/types'
+import { examsApi } from '../api'
 
 interface ExamFormDialogProps {
   open: boolean
@@ -231,6 +232,34 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       setIsUploadingExcel(true)
       setExcelErrors([])
       setImportedCount(0)
+
+      // 1. Pre-validate exam code duplication (before calling Excel import)
+      try {
+        const checkRes = await examsApi.getByCode(data.maDeThi)
+        if (checkRes.data.success) {
+          form.setError('maDeThi', {
+            type: 'manual',
+            message: 'Mã đề thi đã tồn tại trong hệ thống',
+          })
+          setIsUploadingExcel(false)
+          return
+        }
+      } catch (err) {
+        // If it throws an error/404, it means it doesn't exist yet, which is what we want.
+      }
+
+      // 2. Pre-validate soCauDungToiThieu against selectedKyThiDetails.tongSoCauHoi
+      if (selectedKyThiDetails?.tongSoCauHoi) {
+        const requiredCount = selectedKyThiDetails.tongSoCauHoi
+        if (data.soCauDungToiThieu != null && data.soCauDungToiThieu > requiredCount) {
+          form.setError('soCauDungToiThieu', {
+            type: 'manual',
+            message: `Số câu đúng tối thiểu (${data.soCauDungToiThieu}) không được lớn hơn tổng số câu hỏi yêu cầu (${requiredCount})`,
+          })
+          setIsUploadingExcel(false)
+          return
+        }
+      }
 
       try {
         let targetKhoa = themVaoNganHang 
