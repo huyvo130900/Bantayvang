@@ -36,10 +36,20 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
                 var baithi = await _db.Baithis
                     .Include(b => b.IdTaiKhoanNavigation)
+                    .Include(b => b.IdDeThiNavigation)
+                        .ThenInclude(d => d.KyThiNavigation)
                     .FirstOrDefaultAsync(b => b.Id == baiThiId);
-                if (baithi == null || baithi.IdTaiKhoanNavigation?.KhoaPhong != myKhoa)
+                
+                bool canAccess = baithi != null && (
+                    baithi.IdTaiKhoanNavigation?.KhoaPhong == myKhoa 
+                    || baithi.IdDeThiNavigation?.KhoaPhong == myKhoa 
+                    || baithi.IdDeThiNavigation?.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+                
+                if (!canAccess)
                 {
                     return Forbid();
                 }
@@ -76,7 +86,17 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                if (result.Success && result.Data != null)
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
+                var exam = await _db.Dethis
+                    .Include(d => d.KyThiNavigation)
+                    .FirstOrDefaultAsync(d => d.Id == examId);
+
+                bool isExamOwner = exam != null && (
+                    exam.KhoaPhong == myKhoa 
+                    || exam.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+
+                if (!isExamOwner && result.Success && result.Data != null)
                 {
                     result.Data = result.Data.Where(r => r.KhoaPhong == myKhoa).ToList();
                 }
@@ -96,7 +116,17 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                if (result.Success && result.Data != null)
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
+                var exam = await _db.Dethis
+                    .Include(d => d.KyThiNavigation)
+                    .FirstOrDefaultAsync(d => d.Id == examId);
+
+                bool isExamOwner = exam != null && (
+                    exam.KhoaPhong == myKhoa 
+                    || exam.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+
+                if (!isExamOwner && result.Success && result.Data != null)
                 {
                     result.Data = result.Data.Where(r => r.KhoaPhong == myKhoa).ToList();
                 }
@@ -114,10 +144,20 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
                 var baithi = await _db.Baithis
                     .Include(b => b.IdTaiKhoanNavigation)
+                    .Include(b => b.IdDeThiNavigation)
+                        .ThenInclude(d => d.KyThiNavigation)
                     .FirstOrDefaultAsync(b => b.Id == baiThiId);
-                if (baithi == null || baithi.IdTaiKhoanNavigation?.KhoaPhong != myKhoa)
+                
+                bool canAccess = baithi != null && (
+                    baithi.IdTaiKhoanNavigation?.KhoaPhong == myKhoa 
+                    || baithi.IdDeThiNavigation?.KhoaPhong == myKhoa 
+                    || baithi.IdDeThiNavigation?.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+                
+                if (!canAccess)
                 {
                     return Forbid();
                 }
@@ -137,11 +177,22 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
                 var detail = await _db.Chitietlambais
                     .Include(c => c.IdBaiThiNavigation)
                         .ThenInclude(b => b.IdTaiKhoanNavigation)
+                    .Include(c => c.IdBaiThiNavigation)
+                        .ThenInclude(b => b.IdDeThiNavigation)
+                            .ThenInclude(d => d.KyThiNavigation)
                     .FirstOrDefaultAsync(c => c.Id == dto.ChiTietLamBaiId);
-                if (detail == null || detail.IdBaiThiNavigation?.IdTaiKhoanNavigation?.KhoaPhong != myKhoa)
+
+                bool canAccess = detail?.IdBaiThiNavigation != null && (
+                    detail.IdBaiThiNavigation.IdTaiKhoanNavigation?.KhoaPhong == myKhoa 
+                    || detail.IdBaiThiNavigation.IdDeThiNavigation?.KhoaPhong == myKhoa 
+                    || detail.IdBaiThiNavigation.IdDeThiNavigation?.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+
+                if (!canAccess)
                 {
                     return Forbid();
                 }
@@ -173,7 +224,17 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                if (result.Success && result.Data != null)
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
+                var exam = await _db.Dethis
+                    .Include(d => d.KyThiNavigation)
+                    .FirstOrDefaultAsync(d => d.Id == examId);
+
+                bool isExamOwner = exam != null && (
+                    exam.KhoaPhong == myKhoa 
+                    || exam.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+
+                if (!isExamOwner && result.Success && result.Data != null)
                 {
                     result.Data = result.Data.Where(r => r.KhoaPhong == myKhoa).ToList();
                 }
@@ -254,7 +315,17 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                if (result.Success && result.Data != null)
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
+                var exam = await _db.Dethis
+                    .Include(d => d.KyThiNavigation)
+                    .FirstOrDefaultAsync(d => d.Id == examId);
+
+                bool isExamOwner = exam != null && (
+                    exam.KhoaPhong == myKhoa 
+                    || exam.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+
+                if (!isExamOwner && result.Success && result.Data != null)
                 {
                     result.Data = result.Data.Where(r => r.KhoaPhong == myKhoa).ToList();
                 }
@@ -340,7 +411,12 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                orderedBaithis = orderedBaithis.Where(x => x.Baithi.IdTaiKhoanNavigation?.KhoaPhong == myKhoa).ToList();
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
+                orderedBaithis = orderedBaithis.Where(x => 
+                    x.Baithi.IdTaiKhoanNavigation?.KhoaPhong == myKhoa 
+                    || x.Baithi.IdDeThiNavigation?.KhoaPhong == myKhoa 
+                    || x.Baithi.IdDeThiNavigation?.KyThiNavigation?.KhoaPhongId == myKhoaId
+                ).ToList();
             }
 
             if (!orderedBaithis.Any())
@@ -432,7 +508,12 @@ namespace BanTayVang.API.Controllers
                 if (DepartmentAuthHelper.IsDeptManager(User))
                 {
                     var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                    if (result.Success && result.Data != null)
+                    var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
+                    var kyThi = await _db.KyThis.FindAsync(kyThiId);
+                    
+                    bool isKyThiOwner = kyThi != null && kyThi.KhoaPhongId == myKhoaId;
+
+                    if (!isKyThiOwner && result.Success && result.Data != null)
                     {
                         result.Data = result.Data.Where(r => r.KhoaPhong == myKhoa).ToList();
                     }
@@ -460,10 +541,20 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
                 var baithi = await _db.Baithis
                     .Include(b => b.IdTaiKhoanNavigation)
+                    .Include(b => b.IdDeThiNavigation)
+                        .ThenInclude(d => d.KyThiNavigation)
                     .FirstOrDefaultAsync(b => b.Id == baiThiId);
-                if (baithi == null || baithi.IdTaiKhoanNavigation?.KhoaPhong != myKhoa)
+                
+                bool canAccess = baithi != null && (
+                    baithi.IdTaiKhoanNavigation?.KhoaPhong == myKhoa 
+                    || baithi.IdDeThiNavigation?.KhoaPhong == myKhoa 
+                    || baithi.IdDeThiNavigation?.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+
+                if (!canAccess)
                 {
                     return Forbid();
                 }
@@ -489,6 +580,7 @@ namespace BanTayVang.API.Controllers
         {
             var baithi = await _db.Baithis
                 .Include(b => b.IdDeThiNavigation)
+                    .ThenInclude(d => d.KyThiNavigation)
                 .FirstOrDefaultAsync(b => b.Id == baiThiId);
 
             if (baithi == null)
@@ -498,7 +590,13 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                if (baithi.IdDeThiNavigation?.KhoaPhong != myKhoa)
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
+                bool canAccess = baithi.IdDeThiNavigation != null && (
+                    baithi.IdDeThiNavigation.KhoaPhong == myKhoa 
+                    || baithi.IdDeThiNavigation.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+                
+                if (!canAccess)
                     return Forbid();
             }
 
@@ -537,6 +635,7 @@ namespace BanTayVang.API.Controllers
         {
             var baithi = await _db.Baithis
                 .Include(b => b.IdDeThiNavigation)
+                    .ThenInclude(d => d.KyThiNavigation)
                 .FirstOrDefaultAsync(b => b.Id == baiThiId);
 
             if (baithi == null)
@@ -545,7 +644,13 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                if (baithi.IdDeThiNavigation?.KhoaPhong != myKhoa)
+                var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
+                bool canAccess = baithi.IdDeThiNavigation != null && (
+                    baithi.IdDeThiNavigation.KhoaPhong == myKhoa 
+                    || baithi.IdDeThiNavigation.KyThiNavigation?.KhoaPhongId == myKhoaId
+                );
+                
+                if (!canAccess)
                     return Forbid();
             }
 
