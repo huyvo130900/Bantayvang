@@ -59,6 +59,19 @@ namespace BanTayVang.API.Repositories.Impl
             }
         }
 
+        public async Task DeleteAnswersByQuestionAsync(int baithiId, int cauhoiId)
+        {
+            var records = await _dbSet
+                .Where(c => c.IdBaiThi == baithiId && c.IdCauHoi == cauhoiId)
+                .ToListAsync();
+
+            if (records.Any())
+            {
+                _dbSet.RemoveRange(records);
+                await _context.SaveChangesAsync();
+            }
+        }
+
         public async Task<int> CountCorrectAnswersAsync(int baithiId)
         {
             var answers = await _dbSet

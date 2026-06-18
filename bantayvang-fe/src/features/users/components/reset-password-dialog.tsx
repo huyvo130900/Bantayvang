@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { resetPasswordSchema, type ResetPasswordFormData } from '../schemas'
@@ -30,6 +31,12 @@ export function ResetPasswordDialog({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { newPassword: '' },
   })
+
+  useEffect(() => {
+    if (open) {
+      reset({ newPassword: '' })
+    }
+  }, [open, reset])
 
   if (!open || !user) return null
 

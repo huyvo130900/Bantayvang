@@ -321,14 +321,19 @@ namespace BanTayVang.API.Services.Impl.Exams
                             NoiDung = SanitizeHtmlContent(cauhoi.NoiDung),
                             HinhAnh = cauhoi.HinhAnh,
                             ThuTuCau = thuTuFallback++,
-                            DanhSachLuaChon = shuffledChoices
+                            DanhSachLuaChon = shuffledChoices,
+                            ChoPhepChonNhieu = cauhoi.Luachons.Count(l => l.LaDapAnDung == true) > 1
                         });
                     }
                 }
                 else
                 {
-                    // Load đầy đủ thông tin câu hỏi cho các placeholder đã lưu
-                    // (GetByBaiThiAsync đã Include IdCauHoiNavigation rồi, nhưng cần Include Luachons)
+                    // Nhóm chi tiết làm bài theo IdCauHoi để lấy toàn bộ đáp án đã chọn (hỗ trợ chọn nhiều)
+                    var chitietsByQuestion = savedChitiets
+                        .Where(c => c.IdCauHoi.HasValue)
+                        .GroupBy(c => c.IdCauHoi!.Value)
+                        .ToDictionary(g => g.Key, g => g.ToList());
+
                     var cauhoiIds = orderedChitiets.Select(c => c.IdCauHoi!.Value).ToList();
                     var dethiCauhoisMap = dethi.DethiCauhois
                         .Where(dc => dc.IdCauHoi.HasValue && cauhoiIds.Contains(dc.IdCauHoi.Value))
@@ -338,8 +343,19 @@ namespace BanTayVang.API.Services.Impl.Exams
                     int thuTu = 1;
                     foreach (var ct in orderedChitiets)
                     {
-                        if (!dethiCauhoisMap.TryGetValue(ct.IdCauHoi!.Value, out var cauhoi) || cauhoi == null)
+                        var cauHoiId = ct.IdCauHoi!.Value;
+                        if (!dethiCauhoisMap.TryGetValue(cauHoiId, out var cauhoi) || cauhoi == null)
                             continue;
+
+                        // Lấy tất cả lựa chọn đã chọn cho câu hỏi này
+                        var questionChitiets = chitietsByQuestion.ContainsKey(cauHoiId) 
+                            ? chitietsByQuestion[cauHoiId] 
+                            : new List<Chitietlambai> { ct };
+
+                        var selectedChoiceIds = questionChitiets
+                            .Where(c => c.IdLuaChonDaChon.HasValue)
+                            .Select(c => c.IdLuaChonDaChon!.Value)
+                            .ToList();
 
                         // Shuffle đáp án dùng seed cố định theo session + câu hỏi
                         var choiceRandom = new Random(baithiId * 1000 + cauhoi.Id);
@@ -360,9 +376,11 @@ namespace BanTayVang.API.Services.Impl.Exams
                             HinhAnh = cauhoi.HinhAnh,
                             ThuTuCau = thuTu++,
                             DanhSachLuaChon = shuffledChoices,
-                            IdLuaChonDaChon = ct.IdLuaChonDaChon,
-                            CauTraLoiTuLuan = SanitizeHtmlContent(ct.CauTraLoiTuLuan),
-                            DaLuu = ct.DaLuu ?? false
+                            IdLuaChonDaChon = selectedChoiceIds.FirstOrDefault(),
+                            IdLuaChonDaChonList = selectedChoiceIds,
+                            CauTraLoiTuLuan = SanitizeHtmlContent(questionChitiets.First().CauTraLoiTuLuan),
+                            DaLuu = questionChitiets.Any(c => c.DaLuu ?? false),
+                            ChoPhepChonNhieu = cauhoi.Luachons.Count(l => l.LaDapAnDung == true) > 1
                         };
 
                         questions.Add(questionDto);

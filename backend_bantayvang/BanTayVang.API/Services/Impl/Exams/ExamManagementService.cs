@@ -113,7 +113,11 @@ namespace BanTayVang.API.Services.Impl.Exams
                     else if (!string.IsNullOrWhiteSpace(createDto.KhoaPhong))
                     {
                         // Lấy TẤT CẢ câu hỏi của khoa từ ngân hàng
-                        var allQuestions = await _cauhoiRepository.GetByKhoaPhongAsync(createDto.KhoaPhong);
+                        var allQuestionsRaw = await _cauhoiRepository.GetByKhoaPhongAsync(createDto.KhoaPhong);
+                        var allQuestions = allQuestionsRaw
+                            .GroupBy(q => q.NoiDung?.Trim().ToLower() ?? "")
+                            .Select(g => g.First())
+                            .ToList();
 
                         // Lưu metadata: KhoaPhong vào đề thi
                         // Câu hỏi sẽ KHÔNG lưu vào DethiCauhoi ngay - sẽ random khi thi sinh bắt đầu thi

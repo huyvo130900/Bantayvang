@@ -254,6 +254,41 @@ namespace BanTayVang.API.Services.Impl
                 kyThi.SoCauDungToiThieu = dto.SoCauDungToiThieu;
                 kyThi.TongSoCauHoi = dto.TongSoCauHoi;
 
+                // Sync related exams (Dethi) properties if time/name has changed
+                var relatedExams = await _context.Set<Dethi>()
+                    .Where(d => d.KyThiId == id)
+                    .ToListAsync();
+
+                foreach (var exam in relatedExams)
+                {
+                    exam.ThoiGianBatDau = dto.ThoiGianBatDau;
+                    if (dto.ThoiGianBatDau.HasValue && dto.ThoiGianKetThuc.HasValue)
+                    {
+                        var diff = dto.ThoiGianKetThuc.Value - dto.ThoiGianBatDau.Value;
+                        var duration = (int)diff.TotalMinutes;
+                        if (duration > 0)
+                        {
+                            exam.ThoiGianLamBai = duration;
+                        }
+                    }
+                    
+                    if (!string.IsNullOrEmpty(exam.TenDeThi) && exam.TenDeThi.Contains(" - "))
+                    {
+                        var parts = exam.TenDeThi.Split(new[] { " - " }, StringSplitOptions.None);
+                        var suffix = parts.Last();
+                        exam.TenDeThi = $"{dto.TenKyThi} - {suffix}";
+                    }
+                    else
+                    {
+                        exam.TenDeThi = dto.TenKyThi;
+                    }
+
+                    if (kyThi.KhoaPhongId.HasValue)
+                    {
+                        exam.KhoaPhong = donViToChuc;
+                    }
+                }
+
                 await _context.SaveChangesAsync();
 
                 if (kyThi.KhoaPhongId.HasValue)
@@ -407,7 +442,11 @@ namespace BanTayVang.API.Services.Impl
                     query = query.Where(q => q.KhoaPhong == targetKhoaPhong);
                 }
 
-                var allQuestions = await query.ToListAsync();
+                var allQuestionsRaw = await query.ToListAsync();
+                var allQuestions = allQuestionsRaw
+                    .GroupBy(q => q.NoiDung?.Trim().ToLower() ?? "")
+                    .Select(g => g.First())
+                    .ToList();
 
                 // Group and count questions
                 bool IsEssay(Cauhoi q) => q.IdLoaiCauHoi == 3 || (q.IdLoaiCauHoiNavigation != null && q.IdLoaiCauHoiNavigation.TenLoai != null && q.IdLoaiCauHoiNavigation.TenLoai.ToLower().Contains("tự luận"));
@@ -581,7 +620,11 @@ namespace BanTayVang.API.Services.Impl
                 if (!string.IsNullOrEmpty(targetKhoaPhong))
                     query = query.Where(q => q.KhoaPhong == targetKhoaPhong);
 
-                var allQuestions = await query.ToListAsync();
+                var allQuestionsRaw = await query.ToListAsync();
+                var allQuestions = allQuestionsRaw
+                    .GroupBy(q => q.NoiDung?.Trim().ToLower() ?? "")
+                    .Select(g => g.First())
+                    .ToList();
 
                 bool IsEssay(Cauhoi q) => q.IdLoaiCauHoi == 3 || (q.IdLoaiCauHoiNavigation != null && q.IdLoaiCauHoiNavigation.TenLoai != null && q.IdLoaiCauHoiNavigation.TenLoai.ToLower().Contains("tự luận"));
                 bool IsMC(Cauhoi q) => !IsEssay(q);

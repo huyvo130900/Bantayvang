@@ -187,29 +187,41 @@ namespace BanTayVang.API.Services.Impl.Exams
                 using var transaction = await _baithiRepository.BeginTransactionAsync();
                 try
                 {
-                    // Save all final answers with validation
-                    foreach (var answer in submitDto.DanhSachCauTraLoi)
+                    // Nhóm danh sách câu trả lời theo IdCauHoi để dọn dẹp và lưu đồng bộ
+                    var answersByQuestion = submitDto.DanhSachCauTraLoi
+                        .GroupBy(a => a.IdCauHoi);
+
+                    foreach (var group in answersByQuestion)
                     {
-                        var validationResult = await ValidateAnswerAsync(answer, cancellationToken);
-                        if (!validationResult.Success)
+                        var cauhoiId = group.Key;
+
+                        // Xóa các câu trả lời cũ/placeholder của câu hỏi này
+                        await _chitietRepository.DeleteAnswersByQuestionAsync(submitDto.IdBaiThi, cauhoiId);
+
+                        // Lưu các câu trả lời mới
+                        foreach (var answer in group)
                         {
-                            await _securityService.LogSecurityEventAsync("INVALID_ANSWER_IN_SUBMISSION",
-                                $"User {taikhoanId} submitted invalid answer in final submission",
-                                taikhoanId, "High", cancellationToken);
-                            continue; // Skip invalid answers but don't fail entire submission
+                            var validationResult = await ValidateAnswerAsync(answer, cancellationToken);
+                            if (!validationResult.Success)
+                            {
+                                await _securityService.LogSecurityEventAsync("INVALID_ANSWER_IN_SUBMISSION",
+                                    $"User {taikhoanId} submitted invalid answer in final submission",
+                                    taikhoanId, "High", cancellationToken);
+                                continue; // Bỏ qua đáp án không hợp lệ nhưng không làm dừng cả bài thi
+                            }
+
+                            var chitiet = new Chitietlambai
+                            {
+                                IdBaiThi = answer.IdBaiThi,
+                                IdCauHoi = answer.IdCauHoi,
+                                IdLuaChonDaChon = answer.IdLuaChonDaChon,
+                                CauTraLoiTuLuan = SanitizeTextInput(answer.CauTraLoiTuLuan),
+                                ThoiGianTraLoi = DateTime.Now,
+                                DaLuu = true
+                            };
+
+                            await _chitietRepository.AddAsync(chitiet);
                         }
-
-                        var chitiet = new Chitietlambai
-                        {
-                            IdBaiThi = answer.IdBaiThi,
-                            IdCauHoi = answer.IdCauHoi,
-                            IdLuaChonDaChon = answer.IdLuaChonDaChon,
-                            CauTraLoiTuLuan = SanitizeTextInput(answer.CauTraLoiTuLuan),
-                            ThoiGianTraLoi = DateTime.Now,
-                            DaLuu = true
-                        };
-
-                        await _chitietRepository.SaveAnswerAsync(chitiet);
                     }
 
                     // Grade the exam automatically (MCQs graded, Essays left ungraded)

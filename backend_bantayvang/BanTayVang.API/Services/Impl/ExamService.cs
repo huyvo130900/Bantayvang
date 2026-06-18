@@ -378,8 +378,10 @@ namespace BanTayVang.API.Services.Impl
                         .Where(c => c.KhoaPhong == dethi.KhoaPhong && c.DaXoa != true)
                         .ToListAsync();
 
-                    // Shuffle ngẫu nhiên mỗi lần preview (dùng lại rng ở trên)
+                    // Shuffle ngẫu nhiên mỗi lần preview (dùng lại rng ở trên), lọc trùng lặp theo nội dung câu hỏi
                     var poolQuestions = allPoolQuestions
+                        .GroupBy(q => q.NoiDung?.Trim().ToLower() ?? "")
+                        .Select(g => g.First())
                         .OrderBy(_ => rng.Next())
                         .Take(dethi.KyThiNavigation?.TongSoCauHoi ?? 10)
                         .ToList();

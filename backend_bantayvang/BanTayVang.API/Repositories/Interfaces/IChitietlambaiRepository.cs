@@ -7,6 +7,7 @@ namespace BanTayVang.API.Repositories.Interfaces
         Task<List<Chitietlambai>> GetByBaiThiAsync(int baithiId);
         Task<Chitietlambai?> GetAnswerAsync(int baithiId, int cauhoiId);
         Task<bool> SaveAnswerAsync(Chitietlambai chitiet);
+        Task DeleteAnswersByQuestionAsync(int baithiId, int cauhoiId);
         Task<int> CountCorrectAnswersAsync(int baithiId);
     }
 }

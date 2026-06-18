@@ -98,15 +98,17 @@ export function QuestionFormDialog({
   }, [noiDungValue, khoaPhongValue, question])
 
   useEffect(() => {
-    const defaults = getDefaults(question)
-    if (defaultKhoaPhong) {
-      defaults.khoaPhong = defaultKhoaPhong
+    if (open) {
+      const defaults = getDefaults(question)
+      if (defaultKhoaPhong) {
+        defaults.khoaPhong = defaultKhoaPhong
+      }
+      form.reset(defaults)
+      setImagePreview(question?.hinhAnh || null)
+      setIsDuplicate(false)
+      setCheckingDuplicate(false)
     }
-    form.reset(defaults)
-    setImagePreview(question?.hinhAnh || null)
-    setIsDuplicate(false)
-    setCheckingDuplicate(false)
-  }, [question, form, defaultKhoaPhong])
+  }, [open, question, form, defaultKhoaPhong])
 
   if (!open) return null
 

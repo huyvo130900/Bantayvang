@@ -10,7 +10,9 @@ namespace BanTayVang.API.DTOs.Exam
         
         // Câu trả lời của thí sinh (nếu đã trả lời)
         public int? IdLuaChonDaChon { get; set; }
+        public List<int> IdLuaChonDaChonList { get; set; } = new();
         public string? CauTraLoiTuLuan { get; set; }
         public bool DaLuu { get; set; }
+        public bool ChoPhepChonNhieu { get; set; }
     }
 }

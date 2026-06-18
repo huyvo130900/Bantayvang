@@ -20,7 +20,7 @@ export function ExamTakingPage() {
   const [examInfo, setExamInfo] = useState<BaithiDto | null>(null)
   const [questions, setQuestions] = useState<ExamQuestionDto[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, { choiceId: number | null; essay: string }>>({})
+  const [answers, setAnswers] = useState<Record<number, { choiceId: number | null; choiceIds: number[]; essay: string }>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -41,7 +41,10 @@ export function ExamTakingPage() {
     if (!userAns) return true
     const hasChoices = q.danhSachLuaChon && q.danhSachLuaChon.length > 0
     if (hasChoices) {
-      return userAns.choiceId === null || userAns.choiceId === undefined
+      return (
+        (userAns.choiceId === null || userAns.choiceId === undefined) &&
+        (!userAns.choiceIds || userAns.choiceIds.length === 0)
+      )
     } else {
       return !userAns.essay || userAns.essay.trim() === ''
     }
@@ -55,13 +58,41 @@ export function ExamTakingPage() {
     try {
       const currentAnswers = answersRef.current
       const currentQuestions = questionsRef.current
-      const danhSachCauTraLoi = currentQuestions.map((q) => ({
-        idBaiThi: id,
-        idCauHoi: q.id,
-        idLuaChonDaChon: currentAnswers[q.id]?.choiceId ?? null,
-        cauTraLoiTuLuan: currentAnswers[q.id]?.essay || undefined,
-        daLuu: true,
-      }))
+      const danhSachCauTraLoi: any[] = []
+
+      currentQuestions.forEach((q) => {
+        const userAns = currentAnswers[q.id]
+        const hasChoices = q.danhSachLuaChon && q.danhSachLuaChon.length > 0
+        if (hasChoices) {
+          const selectedIds = userAns?.choiceIds || []
+          if (selectedIds.length > 0) {
+            selectedIds.forEach((choiceId) => {
+              danhSachCauTraLoi.push({
+                idBaiThi: id,
+                idCauHoi: q.id,
+                idLuaChonDaChon: choiceId,
+                daLuu: true,
+              })
+            })
+          } else {
+            danhSachCauTraLoi.push({
+              idBaiThi: id,
+              idCauHoi: q.id,
+              idLuaChonDaChon: null,
+              daLuu: true,
+            })
+          }
+        } else {
+          danhSachCauTraLoi.push({
+            idBaiThi: id,
+            idCauHoi: q.id,
+            idLuaChonDaChon: null,
+            cauTraLoiTuLuan: userAns?.essay || undefined,
+            daLuu: true,
+          })
+        }
+      })
+
       const response = await examTakingApi.submit({ idBaiThi: id, danhSachCauTraLoi })
       if (response.data.success) {
         if (document.fullscreenElement) {
@@ -133,10 +164,11 @@ export function ExamTakingPage() {
       if (questionsRes.data.success && questionsRes.data.data) {
         const qs = questionsRes.data.data
         setQuestions(qs)
-        const initial: Record<number, { choiceId: number | null; essay: string }> = {}
+        const initial: Record<number, { choiceId: number | null; choiceIds: number[]; essay: string }> = {}
         qs.forEach((q: ExamQuestionDto) => {
           initial[q.id] = {
             choiceId: q.idLuaChonDaChon ?? null,
+            choiceIds: q.idLuaChonDaChonList || (q.idLuaChonDaChon ? [q.idLuaChonDaChon] : []),
             essay: q.cauTraLoiTuLuan || '',
           }
         })
@@ -247,15 +279,39 @@ export function ExamTakingPage() {
             <QuestionDisplay
               question={currentQuestion}
               selectedChoiceId={answers[currentQuestion.id]?.choiceId ?? null}
+              selectedChoiceIds={answers[currentQuestion.id]?.choiceIds ?? []}
               essayAnswer={answers[currentQuestion.id]?.essay ?? ''}
               onSelectChoice={(choiceId) => {
-                setAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], choiceId } }))
+                setAnswers(prev => ({
+                  ...prev,
+                  [currentQuestion.id]: {
+                    ...prev[currentQuestion.id],
+                    choiceId,
+                    choiceIds: [choiceId]
+                  }
+                }))
                 const activeIndex = currentIndex
                 if (activeIndex < questions.length - 1) {
                   setTimeout(() => {
                     setCurrentIndex(current => (current === activeIndex ? current + 1 : current))
                   }, 200)
                 }
+              }}
+              onToggleChoiceMultiple={(choiceId) => {
+                setAnswers(prev => {
+                  const currentIds = prev[currentQuestion.id]?.choiceIds || []
+                  const updatedIds = currentIds.includes(choiceId)
+                    ? currentIds.filter(id => id !== choiceId)
+                    : [...currentIds, choiceId]
+                  return {
+                    ...prev,
+                    [currentQuestion.id]: {
+                      ...prev[currentQuestion.id],
+                      choiceIds: updatedIds,
+                      choiceId: updatedIds[0] ?? null
+                    }
+                  }
+                })
               }}
               onEssayChange={(essay) =>
                 setAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], essay } }))

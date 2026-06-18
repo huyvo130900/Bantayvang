@@ -4,16 +4,20 @@ import type { ExamQuestionDto } from '../types'
 interface QuestionDisplayProps {
   question: ExamQuestionDto
   selectedChoiceId: number | null
+  selectedChoiceIds?: number[]
   essayAnswer: string
   onSelectChoice: (choiceId: number) => void
+  onToggleChoiceMultiple?: (choiceId: number) => void
   onEssayChange: (text: string) => void
 }
 
 export function QuestionDisplay({
   question,
   selectedChoiceId,
+  selectedChoiceIds = [],
   essayAnswer,
   onSelectChoice,
+  onToggleChoiceMultiple,
   onEssayChange,
 }: QuestionDisplayProps) {
   const hasChoices = question.danhSachLuaChon.length > 0
@@ -46,26 +50,41 @@ export function QuestionDisplay({
       {/* Choices */}
       {hasChoices && (
         <div className="space-y-2">
-          {question.danhSachLuaChon.map((choice) => (
-            <label
-              key={choice.id}
-              className={cn(
-                'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                selectedChoiceId === choice.id
-                  ? 'border-primary bg-primary/5'
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              )}
-            >
-              <input
-                type="radio"
-                name={`question-${question.id}`}
-                checked={selectedChoiceId === choice.id}
-                onChange={() => onSelectChoice(choice.id)}
-                className="h-4 w-4 text-primary focus:ring-primary"
-              />
-              <span className="text-sm text-gray-700">{choice.noiDung}</span>
-            </label>
-          ))}
+          {question.danhSachLuaChon.map((choice) => {
+            const isSelected = question.choPhepChonNhieu
+              ? selectedChoiceIds.includes(choice.id)
+              : selectedChoiceId === choice.id
+
+            return (
+              <label
+                key={choice.id}
+                className={cn(
+                  'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                  isSelected
+                    ? 'border-primary bg-primary/5'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                )}
+              >
+                <input
+                  type={question.choPhepChonNhieu ? 'checkbox' : 'radio'}
+                  name={`question-${question.id}`}
+                  checked={isSelected}
+                  onChange={() => {
+                    if (question.choPhepChonNhieu) {
+                      onToggleChoiceMultiple?.(choice.id)
+                    } else {
+                      onSelectChoice(choice.id)
+                    }
+                  }}
+                  className={cn(
+                    'h-4 w-4 text-primary focus:ring-primary',
+                    question.choPhepChonNhieu ? 'rounded border-gray-300' : ''
+                  )}
+                />
+                <span className="text-sm text-gray-700">{choice.noiDung}</span>
+              </label>
+            )
+          })}
         </div>
       )}
 

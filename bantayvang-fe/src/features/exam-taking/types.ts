@@ -5,8 +5,10 @@ export interface ExamQuestionDto {
   thuTuCau: number
   danhSachLuaChon: ExamChoiceDto[]
   idLuaChonDaChon: number | null
+  idLuaChonDaChonList?: number[]
   cauTraLoiTuLuan: string | null
   daLuu: boolean
+  choPhepChonNhieu?: boolean
 }
 
 export interface ExamChoiceDto {

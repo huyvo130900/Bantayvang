@@ -277,13 +277,19 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
           finalIds = importedQuestions.map((q: any) => q.id)
           setImportedCount(importedQuestions.length)
         } else {
-          const errors = (response.data as any).errors || [response.data.message || 'Lỗi không xác định khi tải câu hỏi']
+          const apiErrors = (response.data as any).errors
+          const errors = apiErrors && apiErrors.length > 0
+            ? apiErrors
+            : [response.data.message || 'Lỗi không xác định khi tải câu hỏi']
           setExcelErrors(errors)
           setIsUploadingExcel(false)
           return
         }
       } catch (err: any) {
-        const errors = err?.response?.data?.errors || [err?.response?.data?.message || 'Lỗi hệ thống khi tải file excel']
+        const apiErrors = err?.response?.data?.errors
+        const errors = apiErrors && apiErrors.length > 0
+          ? apiErrors
+          : [err?.response?.data?.message || 'Lỗi hệ thống khi tải file excel']
         setExcelErrors(errors)
         setIsUploadingExcel(false)
         return

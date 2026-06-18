@@ -129,11 +129,19 @@ export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: Generat
         onSuccess(res.data.message || 'Tạo bộ đề thi thành công!')
         onClose()
       } else {
-        setCheckWarnings(res.data.errors || [res.data.message || 'Tạo đề thất bại'])
+        const apiErrors = res.data.errors
+        const warnings = apiErrors && apiErrors.length > 0
+          ? apiErrors
+          : [res.data.message || 'Tạo đề thất bại']
+        setCheckWarnings(warnings)
         setCheckPassed(false)
       }
     } catch (err: any) {
-      setCheckWarnings(err?.response?.data?.errors || [err?.response?.data?.message || 'Lỗi hệ thống khi phát sinh đề thi'])
+      const apiErrors = err?.response?.data?.errors
+      const warnings = apiErrors && apiErrors.length > 0
+        ? apiErrors
+        : [err?.response?.data?.message || 'Lỗi hệ thống khi phát sinh đề thi']
+      setCheckWarnings(warnings)
       setCheckPassed(false)
     } finally {
       setGenerating(false)

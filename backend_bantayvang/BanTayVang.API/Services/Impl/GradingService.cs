@@ -445,9 +445,13 @@ namespace BanTayVang.API.Services.Impl
             int essayTotal = 0;
             int essayGraded = 0;
 
-            foreach (var ct in baithi.Chitietlambais)
+            var answersByQuestion = baithi.Chitietlambais
+                .Where(c => c.IdCauHoi.HasValue)
+                .GroupBy(c => c.IdCauHoi!.Value);
+
+            foreach (var group in answersByQuestion)
             {
-                var question = ct.IdCauHoiNavigation;
+                var question = group.First().IdCauHoiNavigation;
                 if (question == null) continue;
 
                 var tenLoai = question.IdLoaiCauHoiNavigation?.TenLoai;
@@ -456,33 +460,72 @@ namespace BanTayVang.API.Services.Impl
                 if (isEssay)
                 {
                     essayTotal++;
-                    if (ct.DiemDatDuoc != null) essayGraded++;
+                    if (group.Any(c => c.DiemDatDuoc != null)) essayGraded++;
                 }
                 else
                 {
                     mcqTotal++;
-                    if (ct.DiemDatDuoc != null) mcqGraded++;
+                    if (group.Any(c => c.DiemDatDuoc != null)) mcqGraded++;
                 }
 
-                var correctChoice = question.Luachons.FirstOrDefault(l => l.LaDapAnDung == true);
+                // Check correctness (so khớp tập hợp đáp án đúng và lựa chọn của user)
+                var correctChoiceIds = question.Luachons
+                    .Where(l => l.LaDapAnDung == true)
+                    .Select(l => l.Id)
+                    .ToHashSet();
+
+                var userChoiceIds = group
+                    .Where(c => c.IdLuaChonDaChon.HasValue)
+                    .Select(c => c.IdLuaChonDaChon!.Value)
+                    .ToHashSet();
+
+                bool isFullyCorrect = false;
+                if (isEssay)
+                {
+                    var score = group.FirstOrDefault()?.DiemDatDuoc ?? 0;
+                    isFullyCorrect = score >= 1;
+                }
+                else
+                {
+                    isFullyCorrect = correctChoiceIds.Count > 0 && correctChoiceIds.SetEquals(userChoiceIds);
+                }
+
+                // Tạo chuỗi hiển thị cho các lựa chọn của thí sinh
+                var userChoiceTexts = group
+                    .Where(c => c.IdLuaChonDaChon.HasValue && c.IdLuaChonDaChonNavigation != null)
+                    .OrderBy(c => c.IdLuaChonDaChonNavigation!.ThuTu)
+                    .Select(c => c.IdLuaChonDaChonNavigation!.NoiDung)
+                    .ToList();
+                var userChoiceText = userChoiceTexts.Any() ? string.Join(", ", userChoiceTexts) : "";
+
+                // Tạo chuỗi hiển thị cho các đáp án đúng thực tế
+                var correctChoiceTexts = question.Luachons
+                    .Where(l => l.LaDapAnDung == true)
+                    .OrderBy(l => l.ThuTu)
+                    .Select(l => l.NoiDung)
+                    .ToList();
+                var correctChoiceText = correctChoiceTexts.Any() ? string.Join(", ", correctChoiceTexts) : "";
+
+                var firstCt = group.First();
+                var firstCorrectChoice = question.Luachons.FirstOrDefault(l => l.LaDapAnDung == true);
 
                 detail.Answers.Add(new AnswerDetailDto
                 {
                     CauHoiId = question.Id,
                     NoiDungCauHoi = question.NoiDung,
                     LoaiCauHoi = question.IdLoaiCauHoiNavigation?.TenLoai,
-                    IdLuaChonDaChon = ct.IdLuaChonDaChon,
-                    NoiDungDapAn = ct.IdLuaChonDaChonNavigation?.NoiDung,
-                    CauTraLoiTuLuan = ct.CauTraLoiTuLuan,
-                    IsCorrect = correctChoice != null && ct.IdLuaChonDaChon == correctChoice.Id,
-                    DiemDatDuoc = ct.DiemDatDuoc,
-                    IdLuaChonDung = correctChoice?.Id,
-                    NoiDungDapAnDung = correctChoice?.NoiDung,
-                    ChiTietLamBaiId = ct.Id
+                    IdLuaChonDaChon = firstCt.IdLuaChonDaChon, // Fallback
+                    NoiDungDapAn = isEssay ? firstCt.CauTraLoiTuLuan : userChoiceText,
+                    CauTraLoiTuLuan = firstCt.CauTraLoiTuLuan,
+                    IsCorrect = isFullyCorrect,
+                    DiemDatDuoc = group.Sum(c => c.DiemDatDuoc ?? 0),
+                    IdLuaChonDung = firstCorrectChoice?.Id, // Fallback
+                    NoiDungDapAnDung = correctChoiceText,
+                    ChiTietLamBaiId = firstCt.Id
                 });
             }
 
-            detail.SoCauDaCham = baithi.Chitietlambais.Count(c => c.DiemDatDuoc != null);
+            detail.SoCauDaCham = answersByQuestion.Count(g => g.Any(c => c.DiemDatDuoc != null));
             detail.TongSoCauTracNghiem = mcqTotal;
             detail.SoCauTracNghiemDaCham = mcqGraded;
             detail.TongSoCauTuLuan = essayTotal;

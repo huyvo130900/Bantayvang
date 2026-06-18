@@ -65,30 +65,33 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
   }, [searchTerm, form])
 
   useEffect(() => {
-    if (user) {
-      form.reset({
-        tenDangNhap: user.tenDangNhap || '', matKhau: '',
-        hoTen: user.hoTen || '',
-        maNhanVien: user.maNhanVien || '', chucDanh: user.chucDanh || '',
-        khoaPhong: user.khoaPhong || '', idVaiTro: user.idVaiTro || 3,
-        idKhoaQuanLy: user.idKhoaQuanLy || null as any,
-        trangThai: user.trangThai ?? true,
-        email: user.email || '',
-        soDienThoai: user.soDienThoai || '',
-      })
-      setSearchTerm(user.khoaPhong || '')
-    } else {
-      form.reset({
-        tenDangNhap: '', matKhau: '', hoTen: '',
-        maNhanVien: '', chucDanh: '', khoaPhong: isUserDeptManager && myKhoa ? myKhoa : '', idVaiTro: 3,
-        idKhoaQuanLy: null as any,
-        trangThai: true,
-        email: '',
-        soDienThoai: '',
-      })
-      setSearchTerm(isUserDeptManager && myKhoa ? myKhoa : '')
+    if (open) {
+      if (user) {
+        form.reset({
+          tenDangNhap: user.tenDangNhap || '', matKhau: '',
+          hoTen: user.hoTen || '',
+          maNhanVien: user.maNhanVien || '', chucDanh: user.chucDanh || '',
+          khoaPhong: user.khoaPhong || '', idVaiTro: user.idVaiTro || 3,
+          idKhoaQuanLy: user.idKhoaQuanLy || null as any,
+          trangThai: user.trangThai ?? true,
+          email: user.email || '',
+          soDienThoai: user.soDienThoai || '',
+        })
+        setSearchTerm(user.khoaPhong || '')
+      } else {
+        form.reset({
+          tenDangNhap: '', matKhau: '', hoTen: '',
+          maNhanVien: '', chucDanh: '', khoaPhong: isUserDeptManager && myKhoa ? myKhoa : '', idVaiTro: 3,
+          idKhoaQuanLy: null as any,
+          trangThai: true,
+          email: '',
+          soDienThoai: '',
+        })
+        setSearchTerm(isUserDeptManager && myKhoa ? myKhoa : '')
+      }
+      setIsDropdownOpen(false)
     }
-  }, [user, form, isUserDeptManager, myKhoa])
+  }, [open, user, form, isUserDeptManager, myKhoa])
 
   if (!open) return null
 
