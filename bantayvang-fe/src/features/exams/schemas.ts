@@ -7,7 +7,7 @@ export const createExamSchema = z.object({
     .max(50)
     .regex(/^[A-Z0-9_-]+$/, 'Chỉ chấp nhận chữ hoa, số, gạch ngang, gạch dưới'),
   tenDeThi: z.string().max(255).optional().or(z.literal('')),
-  thoiGianLamBai: z.number().min(1, 'Tối thiểu 1 phút').max(480, 'Tối đa 480 phút').optional(),
+  thoiGianLamBai: z.number().min(1, 'Tối thiểu 1 phút').max(1008000, 'Tối đa 1008000 phút').optional(),
   thoiGianBatDau: z.string().optional().or(z.literal('')),
   trangThai: z.string().optional(),
   // Cấu hình câu hỏi random từ ngân hàng

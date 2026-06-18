@@ -72,7 +72,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
 
                 // OWASP A04: Insecure Design - Validate reasonable limits
-                if (createDto.ThoiGianLamBai.HasValue && createDto.ThoiGianLamBai.Value > 480) // 8 hours max
+                if (createDto.ThoiGianLamBai.HasValue && createDto.ThoiGianLamBai.Value > 1008000)
                 {
                     errors.Add("Exam duration exceeds maximum allowed time");
                 }
@@ -308,14 +308,14 @@ namespace BanTayVang.API.Services.Impl.Validation
             try
             {
                 // OWASP A01: Broken Access Control - Implement proper authorization
+                if (userId <= 0)
+                {
+                    return ValidationResultDto.Failure("Invalid user", "INVALID_USER");
+                }
 
                 // For CREATE operations, no examId check needed
                 if (operation.ToUpper() == "CREATE")
                 {
-                    if (userId <= 0)
-                    {
-                        return ValidationResultDto.Failure("Invalid user", "INVALID_USER");
-                    }
                     return ValidationResultDto.Success();
                 }
 
@@ -325,18 +325,37 @@ namespace BanTayVang.API.Services.Impl.Validation
                     return ValidationResultDto.Failure("Exam not found", "EXAM_NOT_FOUND");
                 }
 
+                var user = await _context.Taikhoans.FindAsync(new object[] { userId }, cancellationToken);
+                if (user == null)
+                {
+                    return ValidationResultDto.Failure("User not found", "USER_NOT_FOUND");
+                }
+
                 // Basic permission check (should be enhanced with role-based access)
                 switch (operation.ToUpper())
                 {
                     case "UPDATE":
                     case "DELETE":
-                        // Only exam creators or admins can modify
-                        if (exam.NguoiTao != userId)
+                        // Admin can modify any exam
+                        if (user.IdVaiTro == 1)
                         {
-                            _logger.LogWarning("Unauthorized {Operation} attempt on exam {ExamId} by user {UserId}", operation, examId, userId);
-                            return ValidationResultDto.Failure("Access denied", "ACCESS_DENIED");
+                            break;
                         }
-                        break;
+
+                        // DeptManager (IdVaiTro == 5) can modify exams of their department
+                        if (user.IdVaiTro == 5 && !string.IsNullOrEmpty(user.KhoaPhong) && exam.KhoaPhong == user.KhoaPhong)
+                        {
+                            break;
+                        }
+
+                        // Creator can modify their own exam
+                        if (exam.NguoiTao == userId)
+                        {
+                            break;
+                        }
+
+                        _logger.LogWarning("Unauthorized {Operation} attempt on exam {ExamId} by user {UserId}", operation, examId, userId);
+                        return ValidationResultDto.Failure("Access denied", "ACCESS_DENIED");
 
                     case "VIEW":
                     case "TAKE":

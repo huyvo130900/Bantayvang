@@ -22,7 +22,7 @@ namespace BanTayVang.API.DTOs.Exam
         [RegularExpression(@"^[^<>""'%;()&+]*$", ErrorMessage = "Exam name contains invalid characters")]
         public string? TenDeThi { get; set; }
 
-        [Range(1, 300, ErrorMessage = "Exam duration must be between 1 and 300 minutes")]
+        [Range(1, 1008000, ErrorMessage = "Exam duration must be between 1 and 1008000 minutes")]
         public int? ThoiGianLamBai { get; set; }
 
         public DateTime? ThoiGianBatDau { get; set; }

@@ -11,7 +11,7 @@ namespace BanTayVang.API.DTOs.Exam
         [StringLength(255)]
         public string? TenDeThi { get; set; }
 
-        [Range(1, 300)]
+        [Range(1, 1008000)]
         public int? ThoiGianLamBai { get; set; }
 
         public DateTime? ThoiGianBatDau { get; set; }
