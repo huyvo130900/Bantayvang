@@ -3,7 +3,7 @@ import type { ExamQuestionDto } from '../types'
 
 interface QuestionNavigationProps {
   questions: ExamQuestionDto[]
-  answers: Record<number, { choiceId: number | null; essay: string }>
+  answers: Record<number, { choiceId: number | null; choiceIds?: number[]; essay: string }>
   currentIndex: number
   onNavigate: (index: number) => void
 }
@@ -20,10 +20,25 @@ export function QuestionNavigation({
       <div className="grid grid-cols-5 gap-2">
         {questions.map((q, idx) => {
           const userAns = answers[q.id]
-          const isAnswered =
-            q.idLuaChonDaChon !== null ||
-            (q.cauTraLoiTuLuan && q.cauTraLoiTuLuan.length > 0) ||
-            (userAns && (userAns.choiceId !== null || userAns.essay.trim().length > 0))
+          const hasChoices = q.danhSachLuaChon && q.danhSachLuaChon.length > 0
+          
+          let isAnswered = false
+          if (userAns) {
+            if (hasChoices) {
+              isAnswered = (userAns.choiceId !== null && userAns.choiceId !== undefined && userAns.choiceId !== 0) ||
+                           (userAns.choiceIds !== undefined && userAns.choiceIds.length > 0 && userAns.choiceIds.some(id => id !== 0))
+            } else {
+              isAnswered = !!userAns.essay && userAns.essay.trim().length > 0
+            }
+          } else {
+            if (hasChoices) {
+              isAnswered = (q.idLuaChonDaChon !== null && q.idLuaChonDaChon !== undefined && q.idLuaChonDaChon !== 0) ||
+                           (q.idLuaChonDaChonList !== undefined && q.idLuaChonDaChonList.length > 0 && q.idLuaChonDaChonList.some(id => id !== 0))
+            } else {
+              isAnswered = !!q.cauTraLoiTuLuan && q.cauTraLoiTuLuan.trim().length > 0
+            }
+          }
+
           const isCurrent = idx === currentIndex
 
           return (

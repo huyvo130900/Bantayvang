@@ -141,7 +141,7 @@ namespace BanTayVang.API.Services.Impl
                 if (await _context.Set<KyThi>().AnyAsync(k => k.MaKyThi == dto.MaKyThi))
                     return new BaseResponseDto<KyThiDto> { Success = false, Message = "Mã kỳ thi đã tồn tại" };
 
-                string? donViToChuc = dto.DonViToChuc;
+                string? donViToChuc = null;
                 if (dto.KhoaPhongId.HasValue)
                 {
                     var khoa = await _context.Set<KhoaPhong>().FindAsync(dto.KhoaPhongId.Value);
@@ -233,7 +233,7 @@ namespace BanTayVang.API.Services.Impl
                 if (endLocal <= startLocal)
                     return new BaseResponseDto<KyThiDto> { Success = false, Message = "Thời gian kết thúc phải sau thời gian bắt đầu" };
 
-                string? donViToChuc = dto.DonViToChuc;
+                string? donViToChuc = null;
                 if (dto.KhoaPhongId.HasValue)
                 {
                     var khoa = await _context.Set<KhoaPhong>().FindAsync(dto.KhoaPhongId.Value);
@@ -283,10 +283,7 @@ namespace BanTayVang.API.Services.Impl
                         exam.TenDeThi = dto.TenKyThi;
                     }
 
-                    if (kyThi.KhoaPhongId.HasValue)
-                    {
-                        exam.KhoaPhong = donViToChuc;
-                    }
+                    exam.KhoaPhong = donViToChuc;
                 }
 
                 await _context.SaveChangesAsync();

@@ -61,7 +61,6 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
                 <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />Khoa / Đơn vị</span>
               </th>
             )}
-            <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Khoa</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Thời gian</th>
             <th className="px-4 py-3 text-center font-medium text-gray-600 whitespace-nowrap">Đề / Thí sinh</th>
             <th className="px-4 py-3 text-center font-medium text-gray-600 whitespace-nowrap">Đúng tối thiểu</th>
@@ -91,17 +90,17 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
                 >
                   {k.tenKyThi}
                 </button>
-                {/* Chỉ hiện donViToChuc dưới tên khi KHÔNG hiện cột Khoa riêng */}
-                {!showKhoa && k.donViToChuc && (
-                  <p className="text-xs text-gray-400 mt-0.5">{k.donViToChuc}</p>
+                {/* Chỉ hiện tên khoa dưới tên khi KHÔNG hiện cột Khoa riêng */}
+                {!showKhoa && k.tenKhoa && (
+                  <p className="text-xs text-gray-400 mt-0.5">{k.tenKhoa}</p>
                 )}
               </td>
               {showKhoa && (
                 <td className="px-4 py-3">
-                  {k.donViToChuc ? (
+                  {k.tenKhoa ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                       <Building2 className="h-3 w-3" />
-                      {k.donViToChuc}
+                      {k.tenKhoa}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 whitespace-nowrap">
@@ -110,7 +109,6 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
                   )}
                 </td>
               )}
-              <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{k.tenKhoa || 'Tất cả các khoa'}</td>
               <td className="px-4 py-3 text-gray-500 text-xs">
                 <div className="font-medium text-gray-700">{formatDate(k.thoiGianBatDau)}</div>
                 {k.thoiGianKetThuc && (

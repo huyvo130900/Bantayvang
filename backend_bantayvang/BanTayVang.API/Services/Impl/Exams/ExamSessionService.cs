@@ -376,7 +376,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                             HinhAnh = cauhoi.HinhAnh,
                             ThuTuCau = thuTu++,
                             DanhSachLuaChon = shuffledChoices,
-                            IdLuaChonDaChon = selectedChoiceIds.FirstOrDefault(),
+                            IdLuaChonDaChon = selectedChoiceIds.Count > 0 ? (int?)selectedChoiceIds[0] : null,
                             IdLuaChonDaChonList = selectedChoiceIds,
                             CauTraLoiTuLuan = SanitizeHtmlContent(questionChitiets.First().CauTraLoiTuLuan),
                             DaLuu = questionChitiets.Any(c => c.DaLuu ?? false),

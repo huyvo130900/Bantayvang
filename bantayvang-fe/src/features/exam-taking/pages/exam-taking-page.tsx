@@ -41,10 +41,9 @@ export function ExamTakingPage() {
     if (!userAns) return true
     const hasChoices = q.danhSachLuaChon && q.danhSachLuaChon.length > 0
     if (hasChoices) {
-      return (
-        (userAns.choiceId === null || userAns.choiceId === undefined) &&
-        (!userAns.choiceIds || userAns.choiceIds.length === 0)
-      )
+      const noChoiceId = userAns.choiceId === null || userAns.choiceId === undefined || userAns.choiceId === 0
+      const noChoiceIds = !userAns.choiceIds || userAns.choiceIds.length === 0 || userAns.choiceIds.every(id => id === 0)
+      return noChoiceId && noChoiceIds
     } else {
       return !userAns.essay || userAns.essay.trim() === ''
     }
@@ -166,9 +165,12 @@ export function ExamTakingPage() {
         setQuestions(qs)
         const initial: Record<number, { choiceId: number | null; choiceIds: number[]; essay: string }> = {}
         qs.forEach((q: ExamQuestionDto) => {
+          const choiceId = q.idLuaChonDaChon && q.idLuaChonDaChon !== 0 ? q.idLuaChonDaChon : null
+          const rawChoiceIds = q.idLuaChonDaChonList || (q.idLuaChonDaChon ? [q.idLuaChonDaChon] : [])
+          const choiceIds = rawChoiceIds.filter(id => id !== 0)
           initial[q.id] = {
-            choiceId: q.idLuaChonDaChon ?? null,
-            choiceIds: q.idLuaChonDaChonList || (q.idLuaChonDaChon ? [q.idLuaChonDaChon] : []),
+            choiceId,
+            choiceIds,
             essay: q.cauTraLoiTuLuan || '',
           }
         })

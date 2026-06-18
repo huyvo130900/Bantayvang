@@ -122,12 +122,17 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
 
   if (!open) return null
 
-  const filteredDepts = departments.filter(d => 
-    d.tenKhoa.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    d.maKhoa.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
   const selectedDeptId = form.watch('khoaPhongId')
+  const selectedDept = departments.find(d => d.id === selectedDeptId)
+  const selectedDeptName = !selectedDeptId ? 'Tất cả các khoa' : (selectedDept ? selectedDept.tenKhoa : '')
+
+  const filteredDepts = departments.filter(d => {
+    if (searchTerm === selectedDeptName) return true
+    return d.tenKhoa.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           d.maKhoa.toLowerCase().includes(searchTerm.toLowerCase())
+  })
+
+  const showAllDeptsOption = searchTerm === '' || searchTerm === selectedDeptName || 'tất cả các khoa'.includes(searchTerm.toLowerCase())
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -177,7 +182,7 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
 
               {isDropdownOpen && (
                 <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-md border bg-white shadow-lg">
-                  {(searchTerm === '' || 'tất cả các khoa'.includes(searchTerm.toLowerCase())) && (
+                  {showAllDeptsOption && (
                     <div
                       className={`flex items-center justify-between px-3 py-2 cursor-pointer text-sm hover:bg-gray-100 transition-colors ${
                         !selectedDeptId ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-gray-900'
@@ -193,7 +198,7 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
                     </div>
                   )}
 
-                  {filteredDepts.length === 0 && !(searchTerm === '' || 'tất cả các khoa'.includes(searchTerm.toLowerCase())) ? (
+                  {filteredDepts.length === 0 && !showAllDeptsOption ? (
                     <div className="p-3 text-sm text-gray-500 text-center">Không tìm thấy khoa nào</div>
                   ) : (
                     filteredDepts.map((d) => (

@@ -12,6 +12,8 @@ import { ROLES } from '@/lib/constants'
 import { kyThiApi } from '@/features/ky-thi/api'
 import type { KyThiDto } from '@/features/ky-thi/types'
 import { examsApi } from '../api'
+import { departmentApi } from '@/features/departments/api'
+import type { DepartmentDto } from '@/features/departments/types'
 
 interface ExamFormDialogProps {
   open: boolean
@@ -23,22 +25,7 @@ interface ExamFormDialogProps {
   defaultKyThiId?: number
 }
 
-const KHOA_PHONG_OPTIONS = [
-  { value: '', label: '-- Chọn khoa/phòng --' },
-  { value: 'Khoa KSNK', label: 'Khoa KSNK' },
-  { value: 'Khoa Nội', label: 'Khoa Nội' },
-  { value: 'Khoa Ngoại', label: 'Khoa Ngoại' },
-  { value: 'Khoa Sản', label: 'Khoa Sản' },
-  { value: 'Khoa Nhi', label: 'Khoa Nhi' },
-  { value: 'Khoa Cấp cứu', label: 'Khoa Cấp cứu' },
-  { value: 'Khoa ICU', label: 'Khoa ICU' },
-  { value: 'Khoa Dược', label: 'Khoa Dược' },
-  { value: 'Khoa Xét nghiệm', label: 'Khoa Xét nghiệm' },
-  { value: 'Khoa Chẩn đoán hình ảnh', label: 'Khoa Chẩn đoán hình ảnh' },
-  { value: 'Phòng Hành chính', label: 'Phòng Hành chính' },
-  { value: 'Lập trình C#', label: 'Lập trình C#' },
-  { value: 'CNTT', label: 'CNTT' },
-]
+// KHOA_PHONG_OPTIONS removed in favor of dynamic loading
 
 // Chế độ chọn câu hỏi
 type QuestionMode = 'random' | 'manual' | 'import'
@@ -61,6 +48,13 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
 
   const [selectedKhoa, setSelectedKhoa] = useState(lockedKhoa || '')
   const [questionMode, setQuestionMode] = useState<QuestionMode>('manual')
+  const [departments, setDepartments] = useState<string[]>([])
+
+  const isAllDeptName = (name?: string | null) => {
+    if (!name) return true
+    const norm = name.trim().toLowerCase()
+    return norm === 'tất cả các khoa' || norm === 'tất cả khoa phòng' || norm === 'tất cả'
+  }
 
   // Manual selection state
   const [questionPool, setQuestionPool] = useState<CauhoiDto[]>([])
@@ -99,21 +93,23 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
 
   useEffect(() => {
     if (open) {
+      const isAll = isAllDeptName(lockedKhoa)
+      const finalKhoa = isAll ? '' : (lockedKhoa || '')
       form.reset({
         maDeThi: generateDeThiCode(),
         tenDeThi: '',
         thoiGianLamBai: 60,
         thoiGianBatDau: '',
         trangThai: 'Active',
-        khoaPhong: lockedKhoa || '',
+        khoaPhong: finalKhoa,
         soCauRandom: 30,
         danhSachIdCauHoi: [],
         kyThiId: defaultKyThiId || '' as any,
         soCauDungToiThieu: '' as any,
       })
-      setSelectedKhoa(lockedKhoa || '')
-      setPoolKhoa(lockedKhoa || '')
-      form.setValue('khoaPhong', lockedKhoa || '')
+      setSelectedKhoa(finalKhoa)
+      setPoolKhoa(finalKhoa)
+      form.setValue('khoaPhong', finalKhoa)
       setQuestionMode('manual')
       setSelectedIds([])
       setPoolSearch('')
@@ -123,8 +119,18 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       setExcelErrors([])
       setImportedCount(0)
       setThemVaoNganHang(false)
-      setBankKhoa(lockedKhoa || 'Tất cả các khoa')
+      setBankKhoa(finalKhoa || 'Tất cả các khoa')
       setSelectedKyThiDetails(null)
+
+      // Fetch dynamic departments
+      departmentApi.getAll({ trangThai: true, pageSize: 100 })
+        .then((res) => {
+          const list = (res.data?.data as DepartmentDto[] | undefined)
+            ?.map((d) => d.tenKhoa)
+            .filter(Boolean) as string[]
+          setDepartments(Array.from(new Set(list)).sort())
+        })
+        .catch(() => {})
     }
   }, [open, form, lockedKhoa, defaultKyThiId])
 
@@ -153,10 +159,12 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
 
   useEffect(() => {
     if (lockedKhoa) {
-      setSelectedKhoa(lockedKhoa)
-      setPoolKhoa(lockedKhoa)
-      form.setValue('khoaPhong', lockedKhoa)
-      setBankKhoa(lockedKhoa)
+      const isAll = isAllDeptName(lockedKhoa)
+      const finalKhoa = isAll ? '' : lockedKhoa
+      setSelectedKhoa(finalKhoa)
+      setPoolKhoa(finalKhoa)
+      form.setValue('khoaPhong', finalKhoa)
+      setBankKhoa(finalKhoa || 'Tất cả các khoa')
     }
   }, [lockedKhoa, form])
 
@@ -168,18 +176,22 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
           const kyThi = res.data.data
           setSelectedKyThiDetails(kyThi)
           const tenKhoa = kyThi.tenKhoa || ''
-          setSelectedKhoa(tenKhoa)
-          setPoolKhoa(tenKhoa)
-          form.setValue('khoaPhong', tenKhoa)
-          setBankKhoa(tenKhoa || 'Tất cả các khoa')
+          const isAll = isAllDeptName(tenKhoa)
+          const finalKhoa = isAll ? '' : tenKhoa
+          setSelectedKhoa(finalKhoa)
+          setPoolKhoa(finalKhoa)
+          form.setValue('khoaPhong', finalKhoa)
+          setBankKhoa(finalKhoa || 'Tất cả các khoa')
         }
       }).catch(() => {})
     } else if (open && !selectedKyThiId) {
       setSelectedKyThiDetails(null)
-      setSelectedKhoa(lockedKhoa || '')
-      setPoolKhoa(lockedKhoa || '')
-      form.setValue('khoaPhong', lockedKhoa || '')
-      setBankKhoa(lockedKhoa || 'Tất cả các khoa')
+      const isAll = isAllDeptName(lockedKhoa)
+      const finalKhoa = isAll ? '' : (lockedKhoa || '')
+      setSelectedKhoa(finalKhoa)
+      setPoolKhoa(finalKhoa)
+      form.setValue('khoaPhong', finalKhoa)
+      setBankKhoa(finalKhoa || 'Tất cả các khoa')
     }
   }, [selectedKyThiId, open, lockedKhoa, form])
 
@@ -187,9 +199,8 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
     form.clearErrors('danhSachIdCauHoi')
   }, [selectedIds, selectedKyThiId, configMode, form])
 
-  // Load question pool khi chuyển sang manual và có khoa
   useEffect(() => {
-    if (questionMode === 'manual' && (selectedKhoa || poolKhoa || !isAdmin)) {
+    if (questionMode === 'manual') {
       loadQuestionPool()
     }
   }, [questionMode, selectedKhoa, poolKhoa, poolPage, isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -457,14 +468,15 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                         className="h-8 w-40 rounded border border-gray-200 bg-gray-50 text-gray-500 px-2 text-xs cursor-not-allowed"
                       />
                     ) : (
-                      isAdmin && (
+                       isAdmin && (
                         <select
                           value={poolKhoa}
                           onChange={(e) => { setPoolKhoa(e.target.value); setPoolPage(1); setSelectedIds([]) }}
                           className="h-8 rounded border border-input bg-white px-2 text-xs"
                         >
-                          {KHOA_PHONG_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label || 'Tất cả khoa'}</option>
+                          <option value="">-- Chọn khoa/phòng --</option>
+                          {departments.map((dept) => (
+                            <option key={dept} value={dept}>{dept}</option>
                           ))}
                         </select>
                       )
@@ -641,8 +653,8 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                             className="h-8 w-full rounded border border-purple-200 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-300 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
                           >
                             <option value="Tất cả các khoa">Tất cả các khoa</option>
-                            {KHOA_PHONG_OPTIONS.filter((o) => o.value !== '').map((o) => (
-                              <option key={o.value} value={o.value}>{o.label}</option>
+                            {departments.map((dept) => (
+                              <option key={dept} value={dept}>{dept}</option>
                             ))}
                           </select>
                         )}
