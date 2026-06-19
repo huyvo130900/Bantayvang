@@ -235,9 +235,20 @@ export function ResultsByKyThiPage() {
           : kt.donViToChuc === filterKyThiKhoa
       )
 
-      const matchDate = !filterKyThiDate || (
-        kt.thoiGianBatDau && kt.thoiGianBatDau.substring(0, 10) === filterKyThiDate
-      )
+      const matchDate = !filterKyThiDate || (() => {
+        if (!kt.thoiGianBatDau) return false
+        try {
+          const d = new Date(kt.thoiGianBatDau)
+          if (isNaN(d.getTime())) return false
+          const localYear = d.getFullYear()
+          const localMonth = String(d.getMonth() + 1).padStart(2, '0')
+          const localDay = String(d.getDate()).padStart(2, '0')
+          const examLocalDate = `${localYear}-${localMonth}-${localDay}`
+          return examLocalDate === filterKyThiDate
+        } catch {
+          return false
+        }
+      })()
 
       return matchName && matchKhoa && matchDate
     })
