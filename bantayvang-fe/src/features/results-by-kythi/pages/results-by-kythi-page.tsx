@@ -66,8 +66,27 @@ export function ResultsByKyThiPage() {
   // Search & Filter states for exams
   const [filterKyThiName, setFilterKyThiName] = useState('')
   const [filterKyThiKhoa, setFilterKyThiKhoa] = useState('')
-  const [filterKyThiDate, setFilterKyThiDate] = useState('')
+  const [filterKyThiStartDate, setFilterKyThiStartDate] = useState('')
+  const [filterKyThiEndDate, setFilterKyThiEndDate] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+
+  // Báo lỗi khoảng thời gian
+  const dateError = useMemo(() => {
+    if (filterKyThiStartDate && !filterKyThiEndDate) {
+      return 'Vui lòng nhập ngày kết thúc'
+    }
+    if (!filterKyThiStartDate && filterKyThiEndDate) {
+      return 'Vui lòng nhập ngày bắt đầu'
+    }
+    if (filterKyThiStartDate && filterKyThiEndDate) {
+      const start = new Date(filterKyThiStartDate).getTime()
+      const end = new Date(filterKyThiEndDate).getTime()
+      if (start > end) {
+        return 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu'
+      }
+    }
+    return null
+  }, [filterKyThiStartDate, filterKyThiEndDate])
 
   const [visibility, setVisibility] = useState<Record<number, boolean>>({})
   const [togglingId, setTogglingId] = useState<number | null>(null)
@@ -222,7 +241,7 @@ export function ResultsByKyThiPage() {
     return Array.from(depts).sort()
   }, [kyThiList])
 
-  // Lọc kỳ thi theo tên, khoa và ngày thi
+  // Lọc kỳ thi theo tên, khoa và khoảng thời gian
   const filteredKyThiList = useMemo(() => {
     return kyThiList.filter(kt => {
       const matchName = !filterKyThiName.trim() ||
@@ -235,24 +254,30 @@ export function ResultsByKyThiPage() {
           : kt.donViToChuc === filterKyThiKhoa
       )
 
-      const matchDate = !filterKyThiDate || (() => {
-        if (!kt.thoiGianBatDau) return false
-        try {
-          const d = new Date(kt.thoiGianBatDau)
-          if (isNaN(d.getTime())) return false
-          const localYear = d.getFullYear()
-          const localMonth = String(d.getMonth() + 1).padStart(2, '0')
-          const localDay = String(d.getDate()).padStart(2, '0')
-          const examLocalDate = `${localYear}-${localMonth}-${localDay}`
-          return examLocalDate === filterKyThiDate
-        } catch {
-          return false
+      // Lọc theo khoảng thời gian nếu người dùng nhập cả 2 mốc và mốc 2 >= mốc 1
+      let matchDate = true
+      if (filterKyThiStartDate && filterKyThiEndDate) {
+        const start = new Date(filterKyThiStartDate).getTime()
+        const end = new Date(filterKyThiEndDate).getTime()
+        if (start <= end) {
+          if (!kt.thoiGianBatDau) {
+            matchDate = false
+          } else {
+            try {
+              const examTime = new Date(kt.thoiGianBatDau).getTime()
+              const startMs = new Date(`${filterKyThiStartDate}T00:00:00`).getTime()
+              const endMs = new Date(`${filterKyThiEndDate}T23:59:59`).getTime()
+              matchDate = examTime >= startMs && examTime <= endMs
+            } catch {
+              matchDate = false
+            }
+          }
         }
-      })()
+      }
 
       return matchName && matchKhoa && matchDate
     })
-  }, [kyThiList, filterKyThiName, filterKyThiKhoa, filterKyThiDate])
+  }, [kyThiList, filterKyThiName, filterKyThiKhoa, filterKyThiStartDate, filterKyThiEndDate])
 
   // Nhóm các kỳ thi đã lọc theo khoa
   const groupedExams = useMemo(() => {
@@ -449,24 +474,42 @@ export function ResultsByKyThiPage() {
             </div>
           )}
 
-          {/* Date Filter */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Ngày thi</label>
-            <input
-              type="date"
-              value={filterKyThiDate}
-              onChange={(e) => setFilterKyThiDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg text-xs px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer"
-            />
+          {/* Date Range Filter */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">Khoảng thời gian thi</label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <span className="text-[9px] text-gray-400 font-medium">Từ ngày</span>
+                <input
+                  type="date"
+                  value={filterKyThiStartDate}
+                  onChange={(e) => setFilterKyThiStartDate(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer"
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[9px] text-gray-400 font-medium">Đến ngày</span>
+                <input
+                  type="date"
+                  value={filterKyThiEndDate}
+                  onChange={(e) => setFilterKyThiEndDate(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer"
+                />
+              </div>
+            </div>
+            {dateError && (
+              <p className="text-[10px] text-red-500 font-medium mt-1 leading-tight">{dateError}</p>
+            )}
           </div>
 
           {/* Reset Filters button */}
-          {(filterKyThiName || filterKyThiKhoa || filterKyThiDate) && (
+          {(filterKyThiName || filterKyThiKhoa || filterKyThiStartDate || filterKyThiEndDate) && (
             <button
               onClick={() => {
                 setFilterKyThiName('')
                 setFilterKyThiKhoa('')
-                setFilterKyThiDate('')
+                setFilterKyThiStartDate('')
+                setFilterKyThiEndDate('')
               }}
               className="text-[11px] text-blue-600 hover:text-blue-800 font-medium hover:underline block ml-auto transition-all"
             >
