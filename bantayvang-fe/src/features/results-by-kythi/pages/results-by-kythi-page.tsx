@@ -629,9 +629,9 @@ export function ResultsByKyThiPage() {
   const passRate = candidatesWithSelectedAttempt.length ? (passCount / candidatesWithSelectedAttempt.length) * 100 : 0;
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col lg:flex-row h-full lg:h-[calc(100vh-6rem)] min-h-0 overflow-hidden">
       {/* Left: KyThi list */}
-      <div className="w-72 border-r bg-white flex flex-col shrink-0">
+      <div className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r bg-white flex flex-col shrink-0 h-80 lg:h-full">
         <div className="px-4 py-4 border-b">
           <h2 className="font-semibold text-gray-800 flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-blue-500" /> Kỳ thi
@@ -827,13 +827,13 @@ export function ResultsByKyThiPage() {
       {/* Right: Results */}
       <div className="flex-1 overflow-auto">
         {!selectedKyThi ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+          <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3 py-12">
             <CalendarDays className="h-12 w-12 opacity-40" />
             <p>Chọn một kỳ thi để xem kết quả</p>
           </div>
         ) : (
-          <div className="p-6 space-y-5">
-            <div className="flex items-start justify-between">
+          <div className="p-4 sm:p-6 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="text-xl font-bold text-gray-900">{selectedKyThi.tenKyThi}</h1>

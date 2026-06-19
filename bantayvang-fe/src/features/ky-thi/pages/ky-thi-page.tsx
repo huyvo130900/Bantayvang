@@ -418,7 +418,7 @@ export function KyThiPage() {
   // ---- LIST VIEW ----
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Kỳ thi</h1>
           {isDeptManager && myKhoa && (
@@ -427,7 +427,7 @@ export function KyThiPage() {
             </p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={loadKyThis}>
             <RefreshCw className="h-4 w-4 mr-1" />
             Làm mới

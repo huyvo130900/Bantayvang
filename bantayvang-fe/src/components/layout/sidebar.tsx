@@ -11,6 +11,8 @@ import { logout } from '@/features/auth/slice'
 interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 const menuItems = [
@@ -27,7 +29,7 @@ const menuItems = [
   { path: '/admin/notifications', label: 'Thông báo', icon: Bell },
 ]
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
@@ -43,7 +45,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside className={cn(
       'fixed left-0 top-0 z-40 h-screen border-r border-white/10 bg-primary text-white transition-all duration-300 flex flex-col',
-      collapsed ? 'w-16' : 'w-64'
+      collapsed ? 'md:w-16' : 'md:w-64',
+      'w-64 transform md:transform-none',
+      mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
     )}>
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-white/10 px-4 shrink-0">
@@ -67,8 +71,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             className="h-8 w-8 object-contain mx-auto"
           />
         )}
-        <Button variant="ghost" size="icon" onClick={onToggle} className="ml-auto text-white hover:bg-white/10 hover:text-white">
-          <ChevronLeft className={cn('h-4 w-4 transition-transform duration-300', collapsed && 'rotate-180')} />
+        <Button variant="ghost" size="icon" onClick={mobileOpen ? onMobileClose : onToggle} className="ml-auto text-white hover:bg-white/10 hover:text-white">
+          <ChevronLeft className={cn('h-4 w-4 transition-transform duration-300', collapsed && 'rotate-180', mobileOpen && 'rotate-0')} />
         </Button>
       </div>
 
@@ -78,6 +82,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={onMobileClose}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-semibold transition-colors',

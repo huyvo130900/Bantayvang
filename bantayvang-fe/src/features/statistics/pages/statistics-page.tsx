@@ -109,11 +109,11 @@ export function StatisticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Thống kê hệ thống</h1>
         <button
           onClick={loadDashboard}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors"
+          className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors w-full sm:w-auto"
         >
           <RefreshCw className="h-4 w-4" />
           Làm mới

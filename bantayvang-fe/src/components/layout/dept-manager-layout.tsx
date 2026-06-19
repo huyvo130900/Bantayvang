@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, FileQuestion, CalendarDays, Award, ChevronLeft, LogOut, Building2, Bell, ClipboardCheck
+  LayoutDashboard, FileQuestion, CalendarDays, Award, ChevronLeft, LogOut, Building2, Bell, ClipboardCheck, Menu
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ const menuItems = [
 
 export function DeptManagerLayout() {
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
@@ -32,11 +33,21 @@ export function DeptManagerLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+      {/* Backdrop for mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden backdrop-blur-xs transition-opacity duration-300"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={cn(
         'fixed left-0 top-0 z-40 h-screen border-r border-white/10 bg-primary text-white transition-all duration-300 flex flex-col',
-        collapsed ? 'w-16' : 'w-64'
+        collapsed ? 'md:w-16' : 'md:w-64',
+        'w-64 transform md:transform-none',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}>
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-4 shrink-0">
@@ -60,8 +71,8 @@ export function DeptManagerLayout() {
               className="h-8 w-8 object-contain mx-auto"
             />
           )}
-          <Button variant="ghost" size="icon" onClick={() => setCollapsed(c => !c)} className="ml-auto text-white hover:bg-white/10 hover:text-white">
-            <ChevronLeft className={cn('h-4 w-4 transition-transform duration-300', collapsed && 'rotate-180')} />
+          <Button variant="ghost" size="icon" onClick={() => (mobileOpen ? setMobileOpen(false) : setCollapsed(c => !c))} className="ml-auto text-white hover:bg-white/10 hover:text-white">
+            <ChevronLeft className={cn('h-4 w-4 transition-transform duration-300', collapsed && 'rotate-180', mobileOpen && 'rotate-0')} />
           </Button>
         </div>
 
@@ -78,7 +89,10 @@ export function DeptManagerLayout() {
         {/* Nav */}
         <nav className="flex flex-col gap-0.5 p-2 overflow-y-auto flex-1">
           {menuItems.map(item => (
-            <NavLink key={item.path} to={item.path}
+            <NavLink
+              key={item.path}
+              to={item.path}
+              onClick={() => setMobileOpen(false)}
               className={({ isActive }) => cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-semibold transition-colors',
                 isActive ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'
@@ -112,10 +126,40 @@ export function DeptManagerLayout() {
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className={cn('flex-1 overflow-auto transition-all duration-300', collapsed ? 'ml-16' : 'ml-64')}>
-        <Outlet />
-      </main>
+      {/* Main content wrapper */}
+      <div className={cn(
+        'flex-1 flex flex-col min-w-0 transition-all duration-300',
+        collapsed ? 'md:pl-16' : 'md:pl-64'
+      )}>
+        {/* Mobile Header */}
+        <div className="md:hidden flex h-16 items-center justify-between border-b bg-white px-4 shadow-sm shrink-0 z-10">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileOpen(true)}
+              className="text-gray-600 hover:text-primary hover:bg-gray-100"
+              title="Mở menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <img
+              src="/logoBVND2.png"
+              alt="Logo"
+              className="h-8 w-8 object-contain shrink-0"
+            />
+            <span className="text-xs font-bold text-gray-800 truncate">{khoaPhong || 'Quản lý Khoa'}</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-600 hover:text-red-600 gap-1 h-8 px-2">
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Đăng xuất</span>
+          </Button>
+        </div>
+
+        <main className="p-4 sm:p-6 flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
