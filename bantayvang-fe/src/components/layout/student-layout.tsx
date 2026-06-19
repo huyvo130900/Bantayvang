@@ -104,7 +104,7 @@ function StudentNotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-80 bg-white border border-gray-200 rounded-xl shadow-xl z-50 flex flex-col max-h-[480px]">
+        <div className="absolute -right-12 sm:right-0 top-11 w-[320px] max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-xl z-50 flex flex-col max-h-[480px]">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <span className="font-semibold text-gray-900 text-sm">Thông báo</span>
@@ -196,16 +196,17 @@ export function StudentLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-primary/20 bg-primary px-6 shadow-md text-white">
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-16 md:pb-0">
+      <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-primary/20 bg-primary px-4 sm:px-6 shadow-md text-white">
         <div className="flex items-center gap-3">
           <img
             src="/logoBVND2.png"
             alt="Bệnh Viện Nhi Đồng 2"
-            className="h-9 w-9 object-contain bg-white rounded-md p-0.5"
+            className="h-9 w-9 shrink-0 object-contain bg-white rounded-md p-0.5"
           />
-          <span className="text-sm font-bold text-white leading-tight">BỆNH VIỆN NHI ĐỒNG 2</span>
-          <nav className="flex items-center gap-1">
+          <span className="text-sm font-bold text-white leading-tight hidden sm:inline">BỆNH VIỆN NHI ĐỒNG 2</span>
+          <span className="text-xs font-bold text-white leading-tight inline sm:hidden">BV Nhi Đồng 2</span>
+          <nav className="hidden md:flex items-center gap-1">
             <NavLink
               to="/dashboard"
               className={({ isActive }) =>
@@ -230,25 +231,51 @@ export function StudentLayout() {
             </NavLink>
           </nav>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Notification Bell */}
           <StudentNotificationBell />
 
-          <div className="text-right">
+          <div className="text-right hidden sm:block">
             <p className="text-sm font-medium text-white">{user?.hoTen || user?.tenDangNhap}</p>
             {user?.khoaPhong && (
               <p className="text-xs text-white/75">{user.khoaPhong}</p>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-white/85 hover:text-red-200 hover:bg-white/15">
-            <LogOut className="h-4 w-4 mr-1" />
-            Đăng xuất
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-white/85 hover:text-red-200 hover:bg-white/15 px-2 sm:px-3 h-8 sm:h-9">
+            <LogOut className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Đăng xuất</span>
           </Button>
         </div>
       </header>
-      <main className="max-w-3xl mx-auto px-4 py-6">
+      <main className="max-w-3xl w-full mx-auto px-4 py-6 flex-1">
         <Outlet />
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 flex h-16 items-center justify-around border-t border-gray-200 bg-white shadow-lg pb-safe">
+        <NavLink
+          to="/dashboard"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center gap-1 text-[11px] w-20 py-1 transition-colors ${
+              isActive ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-900'
+            }`
+          }
+        >
+          <Home className="h-5 w-5" />
+          <span>Trang chủ</span>
+        </NavLink>
+        <NavLink
+          to="/exam-waiting"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center gap-1 text-[11px] w-20 py-1 transition-colors ${
+              isActive ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-900'
+            }`
+          }
+        >
+          <ClipboardList className="h-5 w-5" />
+          <span>Phòng chờ</span>
+        </NavLink>
+      </nav>
     </div>
   )
 }

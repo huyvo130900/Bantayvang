@@ -114,12 +114,10 @@ export function ExamWaitingPage() {
     return start != null && start > now
   })
 
-
-
   return (
     <div className="max-w-2xl mx-auto py-8 px-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Phòng chờ thi</h1>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -129,7 +127,7 @@ export function ExamWaitingPage() {
         <button
           onClick={loadData}
           disabled={isLoading}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50 transition-colors w-full sm:w-auto"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           Làm mới
@@ -158,10 +156,10 @@ export function ExamWaitingPage() {
               </h2>
               <div className="space-y-2">
                 {available.map((ky) => (
-                  <div key={ky.id} className={`bg-white border rounded-xl p-4 flex items-center justify-between shadow-sm ${
+                  <div key={ky.id} className={`bg-white border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
                     hasTakenKyThi(ky) ? 'border-amber-200' : 'border-green-200'
                   }`}>
-                    <div className="flex-1 min-w-0 mr-3">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-gray-900">{ky.tenKyThi}</p>
                         {hasTakenKyThi(ky) && (
@@ -187,9 +185,9 @@ export function ExamWaitingPage() {
                     <button
                       onClick={() => handleStartExam(ky.maDeThi, ky.id)}
                       disabled={startingId === ky.id || !(ky.maDeThi || (ky.soLuongDeThi && ky.soLuongDeThi > 0)) || !!(ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now)}
-                      className={`shrink-0 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors min-w-[88px] text-center ${
+                      className={`shrink-0 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors w-full sm:w-auto text-center ${
                         ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now
-                          ? 'bg-gray-400 cursor-not-allowed'
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed border'
                           : hasTakenKyThi(ky)
                             ? 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300'
                             : 'bg-green-600 hover:bg-green-700 disabled:bg-green-300'
@@ -211,7 +209,7 @@ export function ExamWaitingPage() {
               </h2>
               <div className="space-y-2">
                 {upcoming.map((ky) => (
-                  <div key={ky.id} className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+                  <div key={ky.id} className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <p className="font-semibold text-gray-900">{ky.tenKyThi}</p>
                       <p className="text-xs text-primary mt-0.5">{ky.maKyThi}</p>
@@ -219,7 +217,7 @@ export function ExamWaitingPage() {
                         🕐 Bắt đầu: {formatDate(ky.thoiGianBatDau)}
                       </p>
                     </div>
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full font-medium shrink-0">
+                    <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium w-full sm:w-auto text-center shrink-0">
                       Chờ thi
                     </span>
                   </div>

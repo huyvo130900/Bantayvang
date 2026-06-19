@@ -68,16 +68,16 @@ export function ExamResultPage() {
   const congBoKetQua = result.congBoKetQua ?? false
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-10 px-4">
-      <div className="max-w-xl mx-auto space-y-5">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-4 sm:py-10 px-4">
+      <div className="max-w-xl mx-auto space-y-4 sm:space-y-5">
 
         {/* Forced termination banner */}
         {isForced && (
           <div className="bg-red-600 text-white rounded-2xl p-4 flex items-center gap-3">
             <AlertTriangle className="h-6 w-6 shrink-0" />
             <div>
-              <p className="font-semibold">Bài thi bị kết thúc cưỡng bức</p>
-              <p className="text-sm text-red-200">{forcedReason || 'Vi phạm quy định gian lận'}</p>
+              <p className="font-semibold text-sm sm:text-base">Bài thi bị kết thúc cưỡng bức</p>
+              <p className="text-xs sm:text-sm text-red-200">{forcedReason || 'Vi phạm quy định gian lận'}</p>
             </div>
           </div>
         )}
@@ -85,22 +85,22 @@ export function ExamResultPage() {
         {/* Result card */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           {/* Header band */}
-          <div className={`p-6 text-center ${isForced ? 'bg-red-600' : !congBoKetQua ? 'bg-gray-500' : 'bg-primary'}`}>
+          <div className={`p-4 sm:p-6 text-center ${isForced ? 'bg-red-600' : !congBoKetQua ? 'bg-gray-500' : 'bg-primary'}`}>
             {isForced ? (
-              <XCircle className="h-16 w-16 text-white mx-auto mb-2" />
+              <XCircle className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-2" />
             ) : !congBoKetQua ? (
-              <EyeOff className="h-16 w-16 text-white mx-auto mb-2" />
+              <EyeOff className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-2" />
             ) : (
-              <Trophy className="h-16 w-16 text-white mx-auto mb-2" />
+              <Trophy className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-2" />
             )}
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">
               {isForced ? 'Bài thi bị hủy' : !congBoKetQua ? 'Đã nộp bài' : 'Kết quả bài thi'}
             </h1>
-            <p className="text-white/80 text-sm mt-1">{result.tenDeThi || 'Bài thi'}</p>
+            <p className="text-white/80 text-xs sm:text-sm mt-1">{result.tenDeThi || 'Bài thi'}</p>
           </div>
 
           {/* Score — chỉ hiển thị nếu congBoKetQua = true */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {!congBoKetQua ? (
               <div className="flex flex-col items-center gap-3 py-6 text-gray-400">
                 <EyeOff className="h-12 w-12 opacity-40" />

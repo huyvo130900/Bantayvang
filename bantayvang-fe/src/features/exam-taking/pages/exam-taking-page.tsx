@@ -7,7 +7,7 @@ import { ExamTimer } from '../components/exam-timer'
 import { QuestionNavigation } from '../components/question-navigation'
 import { QuestionDisplay } from '../components/question-display'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, ChevronLeft, ChevronRight, Send, XCircle } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Send, XCircle, ClipboardList } from 'lucide-react'
 import { MAX_CHEATING_WARNINGS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import type { BaithiDto, ExamQuestionDto } from '../types'
@@ -28,6 +28,7 @@ export function ExamTakingPage() {
   const [cheatingAlert, setCheatingAlert] = useState<string | null>(null)
   const [isForceTerminated, setIsForceTerminated] = useState(false)
   const [terminationReason, setTerminationReason] = useState<string | null>(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const answersRef = useRef(answers)
   const questionsRef = useRef(questions)
@@ -197,7 +198,7 @@ export function ExamTakingPage() {
   const currentQuestion = questions[currentIndex]
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden relative">
       {/* Force terminated overlay */}
       {isForceTerminated && (
         <div className="fixed inset-0 bg-red-900/90 z-50 flex items-center justify-center">
@@ -247,10 +248,28 @@ export function ExamTakingPage() {
         </div>
       )}
 
+      {/* Mobile sidebar backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-20 md:hidden backdrop-blur-xs transition-opacity duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Left: Question Navigation */}
-      <div className="w-56 bg-white border-r flex flex-col">
-        <div className="p-4 border-b">
+      <div className={cn(
+        "fixed inset-y-0 left-0 z-30 w-64 bg-white border-r flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-56 shrink-0",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="p-4 border-b flex items-center justify-between">
           <ExamTimer formattedTime={formattedTime} isWarning={isWarning} isCritical={isCritical} />
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden text-gray-400 hover:text-gray-600 p-1"
+            title="Đóng bảng câu hỏi"
+          >
+            <XCircle className="h-5 w-5" />
+          </button>
         </div>
         {warningCount > 0 && (
           <div className="px-3 py-2 bg-red-50 border-b border-red-100">
@@ -264,7 +283,10 @@ export function ExamTakingPage() {
             questions={questions}
             answers={answers}
             currentIndex={currentIndex}
-            onNavigate={setCurrentIndex}
+            onNavigate={(index) => {
+              setCurrentIndex(index)
+              setIsSidebarOpen(false)
+            }}
           />
         </div>
         <div className="p-3 border-t">
@@ -276,7 +298,24 @@ export function ExamTakingPage() {
 
       {/* Main: Question */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Mobile top bar */}
+        <div className="md:hidden border-b bg-white px-4 py-2.5 flex items-center justify-between shadow-sm shrink-0 z-10">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <ClipboardList className="h-4 w-4 text-primary" />
+            <span>Câu {currentIndex + 1}/{questions.length}</span>
+          </button>
+          <div className="scale-90 origin-center select-none">
+            <ExamTimer formattedTime={formattedTime} isWarning={isWarning} isCritical={isCritical} />
+          </div>
+          <Button size="sm" className="h-8 text-xs font-semibold" onClick={() => setShowConfirm(true)} disabled={isSubmitting}>
+            Nộp bài
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {currentQuestion && (
             <QuestionDisplay
               question={currentQuestion}
@@ -323,13 +362,13 @@ export function ExamTakingPage() {
         </div>
 
         {/* Navigation footer */}
-        <div className="border-t bg-white px-6 py-3 flex items-center justify-between">
-          <Button variant="outline" onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Câu trước
+        <div className="border-t bg-white px-4 sm:px-6 py-3 flex items-center justify-between">
+          <Button variant="outline" size="sm" onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0}>
+            <ChevronLeft className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Câu trước</span>
           </Button>
-          <span className="text-sm text-gray-500">Câu {currentIndex + 1} / {questions.length}</span>
-          <Button variant="outline" onClick={() => setCurrentIndex(i => Math.min(questions.length - 1, i + 1))} disabled={currentIndex === questions.length - 1}>
-            Câu tiếp <ChevronRight className="h-4 w-4 ml-1" />
+          <span className="text-xs sm:text-sm text-gray-500 font-medium">Câu {currentIndex + 1} / {questions.length}</span>
+          <Button variant="outline" size="sm" onClick={() => setCurrentIndex(i => Math.min(questions.length - 1, i + 1))} disabled={currentIndex === questions.length - 1}>
+            <span className="hidden sm:inline">Câu tiếp</span> <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       </div>

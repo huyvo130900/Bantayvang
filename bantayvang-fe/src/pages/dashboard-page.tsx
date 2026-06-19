@@ -375,7 +375,7 @@ function StudentDashboard() {
         {(searchQuery || startDate || endDate) && (
           <button
             onClick={clearFilters}
-            className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors shrink-0 h-[38px] cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors shrink-0 h-[38px] cursor-pointer w-full md:w-auto"
             title="Đặt lại bộ lọc"
           >
             <RotateCcw className="h-4 w-4" />
@@ -385,7 +385,7 @@ function StudentDashboard() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard icon={Clock} label="Sắp diễn ra" value={upcoming.length} bgColor="bg-blue-50" color="text-blue-600" />
         <StatCard icon={Play} label="Có thể làm" value={available.length} bgColor="bg-green-50" color="text-green-600" />
         <StatCard icon={CheckCircle} label="Đã hoàn thành" value={totalDone} bgColor="bg-purple-50" color="text-purple-600" />
@@ -401,8 +401,8 @@ function StudentDashboard() {
           </div>
           <div className="divide-y">
             {available.map((ky) => (
-              <div key={ky.id} className="flex items-center justify-between p-4">
-                <div>
+              <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-gray-800">{ky.tenKyThi}</p>
                     {hasTakenKyThi(ky) && (
@@ -411,7 +411,7 @@ function StudentDashboard() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">{ky.maKyThi}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{ky.maKyThi}</p>
                   {ky.thoiGianKetThuc && (
                     <p className="text-xs text-orange-500 mt-0.5">
                       Đến: {formatDate(ky.thoiGianKetThuc)}
@@ -420,7 +420,7 @@ function StudentDashboard() {
                 </div>
                 <button
                   onClick={() => navigate('/exam-waiting')}
-                  className={`text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
+                  className={`text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors w-full sm:w-auto text-center shrink-0 ${
                     hasTakenKyThi(ky)
                       ? 'bg-amber-600 hover:bg-amber-700'
                       : 'bg-green-600 hover:bg-green-700'
@@ -453,12 +453,12 @@ function StudentDashboard() {
               const congBoKetQua = hetHan || congBo
               const baithiId = r?.id
               return (
-                <div key={ky.id} className="flex items-center justify-between p-4 gap-3">
+                <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-800 truncate">{ky.tenKyThi}</p>
                     <p className="text-xs text-gray-500">{ky.maKyThi}</p>
                     {congBoKetQua ? (
-                      <p className="text-xs text-gray-500 mt-0.5">
+                       <p className="text-xs text-gray-500 mt-0.5">
                         Điểm: <b>{diem.toFixed(1)}</b>
                         {r?.soCauDung != null && ` · ${r.soCauDung}/${r.tongSoCau} câu`}
                       </p>
@@ -466,27 +466,27 @@ function StudentDashboard() {
                       <p className="text-xs text-gray-400 mt-0.5 italic">Đã nộp bài — chờ công bố điểm</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0 justify-start sm:justify-end">
                     {congBoKetQua && baithiId ? (
                       <>
                         {ky.soCauDungToiThieu !== undefined && ky.soCauDungToiThieu !== null && r?.soCauDung != null ? (
                           r.soCauDung >= ky.soCauDungToiThieu ? (
-                            <span className="text-sm font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
                               ✓ Đạt
                             </span>
                           ) : (
-                            <span className="text-sm font-bold px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200 shrink-0">
                               ✗ Không đạt
                             </span>
                           )
                         ) : (
-                          <span className="text-sm font-bold px-3 py-1 rounded-full bg-green-100 text-green-700">
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700 shrink-0">
                             ✓ Đã hoàn thành
                           </span>
                         )}
                         <button
                           onClick={() => navigate(`/exam-result/${baithiId}`)}
-                          className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors border border-green-200"
+                          className="inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors border border-green-200 w-full sm:w-auto"
                         >
                           <Eye className="h-3.5 w-3.5" />
                           Xem kết quả
@@ -494,7 +494,7 @@ function StudentDashboard() {
                         {!hetHan ? (
                           <button
                             onClick={() => navigate('/exam-waiting')}
-                            className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                            className="inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors w-full sm:w-auto"
                           >
                             <RefreshCw className="h-3.5 w-3.5" />
                             Thi lại
@@ -502,7 +502,7 @@ function StudentDashboard() {
                         ) : (
                           <button
                             disabled
-                            className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200"
+                            className="inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200 w-full sm:w-auto"
                           >
                             <Lock className="h-3.5 w-3.5" />
                             Kỳ thi đã kết thúc
@@ -510,7 +510,7 @@ function StudentDashboard() {
                         )}
                       </>
                     ) : (
-                      <span className="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-500">
+                      <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 w-full sm:w-auto text-center border">
                         ⏳ Chờ kết quả
                       </span>
                     )}
@@ -520,13 +520,13 @@ function StudentDashboard() {
             })}
             {/* Bài bị lỡ (hết giờ không vào thi) — điểm 0 */}
             {missedExams.map((ky) => (
-              <div key={ky.id} className="flex items-center justify-between p-4">
+              <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                 <div>
                   <p className="font-medium text-gray-800">{ky.tenKyThi}</p>
-                  <p className="text-xs text-gray-500">{ky.maKyThi}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{ky.maKyThi}</p>
                   <p className="text-xs text-gray-500 mt-0.5">Điểm: <b>0.0</b> · Không tham gia</p>
                 </div>
-                <span className="text-sm font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500 w-full sm:w-auto text-center shrink-0 border">
                   Không tham gia
                 </span>
               </div>
@@ -545,15 +545,15 @@ function StudentDashboard() {
           </div>
           <div className="divide-y">
             {upcoming.map((ky) => (
-              <div key={ky.id} className="flex items-center justify-between p-4">
+              <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                 <div>
                   <p className="font-medium text-gray-800">{ky.tenKyThi}</p>
-                  <p className="text-xs text-gray-500">{ky.maKyThi}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{ky.maKyThi}</p>
                   <p className="text-xs text-blue-600 mt-0.5">
                     Bắt đầu: {ky.thoiGianBatDau ? formatDate(ky.thoiGianBatDau) : '—'}
                   </p>
                 </div>
-                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">Chờ thi</span>
+                <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium w-full sm:w-auto text-center shrink-0">Chờ thi</span>
               </div>
             ))}
           </div>
