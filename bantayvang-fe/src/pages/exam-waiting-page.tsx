@@ -100,7 +100,7 @@ export function ExamWaitingPage() {
     const start = ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : null
     const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
     if (start && start > now) return false
-    if (end && end < now) return false
+    if (end && end < now && !hasTakenKyThi(ky)) return false
     return true
   })
 
@@ -166,7 +166,7 @@ export function ExamWaitingPage() {
                         <p className="font-semibold text-gray-900">{ky.tenKyThi}</p>
                         {hasTakenKyThi(ky) && (
                           <span className="inline-flex items-center text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">
-                            Đã thi (Cho phép thi lại)
+                            {ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now ? 'Kỳ thi đã kết thúc' : 'Đã thi (Cho phép thi lại)'}
                           </span>
                         )}
                       </div>
@@ -186,14 +186,16 @@ export function ExamWaitingPage() {
                     </div>
                     <button
                       onClick={() => handleStartExam(ky.maDeThi, ky.id)}
-                      disabled={startingId === ky.id || !(ky.maDeThi || (ky.soLuongDeThi && ky.soLuongDeThi > 0))}
+                      disabled={startingId === ky.id || !(ky.maDeThi || (ky.soLuongDeThi && ky.soLuongDeThi > 0)) || !!(ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now)}
                       className={`shrink-0 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors min-w-[88px] text-center ${
-                        hasTakenKyThi(ky)
-                          ? 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300'
-                          : 'bg-green-600 hover:bg-green-700 disabled:bg-green-300'
+                        ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : hasTakenKyThi(ky)
+                            ? 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300'
+                            : 'bg-green-600 hover:bg-green-700 disabled:bg-green-300'
                       }`}
                     >
-                      {startingId === ky.id ? 'Đang mở...' : hasTakenKyThi(ky) ? 'Thi lại →' : 'Vào thi →'}
+                      {ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now ? 'Kỳ thi đã kết thúc' : startingId === ky.id ? 'Đang mở...' : hasTakenKyThi(ky) ? 'Thi lại →' : 'Vào thi →'}
                     </button>
                   </div>
                 ))}

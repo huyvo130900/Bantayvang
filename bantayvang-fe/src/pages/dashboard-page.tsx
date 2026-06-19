@@ -19,6 +19,8 @@ import {
   Eye,
   Search,
   RotateCcw,
+  RefreshCw,
+  Lock,
 } from 'lucide-react'
 import { useAppSelector } from '@/app/hooks'
 import { ROLES } from '@/lib/constants'
@@ -489,6 +491,23 @@ function StudentDashboard() {
                           <Eye className="h-3.5 w-3.5" />
                           Xem kết quả
                         </button>
+                        {!hetHan ? (
+                          <button
+                            onClick={() => navigate('/exam-waiting')}
+                            className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Thi lại
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200"
+                          >
+                            <Lock className="h-3.5 w-3.5" />
+                            Kỳ thi đã kết thúc
+                          </button>
+                        )}
                       </>
                     ) : (
                       <span className="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-500">
