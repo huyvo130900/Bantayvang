@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, forwardRef, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import apiClient from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,177 @@ import {
   ChevronDown, ChevronRight
 } from 'lucide-react'
 import { getXepLoai } from '@/lib/constants'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+
+const CustomDateInput = forwardRef<HTMLInputElement, any>(({ value: _dpValue, onChange: dpOnChange, onClick, rawDateValue, onRawChange, ...props }, ref) => {
+  const [internalValue, setInternalValue] = useState(rawDateValue || 'dd/mm/yyyy');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (rawDateValue && rawDateValue !== internalValue) {
+      setInternalValue(rawDateValue);
+    }
+    if (!rawDateValue) {
+      setInternalValue('dd/mm/yyyy');
+    }
+  }, [rawDateValue]);
+
+  const setHighlight = (pos: number) => {
+    let nextPos = pos;
+    if (nextPos === 2 || nextPos === 5) nextPos++;
+    if (nextPos > 9) nextPos = 9;
+    
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.setSelectionRange(nextPos, nextPos + 1);
+      }
+    }, 0);
+  };
+
+  const handleFocus = () => {
+    let firstPlaceholder = internalValue.search(/[dmy]/);
+    if (firstPlaceholder === -1) firstPlaceholder = 9;
+    setHighlight(firstPlaceholder);
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    if (inputRef.current) {
+      let pos = inputRef.current.selectionStart || 0;
+      if (pos === 2 || pos === 5) pos++;
+      setHighlight(pos);
+    }
+    if (onClick) onClick(e);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      if (inputRef.current) {
+        let pos = inputRef.current.selectionStart || 0;
+        let end = inputRef.current.selectionEnd || 0;
+        
+        if (end - pos > 1) {
+           setInternalValue('dd/mm/yyyy');
+           onRawChange('');
+           if (dpOnChange) dpOnChange({ target: { value: '' } } as any);
+           setHighlight(0);
+           return;
+        }
+
+        if (e.key === 'Backspace') {
+          if (pos > 0) {
+            let prevPos = pos - 1;
+            if (prevPos === 2 || prevPos === 5) prevPos--;
+            
+            const arr = internalValue.split('');
+            if (prevPos < 2) arr[prevPos] = 'd';
+            else if (prevPos < 5) arr[prevPos] = 'm';
+            else arr[prevPos] = 'y';
+            
+            const newVal = arr.join('');
+            setInternalValue(newVal);
+            onRawChange(newVal);
+            if (/[dmy]/.test(newVal) && dpOnChange) dpOnChange({ target: { value: '' } } as any);
+            setHighlight(prevPos);
+          }
+        } else if (e.key === 'Delete') {
+            if (pos < 10) {
+              if (pos === 2 || pos === 5) pos++;
+              if (pos < 10) {
+                const arr = internalValue.split('');
+                if (pos < 2) arr[pos] = 'd';
+                else if (pos < 5) arr[pos] = 'm';
+                else arr[pos] = 'y';
+                
+                const newVal = arr.join('');
+                setInternalValue(newVal);
+                onRawChange(newVal);
+                if (/[dmy]/.test(newVal) && dpOnChange) dpOnChange({ target: { value: '' } } as any);
+                setHighlight(pos);
+              }
+            }
+        }
+      }
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      let pos = inputRef.current?.selectionStart || 0;
+      if (e.key === 'ArrowLeft') {
+         pos--;
+         if (pos === 2 || pos === 5) pos--;
+         if (pos < 0) pos = 0;
+      } else {
+         pos++;
+         if (pos === 2 || pos === 5) pos++;
+         if (pos > 9) pos = 9;
+      }
+      setHighlight(pos);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!inputRef.current) return;
+    const val = e.target.value;
+    const pos = inputRef.current.selectionStart || 0;
+    
+    if (Math.abs(val.length - internalValue.length) > 1) {
+       const numbers = val.replace(/[^0-9]/g, '');
+       let newStr = 'dd/mm/yyyy'.split('');
+       let numIdx = 0;
+       for (let i = 0; i < 10 && numIdx < numbers.length; i++) {
+         if (i === 2 || i === 5) continue;
+         newStr[i] = numbers[numIdx++];
+       }
+       const newVal = newStr.join('');
+       setInternalValue(newVal);
+       onRawChange(newVal);
+       if (!/[dmy]/.test(newVal) && dpOnChange) dpOnChange({ target: { value: newVal } } as any);
+       setHighlight(9);
+       return;
+    }
+
+    const charTyped = val.charAt(pos - 1);
+    
+    if (/[0-9]/.test(charTyped)) {
+       let insertPos = pos - 1;
+       if (insertPos === 2 || insertPos === 5) insertPos--;
+       if (insertPos < 0) insertPos = 0;
+
+       const arr = internalValue.split('');
+       arr[insertPos] = charTyped;
+       const newVal = arr.join('');
+       setInternalValue(newVal);
+       onRawChange(newVal);
+       
+       if (!/[dmy]/.test(newVal) && dpOnChange) {
+          dpOnChange({ target: { value: newVal } } as any);
+       }
+       setHighlight(insertPos + 1);
+    } else {
+       setHighlight(pos - 1);
+    }
+  };
+
+  const handleRef = (node: HTMLInputElement) => {
+    (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = node;
+    if (typeof ref === 'function') ref(node);
+    else if (ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = node;
+  };
+
+  return (
+    <input
+      ref={handleRef}
+      type="text"
+      value={internalValue}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      {...props}
+    />
+  );
+});
+CustomDateInput.displayName = 'CustomDateInput';
 
 interface KyThiItem {
   id: number; tenKyThi: string; maKyThi: string
@@ -70,16 +241,9 @@ export function ResultsByKyThiPage() {
   const [filterKyThiEndDate, setFilterKyThiEndDate] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
-    let val = e.target.value.replace(/[^0-9/]/g, '')
-    if (val.length === 2 && !val.includes('/')) val += '/'
-    if (val.length === 5 && val.split('/').length === 2) val += '/'
-    if (val.length > 10) val = val.substring(0, 10)
-    setter(val)
-  }
-
   const parseDateToMs = (dateStr: string, isEndOfDay: boolean = false): number | null => {
     if (!dateStr || dateStr.length !== 10) return null;
+    if (/[dmy]/.test(dateStr)) return null;
     const parts = dateStr.split('/')
     if (parts.length !== 3) return null;
     const d = parseInt(parts[0], 10)
@@ -101,14 +265,17 @@ export function ResultsByKyThiPage() {
 
   // Báo lỗi khoảng thời gian
   const dateError = useMemo(() => {
-    if (filterKyThiStartDate && !filterKyThiEndDate) {
+    const isStartEmpty = !filterKyThiStartDate || filterKyThiStartDate === 'dd/mm/yyyy';
+    const isEndEmpty = !filterKyThiEndDate || filterKyThiEndDate === 'dd/mm/yyyy';
+
+    if (!isStartEmpty && isEndEmpty) {
       return 'Vui lòng nhập ngày kết thúc'
     }
-    if (!filterKyThiStartDate && filterKyThiEndDate) {
+    if (isStartEmpty && !isEndEmpty) {
       return 'Vui lòng nhập ngày bắt đầu'
     }
-    if (filterKyThiStartDate && filterKyThiEndDate) {
-      if (filterKyThiStartDate.length < 10 || filterKyThiEndDate.length < 10) {
+    if (!isStartEmpty && !isEndEmpty) {
+      if (/[dmy]/.test(filterKyThiStartDate) || /[dmy]/.test(filterKyThiEndDate)) {
         return 'Vui lòng nhập đủ định dạng dd/mm/yyyy'
       }
       const start = parseDateToMs(filterKyThiStartDate)
@@ -515,24 +682,54 @@ export function ResultsByKyThiPage() {
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <span className="text-[9px] text-gray-400 font-medium">Từ ngày</span>
-                <input
-                  type="text"
-                  placeholder="dd/mm/yyyy"
-                  maxLength={10}
-                  value={filterKyThiStartDate}
-                  onChange={(e) => handleDateChange(e, setFilterKyThiStartDate)}
-                  className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                <DatePicker
+                  selected={parseDateToMs(filterKyThiStartDate) ? new Date(parseDateToMs(filterKyThiStartDate)!) : null}
+                  onChange={(date: Date | null) => {
+                    if (date) {
+                      const d = date.getDate().toString().padStart(2, '0')
+                      const m = (date.getMonth() + 1).toString().padStart(2, '0')
+                      const y = date.getFullYear()
+                      setFilterKyThiStartDate(`${d}/${m}/${y}`)
+                    } else {
+                      setFilterKyThiStartDate('')
+                    }
+                  }}
+                  dateFormat="dd/MM/yyyy"
+                  customInput={
+                    <CustomDateInput
+                      rawDateValue={filterKyThiStartDate}
+                      onRawChange={setFilterKyThiStartDate}
+                      placeholder="dd/mm/yyyy"
+                      maxLength={10}
+                      className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-text font-mono"
+                    />
+                  }
                 />
               </div>
               <div className="space-y-1">
                 <span className="text-[9px] text-gray-400 font-medium">Đến ngày</span>
-                <input
-                  type="text"
-                  placeholder="dd/mm/yyyy"
-                  maxLength={10}
-                  value={filterKyThiEndDate}
-                  onChange={(e) => handleDateChange(e, setFilterKyThiEndDate)}
-                  className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                <DatePicker
+                  selected={parseDateToMs(filterKyThiEndDate) ? new Date(parseDateToMs(filterKyThiEndDate)!) : null}
+                  onChange={(date: Date | null) => {
+                    if (date) {
+                      const d = date.getDate().toString().padStart(2, '0')
+                      const m = (date.getMonth() + 1).toString().padStart(2, '0')
+                      const y = date.getFullYear()
+                      setFilterKyThiEndDate(`${d}/${m}/${y}`)
+                    } else {
+                      setFilterKyThiEndDate('')
+                    }
+                  }}
+                  dateFormat="dd/MM/yyyy"
+                  customInput={
+                    <CustomDateInput
+                      rawDateValue={filterKyThiEndDate}
+                      onRawChange={setFilterKyThiEndDate}
+                      placeholder="dd/mm/yyyy"
+                      maxLength={10}
+                      className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-text font-mono"
+                    />
+                  }
                 />
               </div>
             </div>
