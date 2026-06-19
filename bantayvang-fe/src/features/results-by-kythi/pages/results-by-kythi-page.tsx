@@ -70,6 +70,35 @@ export function ResultsByKyThiPage() {
   const [filterKyThiEndDate, setFilterKyThiEndDate] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
+    let val = e.target.value.replace(/[^0-9/]/g, '')
+    if (val.length === 2 && !val.includes('/')) val += '/'
+    if (val.length === 5 && val.split('/').length === 2) val += '/'
+    if (val.length > 10) val = val.substring(0, 10)
+    setter(val)
+  }
+
+  const parseDateToMs = (dateStr: string, isEndOfDay: boolean = false): number | null => {
+    if (!dateStr || dateStr.length !== 10) return null;
+    const parts = dateStr.split('/')
+    if (parts.length !== 3) return null;
+    const d = parseInt(parts[0], 10)
+    const m = parseInt(parts[1], 10)
+    const y = parseInt(parts[2], 10)
+    if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
+    if (m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > 2100) return null;
+    
+    const date = new Date(y, m - 1, d)
+    if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+    
+    if (isEndOfDay) {
+      date.setHours(23, 59, 59, 999)
+    } else {
+      date.setHours(0, 0, 0, 0)
+    }
+    return date.getTime()
+  }
+
   // Báo lỗi khoảng thời gian
   const dateError = useMemo(() => {
     if (filterKyThiStartDate && !filterKyThiEndDate) {
@@ -79,8 +108,16 @@ export function ResultsByKyThiPage() {
       return 'Vui lòng nhập ngày bắt đầu'
     }
     if (filterKyThiStartDate && filterKyThiEndDate) {
-      const start = new Date(filterKyThiStartDate).getTime()
-      const end = new Date(filterKyThiEndDate).getTime()
+      if (filterKyThiStartDate.length < 10 || filterKyThiEndDate.length < 10) {
+        return 'Vui lòng nhập đủ định dạng dd/mm/yyyy'
+      }
+      const start = parseDateToMs(filterKyThiStartDate)
+      const end = parseDateToMs(filterKyThiEndDate, true)
+      
+      if (start === null || end === null) {
+        return 'Ngày không hợp lệ (định dạng dd/mm/yyyy)'
+      }
+      
       if (start > end) {
         return 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu'
       }
@@ -257,16 +294,14 @@ export function ResultsByKyThiPage() {
       // Lọc theo khoảng thời gian nếu người dùng nhập cả 2 mốc và mốc 2 >= mốc 1
       let matchDate = true
       if (filterKyThiStartDate && filterKyThiEndDate) {
-        const start = new Date(filterKyThiStartDate).getTime()
-        const end = new Date(filterKyThiEndDate).getTime()
-        if (start <= end) {
+        const startMs = parseDateToMs(filterKyThiStartDate)
+        const endMs = parseDateToMs(filterKyThiEndDate, true)
+        if (startMs !== null && endMs !== null && startMs <= endMs) {
           if (!kt.thoiGianBatDau) {
             matchDate = false
           } else {
             try {
               const examTime = new Date(kt.thoiGianBatDau).getTime()
-              const startMs = new Date(`${filterKyThiStartDate}T00:00:00`).getTime()
-              const endMs = new Date(`${filterKyThiEndDate}T23:59:59`).getTime()
               matchDate = examTime >= startMs && examTime <= endMs
             } catch {
               matchDate = false
@@ -481,19 +516,23 @@ export function ResultsByKyThiPage() {
               <div className="space-y-1">
                 <span className="text-[9px] text-gray-400 font-medium">Từ ngày</span>
                 <input
-                  type="date"
+                  type="text"
+                  placeholder="dd/mm/yyyy"
+                  maxLength={10}
                   value={filterKyThiStartDate}
-                  onChange={(e) => setFilterKyThiStartDate(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer"
+                  onChange={(e) => handleDateChange(e, setFilterKyThiStartDate)}
+                  className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
               </div>
               <div className="space-y-1">
                 <span className="text-[9px] text-gray-400 font-medium">Đến ngày</span>
                 <input
-                  type="date"
+                  type="text"
+                  placeholder="dd/mm/yyyy"
+                  maxLength={10}
                   value={filterKyThiEndDate}
-                  onChange={(e) => setFilterKyThiEndDate(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer"
+                  onChange={(e) => handleDateChange(e, setFilterKyThiEndDate)}
+                  className="w-full border border-gray-200 rounded-lg text-[11px] px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
               </div>
             </div>
