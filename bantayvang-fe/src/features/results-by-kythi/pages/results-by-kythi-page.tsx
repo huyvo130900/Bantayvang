@@ -8,7 +8,8 @@ import { useAppSelector } from '@/app/hooks'
 import { ROLES } from '@/lib/constants'
 import {
   CalendarDays, Users, Trophy,
-  AlertTriangle, RefreshCw, Download, Eye, EyeOff, Search, Building2, CheckCircle2, XCircle
+  AlertTriangle, RefreshCw, Download, Eye, EyeOff, Search, CheckCircle2, XCircle,
+  ChevronDown, ChevronRight
 } from 'lucide-react'
 import { getXepLoai } from '@/lib/constants'
 
@@ -61,8 +62,13 @@ export function ResultsByKyThiPage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [filterXepLoai, setFilterXepLoai] = useState('')
-  // Admin: lọc theo khoa
-  const [khoaFilter, setKhoaFilter] = useState<string | null>(isDeptManager && myKhoa ? myKhoa : null)
+
+  // Search & Filter states for exams
+  const [filterKyThiName, setFilterKyThiName] = useState('')
+  const [filterKyThiKhoa, setFilterKyThiKhoa] = useState('')
+  const [filterKyThiDate, setFilterKyThiDate] = useState('')
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+
   const [visibility, setVisibility] = useState<Record<number, boolean>>({})
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -70,12 +76,21 @@ export function ResultsByKyThiPage() {
   const [selectedDeThiId, setSelectedDeThiId] = useState<number | null>(null)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [selectedExportDeThiId, setSelectedExportDeThiId] = useState<number | null>(null)
-  const [kyThiSearch, setKyThiSearch] = useState('')
 
 
   useEffect(() => {
     loadKyThiList()
   }, []) // eslint-disable-line
+
+  useEffect(() => {
+    if (selectedKyThi) {
+      const dept = selectedKyThi.donViToChuc || 'Tất cả các khoa'
+      setExpandedGroups(prev => ({
+        ...prev,
+        [dept]: true
+      }))
+    }
+  }, [selectedKyThi])
 
   const loadKyThiList = async () => {
     setLoading(true)
@@ -201,20 +216,72 @@ export function ResultsByKyThiPage() {
     }
   }
 
-  // Lấy danh sách khoa từ kỳ thi (admin)
-  const khoaList = isAdmin
-    ? Array.from(new Set(kyThiList.map(k => k.donViToChuc).filter(Boolean) as string[])).sort()
-    : []
+  // Lấy tất cả các khoa từ danh sách kỳ thi để hiển thị trong bộ lọc
+  const uniqueDeptsFilter = useMemo(() => {
+    const depts = new Set(kyThiList.map(k => k.donViToChuc).filter(Boolean) as string[])
+    return Array.from(depts).sort()
+  }, [kyThiList])
 
-  // Lọc kỳ thi theo khoa (admin) và từ khóa tìm kiếm
-  const filteredKyThiList = (isAdmin && khoaFilter
-    ? kyThiList.filter(k => k.donViToChuc === khoaFilter)
-    : kyThiList
-  ).filter(k =>
-    !kyThiSearch.trim() ||
-    k.tenKyThi?.toLowerCase().includes(kyThiSearch.toLowerCase()) ||
-    k.maKyThi?.toLowerCase().includes(kyThiSearch.toLowerCase())
-  )
+  // Lọc kỳ thi theo tên, khoa và ngày thi
+  const filteredKyThiList = useMemo(() => {
+    return kyThiList.filter(kt => {
+      const matchName = !filterKyThiName.trim() ||
+        kt.tenKyThi?.toLowerCase().includes(filterKyThiName.toLowerCase()) ||
+        kt.maKyThi?.toLowerCase().includes(filterKyThiName.toLowerCase())
+
+      const matchKhoa = !filterKyThiKhoa || (
+        filterKyThiKhoa === 'Tất cả các khoa'
+          ? !kt.donViToChuc
+          : kt.donViToChuc === filterKyThiKhoa
+      )
+
+      const matchDate = !filterKyThiDate || (
+        kt.thoiGianBatDau && kt.thoiGianBatDau.substring(0, 10) === filterKyThiDate
+      )
+
+      return matchName && matchKhoa && matchDate
+    })
+  }, [kyThiList, filterKyThiName, filterKyThiKhoa, filterKyThiDate])
+
+  // Nhóm các kỳ thi đã lọc theo khoa
+  const groupedExams = useMemo(() => {
+    const groups: Record<string, KyThiItem[]> = {}
+
+    filteredKyThiList.forEach(kt => {
+      const deptName = kt.donViToChuc || 'Tất cả các khoa'
+      if (!groups[deptName]) {
+        groups[deptName] = []
+      }
+      groups[deptName].push(kt)
+    })
+
+    // Sắp xếp các kỳ thi trong mỗi khoa theo thời gian bắt đầu giảm dần (gần đây nhất trước)
+    // và chỉ lấy tối đa 10 kỳ thi gần đây nhất
+    const sortedGroups: Record<string, KyThiItem[]> = {}
+    Object.keys(groups).forEach(deptName => {
+      const sortedList = [...groups[deptName]].sort((a, b) => {
+        const timeA = a.thoiGianBatDau ? new Date(a.thoiGianBatDau).getTime() : 0
+        const timeB = b.thoiGianBatDau ? new Date(b.thoiGianBatDau).getTime() : 0
+        if (timeA !== timeB) {
+          return timeB - timeA
+        }
+        return b.id - a.id
+      })
+      sortedGroups[deptName] = sortedList.slice(0, 10)
+    })
+
+    return sortedGroups
+  }, [filteredKyThiList])
+
+  // Sắp xếp các khoa: 'Tất cả các khoa' lên đầu, sau đó theo bảng chữ cái tiếng Việt
+  const sortedGroupKeys = useMemo(() => {
+    const keys = Object.keys(groupedExams)
+    return keys.sort((a, b) => {
+      if (a === 'Tất cả các khoa') return -1
+      if (b === 'Tất cả các khoa') return 1
+      return a.localeCompare(b, 'vi')
+    })
+  }, [groupedExams])
 
 
   const hasThreshold = selectedKyThi?.soCauDungToiThieu !== undefined && selectedKyThi?.soCauDungToiThieu !== null;
@@ -336,75 +403,134 @@ export function ResultsByKyThiPage() {
           )}
         </div>
 
-        {/* Search campaigns */}
-        <div className="px-4 py-3 border-b">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+        {/* Search & Filters */}
+        <div className="px-4 py-3 border-b space-y-3 bg-gray-50/30">
+          {/* Exam Name Search */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Tên kỳ thi</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm tên hoặc mã kỳ thi..."
+                value={filterKyThiName}
+                onChange={(e) => setFilterKyThiName(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Department Filter (Admin only) */}
+          {isAdmin && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Khoa / Phòng</label>
+              <select
+                value={filterKyThiKhoa}
+                onChange={(e) => setFilterKyThiKhoa(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg text-xs px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              >
+                <option value="">Tất cả các khoa/phòng</option>
+                <option value="Tất cả các khoa">Các kỳ thi chung (tất cả các khoa)</option>
+                {uniqueDeptsFilter.map(khoa => (
+                  <option key={khoa} value={khoa}>{khoa}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Date Filter */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Ngày thi</label>
             <input
-              type="text"
-              placeholder="Tìm kiếm kỳ thi..."
-              value={kyThiSearch}
-              onChange={(e) => setKyThiSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-gray-50/50"
+              type="date"
+              value={filterKyThiDate}
+              onChange={(e) => setFilterKyThiDate(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg text-xs px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer"
             />
           </div>
+
+          {/* Reset Filters button */}
+          {(filterKyThiName || filterKyThiKhoa || filterKyThiDate) && (
+            <button
+              onClick={() => {
+                setFilterKyThiName('')
+                setFilterKyThiKhoa('')
+                setFilterKyThiDate('')
+              }}
+              className="text-[11px] text-blue-600 hover:text-blue-800 font-medium hover:underline block ml-auto transition-all"
+            >
+              Xóa bộ lọc
+            </button>
+          )}
         </div>
 
-
-        {/* Admin: filter khoa */}
-        {isAdmin && khoaList.length > 0 && (
-          <div className="px-3 py-2 border-b bg-gray-50">
-            <div className="flex items-center gap-1 mb-1.5">
-              <Building2 className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-xs text-gray-500 font-medium">Lọc theo khoa</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <button
-                onClick={() => setKhoaFilter(null)}
-                className={`text-left text-xs px-2 py-1 rounded-md transition-colors ${
-                  khoaFilter === null
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Tất cả ({kyThiList.length})
-              </button>
-              {khoaList.map(khoa => (
-                <button
-                  key={khoa}
-                  onClick={() => { setKhoaFilter(khoa); setSelectedKyThi(null); setResults([]) }}
-                  className={`text-left text-xs px-2 py-1 rounded-md transition-colors ${
-                    khoaFilter === khoa
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {khoa} ({kyThiList.filter(k => k.donViToChuc === khoa).length})
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto">
-          {filteredKyThiList.length === 0 ? (
+        {/* Grouped Exams List */}
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+          {sortedGroupKeys.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">
-              {khoaFilter ? `Không có kỳ thi của "${khoaFilter}"` : 'Chưa có kỳ thi'}
+              Không tìm thấy kỳ thi nào
             </div>
-          ) : filteredKyThiList.map(kt => (
-            <button key={kt.id} onClick={() => handleSelectKyThi(kt)}
-              className={`w-full text-left px-4 py-3 border-b hover:bg-gray-50 transition-colors ${selectedKyThi?.id === kt.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}>
-              <p className="font-medium text-sm text-gray-800 truncate">{kt.tenKyThi}</p>
-              {kt.donViToChuc && isAdmin && !khoaFilter && (
-                <p className="text-xs text-blue-500 mt-0.5 truncate">{kt.donViToChuc}</p>
-              )}
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${trangThaiColor(kt.trangThai)}`}>
-                  {trangThaiLabel(kt.trangThai)}
-                </span>
-              </div>
-            </button>
-          ))}
+          ) : (
+            sortedGroupKeys.map(deptName => {
+              const isExpanded = !!expandedGroups[deptName]
+              const exams = groupedExams[deptName]
+              return (
+                <div key={deptName} className="flex flex-col">
+                  {/* Group Header */}
+                  <button
+                    onClick={() => {
+                      setExpandedGroups(prev => ({
+                        ...prev,
+                        [deptName]: !isExpanded
+                      }))
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100/80 transition-colors border-b text-left select-none"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4 text-gray-500 shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-gray-500 shrink-0" />
+                      )}
+                      <span className="font-semibold text-xs text-gray-700 truncate">
+                        {deptName}
+                      </span>
+                    </div>
+                    <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-medium shrink-0">
+                      {exams.length}
+                    </span>
+                  </button>
+
+                  {/* Group Body */}
+                  {isExpanded && (
+                    <div className="bg-white flex flex-col">
+                      {exams.map(kt => (
+                        <button
+                          key={kt.id}
+                          onClick={() => handleSelectKyThi(kt)}
+                          className={`w-full text-left px-6 py-3 border-b hover:bg-gray-50 transition-colors ${
+                            selectedKyThi?.id === kt.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                          }`}
+                        >
+                          <p className="font-medium text-sm text-gray-800 truncate">{kt.tenKyThi}</p>
+                          {kt.thoiGianBatDau && (
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              Ngày thi: {new Date(kt.thoiGianBatDau).toLocaleDateString('vi-VN')}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${trangThaiColor(kt.trangThai)}`}>
+                              {trangThaiLabel(kt.trangThai)}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
 
