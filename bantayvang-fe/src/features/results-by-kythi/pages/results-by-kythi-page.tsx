@@ -631,7 +631,7 @@ export function ResultsByKyThiPage() {
   return (
     <div className="flex flex-col lg:flex-row h-full lg:h-[calc(100vh-6rem)] min-h-0 overflow-hidden">
       {/* Left: KyThi list */}
-      <div className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r bg-white flex flex-col shrink-0 h-80 lg:h-full">
+      <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r bg-white flex flex-col shrink-0 h-[480px] lg:h-full">
         <div className="px-4 py-4 border-b">
           <h2 className="font-semibold text-gray-800 flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-blue-500" /> Kỳ thi
@@ -939,7 +939,7 @@ export function ResultsByKyThiPage() {
             {loading ? (
               <div className="text-center py-12 text-gray-400">Đang tải...</div>
             ) : (
-              <div className="bg-white rounded-xl border overflow-hidden">
+              <div className="bg-white rounded-xl border overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b">
                     <tr>

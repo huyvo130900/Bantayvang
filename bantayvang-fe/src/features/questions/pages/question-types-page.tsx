@@ -176,7 +176,7 @@ export function QuestionTypesPage() {
       {loading ? (
         <div className="text-center py-12 text-gray-500">Đang tải...</div>
       ) : (
-        <div className="bg-white rounded-xl border overflow-hidden shadow-sm">
+        <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
