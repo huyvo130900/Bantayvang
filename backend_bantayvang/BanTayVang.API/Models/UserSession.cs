@@ -7,7 +7,7 @@ namespace BanTayVang.API.Models
     /// User session tracking for security monitoring
     /// OWASP A09: Security Logging and Monitoring
     /// </summary>
-    [Table("UserSessions")]
+    [Table("PHIEN_NGUOIDUNG")]
     public class UserSession
     {
         [Key]

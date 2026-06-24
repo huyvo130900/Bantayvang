@@ -7,7 +7,7 @@ namespace BanTayVang.API.Models
     /// Exam assignment - assign users to specific exams
     /// OWASP A01: Access Control - only assigned users can take the exam
     /// </summary>
-    [Table("ExamAssignments")]
+    [Table("PHANCONG_THI")]
     public class ExamAssignment
     {
         [Key]

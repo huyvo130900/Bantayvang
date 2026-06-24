@@ -310,7 +310,7 @@ public partial class BanTayVangDbContext : DbContext
         modelBuilder.Entity<RefreshToken>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.ToTable("RefreshTokens", "PhucHuy");
+            entity.ToTable("TOKEN_LAM_MOI");
 
             entity.Property(e => e.Token)
                 .IsRequired()
@@ -345,7 +345,7 @@ public partial class BanTayVangDbContext : DbContext
         modelBuilder.Entity<UserSession>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.ToTable("UserSessions", "PhucHuy");
+            entity.ToTable("PHIEN_NGUOIDUNG");
 
             entity.Property(e => e.SessionId)
                 .IsRequired()
@@ -384,7 +384,7 @@ public partial class BanTayVangDbContext : DbContext
         modelBuilder.Entity<Notification>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.ToTable("Notifications");
+            entity.ToTable("THONGBAO");
             entity.Property(e => e.Title).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Message).IsRequired().HasMaxLength(1000);
             entity.Property(e => e.Type).HasMaxLength(50);
@@ -400,7 +400,7 @@ public partial class BanTayVangDbContext : DbContext
         modelBuilder.Entity<ExamAssignment>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.ToTable("ExamAssignments");
+            entity.ToTable("PHANCONG_THI");
             entity.HasOne(d => d.Exam)
                 .WithMany()
                 .HasForeignKey(d => d.ExamId)

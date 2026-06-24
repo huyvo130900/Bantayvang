@@ -6,7 +6,7 @@ namespace BanTayVang.API.Models
     /// <summary>
     /// Notification entity
     /// </summary>
-    [Table("Notifications")]
+    [Table("THONGBAO")]
     public class Notification
     {
         [Key]

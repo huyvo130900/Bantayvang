@@ -7,7 +7,7 @@ namespace BanTayVang.API.Models
     /// Refresh token entity for JWT token management
     /// OWASP A07: Identification and Authentication Failures prevention
     /// </summary>
-    [Table("RefreshTokens")]
+    [Table("TOKEN_LAM_MOI")]
     public class RefreshToken
     {
         [Key]
