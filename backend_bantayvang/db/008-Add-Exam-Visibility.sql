@@ -1,4 +1,4 @@
--- Migration 008: Exam Visibility Toggle (CongBoKetQua)
+﻿-- Migration 008: Exam Visibility Toggle (CongBoKetQua)
 -- Date: 2026-05
 
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name='CongBoKetQua' AND Object_ID=Object_ID('DETHI'))

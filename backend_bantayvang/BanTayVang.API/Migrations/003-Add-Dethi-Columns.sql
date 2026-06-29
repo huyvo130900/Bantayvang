@@ -1,4 +1,4 @@
--- Thêm các cột mới cho bảng DETHI và BAITHI
+﻿-- Thêm các cột mới cho bảng DETHI và BAITHI
 
 USE HeThongBanTayVang;
 GO

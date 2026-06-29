@@ -1,4 +1,4 @@
--- Dữ liệu mẫu cho Danh mục câu hỏi và Loại câu hỏi
+﻿-- Dữ liệu mẫu cho Danh mục câu hỏi và Loại câu hỏi
 
 -- Insert Danh mục câu hỏi
 INSERT INTO DANHMUCAUHOI (TenDanhMuc, Mota) VALUES

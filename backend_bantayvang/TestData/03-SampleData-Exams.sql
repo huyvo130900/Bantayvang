@@ -1,4 +1,4 @@
--- Dữ liệu mẫu cho Đề thi và Bài thi
+﻿-- Dữ liệu mẫu cho Đề thi và Bài thi
 
 -- Lấy ID của giáo viên để làm người tạo đề thi
 DECLARE @GiaoVienId INT = (SELECT Id FROM TAIKHOAN WHERE TenDangNhap = 'giaovien1');

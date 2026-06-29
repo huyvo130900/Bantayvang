@@ -1,4 +1,4 @@
--- Migration 006: Department Manager & KhoaPhong table
+﻿-- Migration 006: Department Manager & KhoaPhong table
 -- Date: 2026-05
 
 -- 1. Tạo bảng KHOA_PHONG

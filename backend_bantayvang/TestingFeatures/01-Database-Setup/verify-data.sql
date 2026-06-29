@@ -1,4 +1,4 @@
--- Script để verify dữ liệu đã được setup đúng
+﻿-- Script để verify dữ liệu đã được setup đúng
 
 -- 1. Kiểm tra số lượng records trong các bảng chính
 SELECT 'DANHMUCAUHOI' as TableName, COUNT(*) as RecordCount FROM DANHMUCAUHOI

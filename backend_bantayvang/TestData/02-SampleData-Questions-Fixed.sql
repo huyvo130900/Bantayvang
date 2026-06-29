@@ -1,4 +1,4 @@
--- Fixed version: Xóa data cũ và insert lại bằng SCOPE_IDENTITY để tránh duplicate
+﻿-- Fixed version: Xóa data cũ và insert lại bằng SCOPE_IDENTITY để tránh duplicate
 
 USE HeThongBanTayVang;
 GO

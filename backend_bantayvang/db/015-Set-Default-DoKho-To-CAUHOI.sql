@@ -1,4 +1,4 @@
--- === Migration 015: Set Default DoKho to CAUHOI ===
+﻿-- === Migration 015: Set Default DoKho to CAUHOI ===
 
 -- Update any existing NULL or empty values to '1' (Dễ)
 UPDATE CAUHOI SET DoKho = '1' WHERE DoKho IS NULL OR LTRIM(RTRIM(DoKho)) = '';

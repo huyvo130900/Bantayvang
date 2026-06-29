@@ -1,4 +1,4 @@
--- Migration 007: Thêm trường công bố điểm riêng cho từng thí sinh
+﻿-- Migration 007: Thêm trường công bố điểm riêng cho từng thí sinh
 -- Chạy sau migration 006
 
 -- Thêm cột CongBoRieng vào bảng Baithi

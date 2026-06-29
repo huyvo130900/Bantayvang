@@ -1,4 +1,4 @@
--- Fix Admin User - Update existing admin account with required fields
+﻿-- Fix Admin User - Update existing admin account with required fields
 -- Run this if admin user already existed before migration
 
 USE HeThongBanTayVang;

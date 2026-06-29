@@ -1,4 +1,4 @@
--- Migration 006: Thêm cột DanhGiaKhoa vào bảng baithi
+﻿-- Migration 006: Thêm cột DanhGiaKhoa vào bảng baithi
 -- Cho phép quản lý khoa nhận xét và đánh giá thí sinh
 
 -- Thêm cột đánh giá của khoa

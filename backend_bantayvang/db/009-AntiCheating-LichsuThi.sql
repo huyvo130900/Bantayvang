@@ -1,4 +1,4 @@
--- Migration 009: Bảng LICHSU_THI & tự động tính điểm
+﻿-- Migration 009: Bảng LICHSU_THI & tự động tính điểm
 -- Date: 2026-05
 
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='LICHSU_THI' AND xtype='U')

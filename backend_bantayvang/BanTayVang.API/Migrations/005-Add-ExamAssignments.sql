@@ -1,4 +1,4 @@
-USE HeThongBanTayVang;
+﻿USE HeThongBanTayVang;
 GO
 
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ExamAssignments' AND xtype='U')

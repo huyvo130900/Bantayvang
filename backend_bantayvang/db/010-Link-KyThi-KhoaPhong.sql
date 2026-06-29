@@ -1,4 +1,4 @@
--- === Migration 010: Link KyThi to KhoaPhong ===
+﻿-- === Migration 010: Link KyThi to KhoaPhong ===
 
 PRINT '=== Migration 010: Link KyThi to KhoaPhong ==='
 

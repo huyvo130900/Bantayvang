@@ -1,4 +1,4 @@
--- JWT Authentication Tables Migration
+﻿-- JWT Authentication Tables Migration
 -- OWASP A07: Identification and Authentication Failures prevention
 -- Created: $(date)
 

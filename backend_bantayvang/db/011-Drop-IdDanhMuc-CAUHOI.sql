@@ -1,4 +1,4 @@
--- Migration 011: Drop IdDanhMuc from CAUHOI table
+﻿-- Migration 011: Drop IdDanhMuc from CAUHOI table
 -- Chạy script này để drop cột IdDanhMuc và foreign key liên quan trong CAUHOI
 
 PRINT '=== Migration 011: Drop IdDanhMuc from CAUHOI ==='

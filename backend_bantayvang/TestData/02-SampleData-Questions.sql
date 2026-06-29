@@ -1,4 +1,4 @@
--- Dữ liệu mẫu cho Câu hỏi và Lựa chọn
+﻿-- Dữ liệu mẫu cho Câu hỏi và Lựa chọn
 
 -- Lấy ID của giáo viên để làm người tạo câu hỏi
 DECLARE @GiaoVienId INT = (SELECT Id FROM TAIKHOAN WHERE TenDangNhap = 'giaovien1');

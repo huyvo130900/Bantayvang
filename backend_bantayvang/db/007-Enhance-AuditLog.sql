@@ -1,4 +1,4 @@
--- Migration 007: Enhanced Audit Log
+﻿-- Migration 007: Enhanced Audit Log
 -- Add proper UserId, Username, Method, Path, StatusCode, KhoaPhong columns
 
 -- 1. Add IdTaiKhoan (proper FK)

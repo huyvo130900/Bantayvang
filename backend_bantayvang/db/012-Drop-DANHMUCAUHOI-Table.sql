@@ -1,4 +1,4 @@
--- Migration 012: Drop DANHMUCAUHOI table
+﻿-- Migration 012: Drop DANHMUCAUHOI table
 -- Chạy script này để xóa hoàn toàn bảng DANHMUCAUHOI khỏi database
 
 PRINT '=== Migration 012: Drop DANHMUCAUHOI Table ==='

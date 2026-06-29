@@ -1,4 +1,4 @@
--- Clear All Data Script for HeThongBanTayVang Database
+﻿-- Clear All Data Script for HeThongBanTayVang Database
 -- Run this to delete all data from all tables while preserving table structure
 -- CAUTION: This will delete ALL data - use only for testing!
 
