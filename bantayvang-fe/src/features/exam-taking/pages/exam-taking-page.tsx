@@ -258,8 +258,8 @@ export function ExamTakingPage() {
 
       {/* Left: Question Navigation */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-30 w-64 bg-white border-r flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-56 shrink-0",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        "fixed inset-y-0 left-0 z-30 w-64 bg-white border-r flex flex-col transition-transform duration-300 ease-in-out md:relative md:w-56 shrink-0",
+        isSidebarOpen ? "translate-x-0" : "max-md:-translate-x-full"
       )}>
         <div className="p-4 border-b flex items-center justify-between">
           <ExamTimer formattedTime={formattedTime} isWarning={isWarning} isCritical={isCritical} />

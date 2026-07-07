@@ -58,6 +58,11 @@ export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: Generat
         form.setValue('khoaPhong', kyThi.tenKhoa || kyThi.donViToChuc || '')
         if (kyThi.tongSoCauHoi) {
           form.setValue('tongSoCau', kyThi.tongSoCauHoi)
+          form.setValue('soCauMC', kyThi.tongSoCauHoi)
+          form.setValue('soCauEssay', 0)
+          form.setValue('soCauEasy', kyThi.tongSoCauHoi)
+          form.setValue('soCauMedium', 0)
+          form.setValue('soCauHard', 0)
         }
       }
       setCheckWarnings([])

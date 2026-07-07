@@ -12,18 +12,19 @@ namespace BanTayVang.API.Services.Impl.Import
         }
 
         /// <summary>
-        /// Select strategy by question type ID (preferred - avoids encoding issues with Vietnamese names).
-        /// ID 1 = Trắc nghiệm (MultipleChoice), ID 2 = Tự luận (Essay).
+        /// Select strategy by question type ID.
+        /// Kept for backward compatibility only — prefer GetStrategy(tenLoai) which is ID-independent.
         /// </summary>
+        [Obsolete("Use GetStrategy(tenLoai) to avoid ID coupling with DB.")]
         public IQuestionImportStrategy GetStrategyById(int questionTypeId)
         {
             return questionTypeId switch
             {
                 1 => _strategies.FirstOrDefault(s => s is MultipleChoiceImportStrategy)
                      ?? throw new InvalidOperationException("Không tìm thấy chiến lược import câu hỏi Trắc nghiệm."),
-                3 => _strategies.FirstOrDefault(s => s is EssayImportStrategy)
+                2 => _strategies.FirstOrDefault(s => s is EssayImportStrategy)
                      ?? throw new InvalidOperationException("Không tìm thấy chiến lược import câu hỏi Tự luận."),
-                _ => throw new NotSupportedException($"Loại câu hỏi ID '{questionTypeId}' không được hỗ trợ import qua Excel.")
+                _ => throw new NotSupportedException($"Loại câu hỏi ID '{questionTypeId}' không được hỗ trợ import qua Excel. Thay vào đó hãy dùng GetStrategy(tenLoai).")
             };
         }
 
@@ -36,25 +37,28 @@ namespace BanTayVang.API.Services.Impl.Import
 
             var normalizedName = questionTypeName.Trim().ToLower();
 
-            if (normalizedName.Contains("trắc nghiệm") || normalizedName.Contains("trac nghiem")
-                || normalizedName.Contains("tr?c nghi?m"))
+            // Khớp cả tên đầy đủ lẫn viết tắt từ DB (TN / TL)
+            bool isMultipleChoice = normalizedName == "tn"
+                || normalizedName.Contains("trắc nghiệm") || normalizedName.Contains("trac nghiem")
+                || normalizedName.Contains("tr?c nghi?m") || normalizedName.Contains("multiple");
+
+            bool isEssay = normalizedName == "tl"
+                || normalizedName.Contains("tự luận") || normalizedName.Contains("tu luan")
+                || normalizedName.Contains("t? lu?n") || normalizedName.Contains("essay");
+
+            if (isMultipleChoice)
             {
-                var strategy = _strategies.FirstOrDefault(s => s is MultipleChoiceImportStrategy);
-                if (strategy == null)
-                    throw new InvalidOperationException("Không tìm thấy chiến lược import câu hỏi Trắc nghiệm.");
-                return strategy;
+                return _strategies.FirstOrDefault(s => s is MultipleChoiceImportStrategy)
+                    ?? throw new InvalidOperationException("Không tìm thấy chiến lược import câu hỏi Trắc nghiệm.");
             }
 
-            if (normalizedName.Contains("tự luận") || normalizedName.Contains("tu luan")
-                || normalizedName.Contains("t? lu?n"))
+            if (isEssay)
             {
-                var strategy = _strategies.FirstOrDefault(s => s is EssayImportStrategy);
-                if (strategy == null)
-                    throw new InvalidOperationException("Không tìm thấy chiến lược import câu hỏi Tự luận.");
-                return strategy;
+                return _strategies.FirstOrDefault(s => s is EssayImportStrategy)
+                    ?? throw new InvalidOperationException("Không tìm thấy chiến lược import câu hỏi Tự luận.");
             }
 
-            throw new NotSupportedException($"Loại câu hỏi '{questionTypeName}' không được hỗ trợ import qua Excel.");
+            throw new NotSupportedException($"Loại câu hỏi '{questionTypeName}' không được hỗ trợ import qua Excel. Các giá trị hợp lệ: TN, TL, Trắc nghiệm, Tự luận.");
         }
     }
 }

@@ -184,11 +184,23 @@ export function UsersPage() {
       />
 
       {/* Pagination */}
-      {(currentPage > 1 || hasNextPage) && (
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-sm text-gray-500">
-            Trang {currentPage} · {users.length} người dùng
-          </p>
+      <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">Hiển thị</span>
+          <select
+            value={filter.pageSize}
+            onChange={(e) => dispatch(setFilter({ pageSize: Number(e.target.value), pageNumber: 1 }))}
+            className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+          >
+            {[10, 20, 50, 100].map((size) => (
+              <option key={size} value={size}>{size} dòng</option>
+            ))}
+          </select>
+          <span className="text-sm text-gray-500">
+            · Trang {currentPage} · {users.length} người dùng
+          </span>
+        </div>
+        {(currentPage > 1 || hasNextPage) && (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -210,8 +222,9 @@ export function UsersPage() {
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
 
       <UserFormDialog
         open={formOpen}

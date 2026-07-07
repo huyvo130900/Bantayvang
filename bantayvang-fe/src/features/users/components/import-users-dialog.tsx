@@ -38,18 +38,25 @@ export function ImportUsersDialog({ open, onClose, onSuccess }: ImportUsersDialo
     setResult(null)
     try {
       const res = await usersApi.importExcel(file)
-      if (res.data.success && res.data.data) {
+      if (res.data.data) {
+        // Luôn hiển thị result nếu có data (dù success=false)
         setResult(res.data.data as ImportResult)
         if ((res.data.data as ImportResult).success > 0) {
           onSuccess()
         }
-      } else {
+      } else if (!res.data.success) {
         setError(res.data.message || 'Nhập tài khoản thất bại')
+      } else {
+        setResult(res.data.data as ImportResult)
       }
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        || 'Có lỗi khi nhập file'
-      setError(msg)
+      const errData = (err as { response?: { data?: { data?: ImportResult; message?: string } } })?.response?.data
+      if (errData?.data) {
+        // 400 response vẫn có thể kèm chi tiết lỗi từng dòng
+        setResult(errData.data)
+      } else {
+        setError(errData?.message || 'Có lỗi khi nhập file')
+      }
     } finally {
       setImporting(false)
     }

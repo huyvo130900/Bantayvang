@@ -46,8 +46,8 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     <aside className={cn(
       'fixed left-0 top-0 z-40 h-screen border-r border-white/10 bg-primary text-white transition-all duration-300 flex flex-col',
       collapsed ? 'md:w-16' : 'md:w-64',
-      'w-64 transform md:transform-none',
-      mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      'w-64',
+      mobileOpen ? 'translate-x-0' : 'max-md:-translate-x-full'
     )}>
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-white/10 px-4 shrink-0">

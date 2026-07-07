@@ -105,7 +105,8 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
                   >
                     <KeyRound className="h-4 w-4" />
                   </Button>
-                  {onDelete && (
+                  {/* Nút xóa bị ẩn theo yêu cầu */}
+                  {/* {onDelete && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -115,7 +116,7 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  )}
+                  )} */}
                 </div>
               </td>
             </tr>

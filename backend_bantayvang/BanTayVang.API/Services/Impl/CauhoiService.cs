@@ -497,7 +497,8 @@ namespace BanTayVang.API.Services.Impl
                 IQuestionImportStrategy strategy;
                 try
                 {
-                    strategy = _strategyFactory.GetStrategyById(idLoaiCauHoi);
+                    // Dùng TenLoai từ DB thay vì hardcode ID — an toàn khi xóa/tạo lại loại câu hỏi
+                    strategy = _strategyFactory.GetStrategy(loaiCauHoi.TenLoai ?? "");
                 }
                 catch (Exception ex)
                 {
@@ -656,7 +657,8 @@ namespace BanTayVang.API.Services.Impl
                 IQuestionImportStrategy strategy;
                 try
                 {
-                    strategy = _strategyFactory.GetStrategyById(idLoaiCauHoi);
+                    // Dùng TenLoai từ DB thay vì hardcode ID — an toàn khi xóa/tạo lại loại câu hỏi
+                    strategy = _strategyFactory.GetStrategy(loaiCauHoi.TenLoai ?? "");
                 }
                 catch (Exception ex)
                 {

@@ -30,16 +30,24 @@ export function ImportExcelDialog({ open, onClose, onSuccess }: ImportExcelDialo
     currentUser?.tenVaiTro === 'DeptManager'
   const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || null
 
-  // Tìm ID động của loại câu hỏi từ Redux
+  // Tìm ID động của loại câu hỏi từ Redux (DB đang lưu tenLoai là TN/TL, moTa chứa tên đầy đủ)
   const tracNghiemType = questionTypes.find(
-    (t) => t.tenLoai?.toLowerCase().includes('trắc nghiệm') || t.tenLoai?.toLowerCase().includes('trac nghiem')
+    (t) => {
+      const name = (t.tenLoai || '').toLowerCase();
+      const desc = (t.moTa || '').toLowerCase();
+      return name === 'tn' || name.includes('trắc nghiệm') || name.includes('trac nghiem') || desc.includes('trắc nghiệm') || desc.includes('trac nghiem');
+    }
   )
   const tuLuanType = questionTypes.find(
-    (t) => t.tenLoai?.toLowerCase().includes('tự luận') || t.tenLoai?.toLowerCase().includes('tu luan')
+    (t) => {
+      const name = (t.tenLoai || '').toLowerCase();
+      const desc = (t.moTa || '').toLowerCase();
+      return name === 'tl' || name.includes('tự luận') || name.includes('tu luan') || desc.includes('tự luận') || desc.includes('tu luan');
+    }
   )
 
   const tracNghiemId = tracNghiemType?.id || 1
-  const tuLuanId = tuLuanType?.id || 3
+  const tuLuanId = tuLuanType?.id || 2
 
   useEffect(() => {
     if (open) {

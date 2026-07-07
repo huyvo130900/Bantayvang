@@ -170,13 +170,25 @@ export function DepartmentsPage() {
       })
       load()
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Import thất bại')
+      // Thử lấy chi tiết lỗi từ response body (created/skipped/errors)
+      const errData = (err as { response?: { data?: { created?: number; skipped?: number; errors?: string[]; message?: string } } })?.response?.data
+      if (errData && (errData.errors?.length || errData.created !== undefined)) {
+        setImportResult({
+          success: errData.created || 0,
+          failed: errData.skipped || 0,
+          errors: errData.errors || [errData.message || 'Import thất bại']
+        })
+        load()
+      } else {
+        setError(errData?.message || 'Import thất bại')
+      }
     } finally {
       setImporting(false)
       // Reset input để có thể chọn lại cùng file
       if (importRef.current) importRef.current.value = ''
     }
   }
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
