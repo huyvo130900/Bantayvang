@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
-import { fetchUsers, createUser, updateUser, toggleUserStatus, setFilter } from '../slice'
+import { fetchUsers, createUser, updateUser, toggleUserStatus, setFilter, deleteUser, restoreUser, hardDeleteUser, bulkDeleteUsers } from '../slice'
 import { usersApi } from '../api'
 import { UserFilter } from '../components/user-filter'
 import { UserTable } from '../components/user-table'
@@ -27,6 +27,7 @@ export function UsersPage() {
   const [submitting, setSubmitting] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   useEffect(() => {
     if (isDeptManager && myKhoa) {
@@ -36,6 +37,7 @@ export function UsersPage() {
 
   useEffect(() => {
     dispatch(fetchUsers(filter))
+    setSelectedIds([])
   }, [dispatch, filter])
 
   const hasNextPage = users.length === filter.pageSize
@@ -93,6 +95,87 @@ export function UsersPage() {
     }
   }
 
+  const handleDelete = async (user: UserDto) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa tài khoản "${user.hoTen || user.tenDangNhap}" không?\nTài khoản sẽ được đưa vào Thùng rác và có thể khôi phục lại sau.`)) {
+      return
+    }
+    
+    setSubmitting(true)
+    try {
+      await dispatch(deleteUser(user.id)).unwrap()
+      showMsg('Xóa tài khoản thành công')
+      dispatch(fetchUsers(filter))
+    } catch (err: unknown) {
+      const errorMessage = typeof err === 'string' ? err : (err as { message?: string })?.message || 'Có lỗi xảy ra khi xóa'
+      showMsg(errorMessage, true)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleRestore = async (user: UserDto) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn khôi phục tài khoản "${user.hoTen || user.tenDangNhap}" không?`)) {
+      return
+    }
+    
+    setSubmitting(true)
+    try {
+      await dispatch(restoreUser(user.id)).unwrap()
+      showMsg('Khôi phục tài khoản thành công')
+      dispatch(fetchUsers(filter))
+    } catch (err: unknown) {
+      const errorMessage = typeof err === 'string' ? err : (err as { message?: string })?.message || 'Có lỗi xảy ra khi khôi phục'
+      showMsg(errorMessage, true)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleHardDelete = async (user: UserDto) => {
+    if (!window.confirm(`XÓA VĨNH VIỄN: Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản "${user.hoTen || user.tenDangNhap}" không?\nToàn bộ bài thi, điểm số và dữ liệu liên quan sẽ bị xóa sạch và KHÔNG THỂ HOÀN TÁC.`)) {
+      return
+    }
+    
+    setSubmitting(true)
+    try {
+      await dispatch(hardDeleteUser(user.id)).unwrap()
+      showMsg('Xóa vĩnh viễn tài khoản thành công')
+      dispatch(fetchUsers(filter))
+    } catch (err: unknown) {
+      const errorMessage = typeof err === 'string' ? err : (err as { message?: string })?.message || 'Có lỗi xảy ra khi xóa vĩnh viễn'
+      showMsg(errorMessage, true)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleSelectId = useCallback((id: number, selected: boolean) => {
+    setSelectedIds(prev => selected ? [...prev, id] : prev.filter(x => x !== id))
+  }, [])
+
+  const handleSelectAll = useCallback((selected: boolean) => {
+    setSelectedIds(selected ? users.map(u => u.id) : [])
+  }, [users])
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Bạn có chắc chắn muốn đưa ${selectedIds.length} tài khoản đã chọn vào Thùng rác không?`)) {
+      return
+    }
+    
+    setSubmitting(true)
+    try {
+      await dispatch(bulkDeleteUsers(selectedIds)).unwrap()
+      showMsg(`Đã xóa ${selectedIds.length} tài khoản thành công`)
+      setSelectedIds([])
+      dispatch(fetchUsers(filter))
+    } catch (err: unknown) {
+      const errorMessage = typeof err === 'string' ? err : (err as { message?: string })?.message || 'Có lỗi xảy ra khi xóa hàng loạt'
+      showMsg(errorMessage, true)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleToggleStatus = async (user: UserDto) => {
     const activate = !user.trangThai
     if (!window.confirm(
@@ -105,17 +188,6 @@ export function UsersPage() {
       showMsg(activate ? 'Đã kích hoạt tài khoản' : 'Đã vô hiệu hóa tài khoản')
     } catch {
       showMsg('Không thể thay đổi trạng thái', true)
-    }
-  }
-
-  const handleDelete = async (user: UserDto) => {
-    if (!window.confirm(`Xóa tài khoản "${user.hoTen || user.tenDangNhap}"? Không thể hoàn tác.`)) return
-    try {
-      await usersApi.delete(user.id)
-      showMsg('Đã xóa tài khoản')
-      dispatch(fetchUsers(filter))
-    } catch {
-      showMsg('Không thể xóa tài khoản này', true)
     }
   }
 
@@ -174,6 +246,28 @@ export function UsersPage() {
         hideRoleFilter={isDeptManager}
       />
 
+      <div className="flex items-center justify-between mb-4 min-h-[40px]">
+        <div>
+          {selectedIds.length > 0 && (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 px-4 py-1.5 rounded-lg animate-in fade-in slide-in-from-left-4">
+              <span className="text-sm font-medium text-red-700">Đã chọn {selectedIds.length} dòng</span>
+              <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={submitting} className="h-7 text-xs">
+                Xóa hàng loạt
+              </Button>
+            </div>
+          )}
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!filter.includeDeleted}
+            onChange={(e) => dispatch(setFilter({ includeDeleted: e.target.checked, pageNumber: 1 }))}
+            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+          />
+          <span className="text-sm font-medium text-gray-700">Hiển thị tài khoản đã xóa (Thùng rác)</span>
+        </label>
+      </div>
+
       <UserTable
         users={users}
         isLoading={isLoading}
@@ -181,6 +275,11 @@ export function UsersPage() {
         onToggleStatus={handleToggleStatus}
         onResetPassword={(user) => setResetPwUser(user)}
         onDelete={handleDelete}
+        onRestore={handleRestore}
+        onHardDelete={handleHardDelete}
+        selectedIds={selectedIds}
+        onSelectId={handleSelectId}
+        onSelectAll={handleSelectAll}
       />
 
       {/* Pagination */}

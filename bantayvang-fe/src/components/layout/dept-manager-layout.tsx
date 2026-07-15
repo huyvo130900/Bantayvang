@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, FileQuestion, CalendarDays, Award, ChevronLeft, LogOut, Building2, Bell, ClipboardCheck, Menu
+  LayoutDashboard, FileQuestion, CalendarDays, Award, ChevronLeft, LogOut, Building2, Bell, ClipboardCheck, Menu, UserPlus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ const menuItems = [
   { path: '/dept-manager/ky-thi', label: 'Kỳ thi', icon: CalendarDays },
   { path: '/dept-manager/results', label: 'Kết quả thi', icon: Award },
   { path: '/dept-manager/grading', label: 'Chấm điểm', icon: ClipboardCheck },
+  { path: '/dept-manager/dang-ky-thi', label: 'Duyệt đăng ký', icon: UserPlus },
   { path: '/dept-manager/notifications', label: 'Thông báo', icon: Bell },
 ]
 

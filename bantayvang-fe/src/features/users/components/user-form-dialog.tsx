@@ -239,6 +239,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
                 <option value={ROLE_IDS.ADMIN}>Admin</option>
                 <option value={ROLE_IDS.DEPT_MANAGER}>Quản lý Khoa</option>
                 <option value={ROLE_IDS.STUDENT}>Thí sinh</option>
+                <option value={ROLE_IDS.THI_SINH_NGOAI}>Thí sinh ngoài</option>
               </select>
             </Field>
             <Field label="Trạng thái">

@@ -42,6 +42,7 @@ namespace BanTayVang.API.Services.Impl
 
                 // Recent activities (last 10 completed exams)
                 var recentExams = await _context.Baithis
+                    .IgnoreQueryFilters()
                     .Where(b => b.TrangThai == "Completed")
                     .OrderByDescending(b => b.ThoiGianNop)
                     .Take(10)
@@ -220,6 +221,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var performers = await _context.Baithis
+                    .IgnoreQueryFilters()
                     .Where(b => b.TrangThai == "Completed" && b.TongDiem != null && b.IdTaiKhoan != null)
                     .Include(b => b.IdTaiKhoanNavigation)
                     .GroupBy(b => b.IdTaiKhoan)

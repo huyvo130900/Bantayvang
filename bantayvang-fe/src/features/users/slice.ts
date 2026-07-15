@@ -87,6 +87,70 @@ export const toggleUserStatus = createAsyncThunk(
   }
 )
 
+export const deleteUser = createAsyncThunk(
+  'users/deleteUser',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const response = await usersApi.delete(id)
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message)
+      }
+      return id
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } }
+      return rejectWithValue(err.response?.data?.message || 'Lỗi xóa người dùng')
+    }
+  }
+)
+
+export const restoreUser = createAsyncThunk(
+  'users/restoreUser',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const response = await usersApi.restore(id)
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message)
+      }
+      return id
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } }
+      return rejectWithValue(err.response?.data?.message || 'Lỗi khôi phục người dùng')
+    }
+  }
+)
+
+export const hardDeleteUser = createAsyncThunk(
+  'users/hardDeleteUser',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const response = await usersApi.hardDelete(id)
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message)
+      }
+      return id
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } }
+      return rejectWithValue(err.response?.data?.message || 'Lỗi xóa vĩnh viễn người dùng')
+    }
+  }
+)
+
+export const bulkDeleteUsers = createAsyncThunk(
+  'users/bulkDeleteUsers',
+  async (ids: number[], { rejectWithValue }) => {
+    try {
+      const response = await usersApi.bulkDelete(ids)
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message)
+      }
+      return ids
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } }
+      return rejectWithValue(err.response?.data?.message || 'Lỗi xóa hàng loạt')
+    }
+  }
+)
+
 const usersSlice = createSlice({
   name: 'users',
   initialState,
@@ -130,6 +194,26 @@ const usersSlice = createSlice({
         if (user) {
           user.trangThai = activate
         }
+      })
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        // Nếu đang xem thùng rác thì đánh dấu isDeleted, nếu không thì xóa khỏi list
+        if (state.filter.includeDeleted) {
+          const index = state.users.findIndex((u) => u.id === action.payload)
+          if (index !== -1) {
+            state.users[index].isDeleted = true
+          }
+        } else {
+          state.users = state.users.filter((u) => u.id !== action.payload)
+        }
+      })
+      .addCase(restoreUser.fulfilled, (state, action) => {
+        const index = state.users.findIndex((u) => u.id === action.payload)
+        if (index !== -1) {
+          state.users[index].isDeleted = false
+        }
+      })
+      .addCase(hardDeleteUser.fulfilled, (state, action) => {
+        state.users = state.users.filter((u) => u.id !== action.payload)
       })
   },
 })

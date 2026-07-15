@@ -28,6 +28,8 @@ public partial class Taikhoan
 
     public bool? TrangThai { get; set; }
 
+    public bool IsDeleted { get; set; } = false;
+
     public DateTime? NgayTao { get; set; }
 
     public DateTime? NgayCapNhat { get; set; }

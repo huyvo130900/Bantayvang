@@ -100,18 +100,42 @@ export function ExamTakingPage() {
         }
         navigate(`/exam-result/${id}`, { replace: true, state: { forcedReason: reason } })
       } else {
-        setSubmitError(response.data.message || 'Nộp bài thất bại')
+        const msg = response.data.message || 'Nộp bài thất bại'
+        if (msg.includes('đã được nộp') || msg.includes('Completed')) {
+          if (document.fullscreenElement) {
+            await document.exitFullscreen().catch(() => {})
+          }
+          navigate(`/exam-result/${id}`, { replace: true, state: { forcedReason: reason } })
+          return
+        }
+        setSubmitError(msg)
+        if (!showConfirm) {
+          alert(msg)
+        }
         isSubmittingRef.current = false
         setIsSubmitting(false)
       }
-    } catch {
-      setSubmitError('Có lỗi kết nối. Vui lòng thử lại.')
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Có lỗi kết nối. Vui lòng thử lại.'
+      if (msg.includes('đã được nộp') || msg.includes('Completed')) {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen().catch(() => {})
+        }
+        navigate(`/exam-result/${id}`, { replace: true, state: { forcedReason: reason } })
+        return
+      }
+      setSubmitError(msg)
+      if (!showConfirm) {
+        alert(msg)
+      }
       isSubmittingRef.current = false
       setIsSubmitting(false)
     } finally {
-      setShowConfirm(false)
+      if (showConfirm) {
+        setShowConfirm(false)
+      }
     }
-  }, [id, navigate])
+  }, [id, navigate, showConfirm])
 
   const handleTimeUp = useCallback(() => {
     handleSubmitExam('Hết giờ làm bài')
@@ -126,7 +150,7 @@ export function ExamTakingPage() {
     setTimeout(() => handleSubmitExam(reason), 3000)
   }, [handleSubmitExam])
 
-  const { warningCount, remainingWarnings, isTerminated, isFullscreen, requestFullscreen } = useAntiCheat({
+  const { warningCount, remainingWarnings, isTerminated, isFullscreen, requestFullscreen, blockedKeyMessage } = useAntiCheat({
     baithiId: id,
     enabled: !!examInfo && !isSubmitting,
     onForceSubmit: handleForceSubmit,
@@ -143,6 +167,7 @@ export function ExamTakingPage() {
 
   const { formattedTime, isWarning, isCritical } = useExamTimer({
     initialSeconds: examInfo?.thoiGianConLai ?? 0,
+    isLoaded: !!examInfo,
     onTimeUp: handleTimeUp,
   })
 
@@ -245,6 +270,14 @@ export function ExamTakingPage() {
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-pulse max-w-lg">
           <AlertTriangle className="h-5 w-5 shrink-0" />
           <span className="text-sm font-medium">{cheatingAlert}</span>
+        </div>
+      )}
+
+      {/* Toast: phím bị chặn (không phạt) */}
+      {blockedKeyMessage && !isForceTerminated && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-white px-6 py-3 rounded-xl shadow-xl flex items-center gap-3 max-w-lg transition-all">
+          <span className="text-lg">🔒</span>
+          <span className="text-sm font-medium">{blockedKeyMessage.replace('🔒 ', '')}</span>
         </div>
       )}
 

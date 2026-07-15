@@ -181,8 +181,14 @@ export function ExamResultsTable({
                     <span className="text-lg font-bold text-primary">{r.soCauDung ?? 0}</span>
                     <span className="text-gray-400 text-sm">/{r.tongSoCau ?? 0}</span>
                   </td>
-                  <td className="px-4 py-3 text-center text-gray-500 text-xs hidden lg:table-cell">
-                    {r.durationMinutes ? `${r.durationMinutes} phút` : '—'}
+                  <td className="px-4 py-3 text-center text-gray-500 text-xs hidden lg:table-cell whitespace-nowrap">
+                    {r.durationSeconds != null
+                      ? r.durationSeconds >= 60
+                        ? `${Math.floor(r.durationSeconds / 60)}p ${r.durationSeconds % 60}s`
+                        : `${r.durationSeconds} giây`
+                      : r.durationMinutes
+                        ? `${r.durationMinutes} phút`
+                        : '—'}
                   </td>
 
                   <td className="px-4 py-3 text-center">
@@ -242,9 +248,9 @@ export function ExamResultsTable({
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
                           r.soCauTuLuanDaCham === r.tongSoCauTuLuan
                             ? 'bg-green-50 border border-green-200 text-green-700'
-                            : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+                            : 'bg-orange-100 border border-orange-400 text-orange-700 font-bold animate-pulse'
                         }`}>
-                          TL: {r.soCauTuLuanDaCham ?? 0}/{r.tongSoCauTuLuan ?? 0}
+                          ✏️ TL: {r.soCauTuLuanDaCham ?? 0}/{r.tongSoCauTuLuan ?? 0}
                         </span>
                       )}
                     </div>

@@ -1,0 +1,49 @@
+HƯỚNG DẪN SỬ DỤNG HỆ THỐNG KIỂM TRA NỘI BỘ - BÀN TAY VÀNG
+=========================================================
+
+1. CÁC VAI TRÒ (ROLE) TRONG HỆ THỐNG
+------------------------------------
+- Admin (Quản trị viên): Có toàn quyền hệ thống. Quản lý tài khoản, khoa phòng, cấu hình kỳ thi, phân quyền.
+- DeptManager (Trưởng khoa/phòng): Quản lý ngân hàng câu hỏi, xem kết quả thi và chấm bài của nhân viên thuộc khoa/phòng mình quản lý.
+- Student (Nhân viên/Thí sinh): Đăng nhập để tham gia làm bài thi được phân công và xem kết quả của cá nhân.
+
+2. QUY TRÌNH SỬ DỤNG CƠ BẢN DÀNH CHO QUẢN TRỊ (ADMIN/TRƯỞNG KHOA)
+-----------------------------------------------------------------
+Bước 1: Thiết lập cơ cấu tổ chức
+- Admin vào mục "Quản lý Khoa/Phòng" để tạo danh sách các khoa, phòng ban trong bệnh viện.
+- Admin vào mục "Quản lý Người dùng" để tạo tài khoản cho Trưởng khoa và Nhân viên, phân bổ họ vào đúng Khoa/Phòng.
+
+Bước 2: Xây dựng Ngân hàng câu hỏi
+- Vào mục "Ngân hàng câu hỏi".
+- Chọn thêm câu hỏi thủ công hoặc sử dụng tính năng "Import Excel" để tải lên hàng loạt câu hỏi trắc nghiệm/tự luận.
+- Phân loại câu hỏi theo danh mục và độ khó.
+
+Bước 3: Tạo Đề thi
+- Vào mục "Quản lý đề thi" -> Tạo đề thi mới.
+- Thiết lập thời gian làm bài, điểm chuẩn.
+- Bốc ngẫu nhiên câu hỏi từ ngân hàng hoặc chọn chỉ định từng câu để đưa vào đề thi.
+
+Bước 4: Tổ chức Kỳ thi & Phân công
+- Vào mục "Kỳ thi" -> Tạo kỳ thi mới (VD: "Kiểm tra tay nghề Điều dưỡng 2026").
+- Chọn đề thi áp dụng cho kỳ thi này.
+- Vào phần "Phân công thi", chọn danh sách nhân viên bắt buộc phải tham gia kỳ thi này.
+
+Bước 5: Theo dõi thi & Chấm bài
+- Trong lúc thí sinh đang thi, Admin/Trưởng khoa có thể xem trạng thái phòng thi theo thời gian thực (ai đang làm, ai đã nộp).
+- Sau khi thi xong, vào mục "Chấm điểm" để chấm các câu hỏi tự luận (nếu có). Câu hỏi trắc nghiệm hệ thống đã tự động chấm.
+
+Bước 6: Xem báo cáo, Thống kê
+- Vào "Tổng quan" hoặc "Kết quả thi" để xem biểu đồ thống kê điểm số, tỉ lệ đậu/rớt. Xuất báo cáo ra file Excel nếu cần.
+
+3. HƯỚNG DẪN DÀNH CHO THÍ SINH (NHÂN VIÊN)
+------------------------------------------
+- Bước 1: Đăng nhập vào hệ thống bằng tài khoản được cấp.
+- Bước 2: Tại màn hình chính, hệ thống sẽ hiển thị danh sách các kỳ thi "Sắp diễn ra" hoặc "Đang diễn ra" đã được phân công.
+- Bước 3: Click "Vào phòng thi". Đọc kỹ quy chế trước khi bấm Bắt đầu.
+- Bước 4: Trả lời các câu hỏi trên màn hình. Chú ý đồng hồ đếm ngược. Hệ thống có cơ chế cảnh báo gian lận nếu chuyển tab.
+- Bước 5: Bấm "Nộp bài". Tuỳ theo cấu hình của kỳ thi, thí sinh có thể xem được điểm ngay lập tức hoặc phải chờ công bố.
+
+4. LƯU Ý BẢO MẬT
+----------------
+- Tuyệt đối không chia sẻ tài khoản.
+- Đổi mật khẩu định kỳ trong phần Thông tin cá nhân.

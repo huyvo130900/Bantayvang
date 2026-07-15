@@ -55,6 +55,9 @@ public partial class BanTayVangDbContext : DbContext
     // Ky Thi
     public virtual DbSet<KyThi> KyThis { get; set; }
 
+    // Đăng Ký Thi
+    public virtual DbSet<DangKyThi> DangKyThis { get; set; }
+
     // Department Management (v2.0)
     public virtual DbSet<KhoaPhong> KhoaPhongs { get; set; }
 
@@ -270,6 +273,7 @@ public partial class BanTayVangDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__TAIKHOAN__3214EC07D2108DB4");
 
             entity.ToTable("TAIKHOAN");
+            entity.HasQueryFilter(e => !e.IsDeleted);
 
             entity.Property(e => e.ChucDanh).HasMaxLength(100);
             entity.Property(e => e.KhoaPhong).HasMaxLength(100);

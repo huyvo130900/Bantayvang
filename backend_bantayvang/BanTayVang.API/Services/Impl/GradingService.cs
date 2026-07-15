@@ -22,6 +22,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var baithi = await _context.Baithis
+                    .IgnoreQueryFilters()
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
@@ -76,6 +77,7 @@ namespace BanTayVang.API.Services.Impl
             {
                 // Lấy TẤT CẢ bài thi của đề này (kể cả thi lại) để tính số lần thi
                 var allBaithis = await _context.Baithis
+                    .IgnoreQueryFilters()
                     .Where(b => b.IdDeThi == examId && b.TrangThai == "Completed")
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
@@ -117,7 +119,8 @@ namespace BanTayVang.API.Services.Impl
                             IsEssay = c.IdCauHoiNavigation != null 
                                 && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null 
                                 && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" 
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan")
+                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan"
+                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL")
                         })
                         .ToListAsync();
 
@@ -207,7 +210,8 @@ namespace BanTayVang.API.Services.Impl
                         .ToHashSet();
 
                     var tenLoai = question.IdLoaiCauHoiNavigation?.TenLoai;
-                    var isEssay = tenLoai == "Tự luận" || tenLoai == "TuLuan" || correctChoiceIds.Count == 0;
+                            var moTa = question.IdLoaiCauHoiNavigation?.MoTa;
+                    var isEssay = tenLoai == "Tự luận" || tenLoai == "TuLuan" || tenLoai == "TL" || correctChoiceIds.Count == 0;
 
                     if (isEssay)
                     {
@@ -281,8 +285,8 @@ namespace BanTayVang.API.Services.Impl
                 if (chitiet == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy chi tiết bài làm" };
 
-                // Đánh dấu Đúng/Sai: DiemDatDuoc = 1 nếu đúng, = 0 nếu sai
-                chitiet.DiemDatDuoc = dto.IsCorrect ? 1.0 : 0.0;
+                // Đánh dấu Đúng/Sai: DiemDatDuoc = 1 nếu đúng, = 0 nếu sai, = null nếu chấm lại
+                chitiet.DiemDatDuoc = dto.IsCorrect.HasValue ? (dto.IsCorrect.Value ? 1.0 : 0.0) : (double?)null;
                 if (!string.IsNullOrEmpty(dto.NhanXet))
                     chitiet.CauTraLoiTuLuan = chitiet.CauTraLoiTuLuan; // giữ nguyên nội dung
 
@@ -303,7 +307,8 @@ namespace BanTayVang.API.Services.Impl
                         foreach (var ct in baithi.Chitietlambais)
                         {
                             var tenLoai = ct.IdCauHoiNavigation?.IdLoaiCauHoiNavigation?.TenLoai;
-                            bool isTuLuan = tenLoai == "Tự luận" || tenLoai == "TuLuan";
+                            var moTa = ct.IdCauHoiNavigation?.IdLoaiCauHoiNavigation?.MoTa;
+                            bool isTuLuan = tenLoai == "Tự luận" || tenLoai == "TuLuan" || tenLoai == "TL";
                             if (isTuLuan)
                             {
                                 if (ct.DiemDatDuoc == 1.0) soCauDung++;
@@ -334,6 +339,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var baithis = await _context.Baithis
+                    .IgnoreQueryFilters()
                     .Where(b => b.IdDeThi == examId && b.TrangThai == "Completed")
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
@@ -402,10 +408,13 @@ namespace BanTayVang.API.Services.Impl
 
         private ExamResultDetailDto MapToDetailDto(Baithi baithi)
         {
-            int? duration = null;
+            int? durationMinutes = null;
+            int? durationSeconds = null;
             if (baithi.ThoiGianBatDau.HasValue && baithi.ThoiGianNop.HasValue)
             {
-                duration = (int)(baithi.ThoiGianNop.Value - baithi.ThoiGianBatDau.Value).TotalMinutes;
+                var diff = baithi.ThoiGianNop.Value - baithi.ThoiGianBatDau.Value;
+                durationMinutes = (int)diff.TotalMinutes;
+                durationSeconds = (int)diff.TotalSeconds;
             }
 
             var detail = new ExamResultDetailDto
@@ -422,7 +431,8 @@ namespace BanTayVang.API.Services.Impl
                 TenDeThi = baithi.IdDeThiNavigation?.TenDeThi,
                 ThoiGianBatDau = baithi.ThoiGianBatDau,
                 ThoiGianNop = baithi.ThoiGianNop,
-                DurationMinutes = duration,
+                DurationMinutes = durationMinutes,
+                DurationSeconds = durationSeconds,
                 TongDiem = baithi.TongSoCau.HasValue && baithi.TongSoCau.Value > 0
                     ? Math.Round((double)(baithi.SoCauDung ?? 0) / baithi.TongSoCau.Value * 10, 2)
                     : 0,
@@ -455,7 +465,8 @@ namespace BanTayVang.API.Services.Impl
                 if (question == null) continue;
 
                 var tenLoai = question.IdLoaiCauHoiNavigation?.TenLoai;
-                bool isEssay = tenLoai == "Tự luận" || tenLoai == "TuLuan";
+                            var moTa = question.IdLoaiCauHoiNavigation?.MoTa;
+                bool isEssay = tenLoai == "Tự luận" || tenLoai == "TuLuan" || tenLoai == "TL";
 
                 if (isEssay)
                 {
@@ -518,7 +529,7 @@ namespace BanTayVang.API.Services.Impl
                     NoiDungDapAn = isEssay ? firstCt.CauTraLoiTuLuan : userChoiceText,
                     CauTraLoiTuLuan = firstCt.CauTraLoiTuLuan,
                     IsCorrect = isFullyCorrect,
-                    DiemDatDuoc = group.Sum(c => c.DiemDatDuoc ?? 0),
+                    DiemDatDuoc = group.All(c => c.DiemDatDuoc == null) ? (double?)null : group.Sum(c => c.DiemDatDuoc ?? 0),
                     IdLuaChonDung = firstCorrectChoice?.Id, // Fallback
                     NoiDungDapAnDung = correctChoiceText,
                     ChiTietLamBaiId = firstCt.Id
@@ -608,6 +619,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var baithis = await _context.Baithis
+                    .IgnoreQueryFilters()
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
@@ -657,7 +669,8 @@ namespace BanTayVang.API.Services.Impl
                             IsEssay = c.IdCauHoiNavigation != null 
                                 && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null 
                                 && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" 
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan")
+                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan"
+                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL")
                         })
                         .ToListAsync();
 
@@ -753,3 +766,6 @@ namespace BanTayVang.API.Services.Impl
         }
     }
 }
+
+
+

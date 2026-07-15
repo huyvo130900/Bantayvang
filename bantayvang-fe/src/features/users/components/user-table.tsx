@@ -9,9 +9,14 @@ interface UserTableProps {
   onToggleStatus: (user: UserDto) => void
   onResetPassword: (user: UserDto) => void
   onDelete?: (user: UserDto) => void
+  onRestore?: (user: UserDto) => void
+  onHardDelete?: (user: UserDto) => void
+  selectedIds?: number[]
+  onSelectId?: (id: number, selected: boolean) => void
+  onSelectAll?: (selected: boolean) => void
 }
 
-export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPassword, onDelete }: UserTableProps) {
+export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPassword, onDelete, onRestore, onHardDelete, selectedIds = [], onSelectId, onSelectAll }: UserTableProps) {
   if (isLoading) {
     return (
       <div className="space-y-2 rounded-lg border overflow-hidden">
@@ -37,6 +42,14 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
       <table className="w-full text-sm">
         <thead className="bg-gray-50 border-b">
           <tr>
+            <th className="px-4 py-3 text-left w-10">
+              <input 
+                type="checkbox" 
+                className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary cursor-pointer"
+                checked={users.length > 0 && selectedIds.length === users.length}
+                onChange={(e) => onSelectAll?.(e.target.checked)}
+              />
+            </th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Họ tên</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Username</th>
             <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Khoa/Phòng</th>
@@ -50,6 +63,14 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
         <tbody className="divide-y">
           {users.map((user) => (
             <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-4 py-3">
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary cursor-pointer"
+                  checked={selectedIds.includes(user.id)}
+                  onChange={(e) => onSelectId?.(user.id, e.target.checked)}
+                />
+              </td>
               <td className="px-4 py-3">
                 <p className="font-medium text-gray-900">{user.hoTen || '—'}</p>
                 {user.maNhanVien && (
@@ -70,53 +91,85 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
                 <RoleBadge role={user.tenVaiTro} />
               </td>
               <td className="px-4 py-3">
-                <StatusBadge active={user.trangThai} />
+                {user.isDeleted ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Đã xóa</span>
+                ) : (
+                  <StatusBadge active={user.trangThai} />
+                )}
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center justify-end gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Sửa thông tin"
-                    onClick={() => onEdit(user)}
-                    className="h-8 w-8 text-gray-400 hover:text-yellow-600"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title={user.trangThai ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                    onClick={() => onToggleStatus(user)}
-                    className="h-8 w-8 text-gray-400 hover:text-blue-600"
-                  >
-                    {user.trangThai ? (
-                      <ShieldOff className="h-4 w-4 text-orange-500" />
-                    ) : (
-                      <ShieldCheck className="h-4 w-4 text-green-500" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Đặt lại mật khẩu"
-                    onClick={() => onResetPassword(user)}
-                    className="h-8 w-8 text-gray-400 hover:text-blue-600"
-                  >
-                    <KeyRound className="h-4 w-4" />
-                  </Button>
-                  {/* Nút xóa bị ẩn theo yêu cầu */}
-                  {/* {onDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Xóa tài khoản"
-                      onClick={() => onDelete(user)}
-                      className="h-8 w-8 text-gray-400 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )} */}
+                  {user.isDeleted ? (
+                    <>
+                      {onRestore && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Khôi phục tài khoản"
+                          onClick={() => onRestore(user)}
+                          className="h-8 w-8 text-gray-400 hover:text-green-600"
+                        >
+                          <ShieldCheck className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {onHardDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Xóa vĩnh viễn"
+                          onClick={() => onHardDelete(user)}
+                          className="h-8 w-8 text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Sửa thông tin"
+                        onClick={() => onEdit(user)}
+                        className="h-8 w-8 text-gray-400 hover:text-yellow-600"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={user.trangThai ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                        onClick={() => onToggleStatus(user)}
+                        className="h-8 w-8 text-gray-400 hover:text-blue-600"
+                      >
+                        {user.trangThai ? (
+                          <ShieldOff className="h-4 w-4 text-orange-500" />
+                        ) : (
+                          <ShieldCheck className="h-4 w-4 text-green-500" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Đặt lại mật khẩu"
+                        onClick={() => onResetPassword(user)}
+                        className="h-8 w-8 text-gray-400 hover:text-blue-600"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
+                      {onDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Xóa tài khoản"
+                          onClick={() => onDelete(user)}
+                          className="h-8 w-8 text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  )}
                 </div>
               </td>
             </tr>
@@ -129,12 +182,13 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
 
 function RoleBadge({ role }: { role: string | null }) {
   const config: Record<string, { color: string; label: string }> = {
-    Admin:        { color: 'bg-red-100 text-red-700',     label: 'Admin' },
-    DeptManager:  { color: 'bg-blue-100 text-blue-700',   label: 'Quản lý Khoa' },
-    Student:      { color: 'bg-green-100 text-green-700', label: 'Thí sinh' },
+    Admin: { color: 'bg-red-100 text-red-700', label: 'Admin' },
+    DeptManager: { color: 'bg-blue-100 text-blue-700', label: 'Quản lý Khoa' },
+    Student: { color: 'bg-green-100 text-green-700', label: 'Thí sinh' },
+    ThiSinhNgoai: { color: 'bg-orange-100 text-orange-700', label: 'Thí sinh ngoài' },
     // Obsolete — keep for backward compat display
-    Teacher:      { color: 'bg-gray-100 text-gray-500',   label: 'Teacher (cũ)' },
-    Supervisor:   { color: 'bg-gray-100 text-gray-500',   label: 'Supervisor (cũ)' },
+    Teacher: { color: 'bg-gray-100 text-gray-500', label: 'Teacher (cũ)' },
+    Supervisor: { color: 'bg-gray-100 text-gray-500', label: 'Supervisor (cũ)' },
   }
   const { color, label } = config[role || ''] || { color: 'bg-gray-100 text-gray-700', label: role || 'Unknown' }
   return (

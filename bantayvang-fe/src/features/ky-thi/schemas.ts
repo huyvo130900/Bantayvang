@@ -19,6 +19,10 @@ export const createKyThiSchema = z.object({
     (val) => val === '' || val === null || val === undefined ? null : Number(val),
     z.number().min(1, 'Tổng số câu hỏi mỗi đề phải lớn hơn 0').nullable().optional()
   ),
+  thoiGianLamBai: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? null : Number(val),
+    z.number().min(1, 'Thời gian làm bài tối thiểu là 1 phút').max(1440, 'Tối đa 1440 phút').nullable().optional()
+  ),
 })
 
 export type CreateKyThiFormData = z.infer<typeof createKyThiSchema>
@@ -42,6 +46,10 @@ export const getKyThiSchema = (isEdit: boolean, initialStart?: string | null, in
     tongSoCauHoi: z.preprocess(
       (val) => val === '' || val === null || val === undefined ? null : Number(val),
       z.number().min(1, 'Tổng số câu hỏi mỗi đề phải lớn hơn 0').nullable().optional()
+    ),
+    thoiGianLamBai: z.preprocess(
+      (val) => val === '' || val === null || val === undefined ? null : Number(val),
+      z.number().min(1, 'Thời gian làm bài tối thiểu là 1 phút').max(1440, 'Tối đa 1440 phút').nullable().optional()
     ),
   }).refine((data) => {
     const start = new Date(data.thoiGianBatDau)

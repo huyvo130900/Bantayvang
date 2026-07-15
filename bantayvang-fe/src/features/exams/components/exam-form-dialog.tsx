@@ -362,14 +362,26 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold">Tạo đề thi mới</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+            <h2 className="text-lg font-semibold">Tạo đề thi mới</h2>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>Hủy</Button>
+              <Button
+                type="submit"
+                disabled={
+                  isLoading ||
+                  isUploadingExcel ||
+                  (configMode === 'bank' && selectedIds.length === 0) ||
+                  (configMode === 'excel' && !excelFile)
+                }
+              >
+                {isLoading || isUploadingExcel ? 'Đang tạo...' : 'Tạo đề thi'}
+              </Button>
+            </div>
+          </div>
 
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="p-4 space-y-4">
+          <div className="p-4 space-y-4">
           {/* Kỳ thi liên kết */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Kỳ thi liên kết *</label>
@@ -740,20 +752,6 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>Hủy</Button>
-            <Button
-              type="submit"
-              disabled={
-                isLoading ||
-                isUploadingExcel ||
-                (configMode === 'bank' && selectedIds.length === 0) ||
-                (configMode === 'excel' && !excelFile)
-              }
-            >
-              {isLoading || isUploadingExcel ? 'Đang tạo...' : 'Tạo đề thi'}
-            </Button>
           </div>
         </form>
       </div>

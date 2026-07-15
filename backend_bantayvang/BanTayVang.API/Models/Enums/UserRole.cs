@@ -30,7 +30,12 @@ namespace BanTayVang.API.Models.Enums
         /// <summary>
         /// Department Manager - manages questions and exams for their department
         /// </summary>
-        DeptManager = 5
+        DeptManager = 5,
+
+        /// <summary>
+        /// External candidate
+        /// </summary>
+        ThiSinhNgoai = 6
     }
 
     /// <summary>

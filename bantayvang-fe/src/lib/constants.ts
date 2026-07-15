@@ -4,6 +4,7 @@ export const ROLES = {
   ADMIN: 'Admin',
   DEPT_MANAGER: 'DeptManager',
   STUDENT: 'Student',
+  THI_SINH_NGOAI: 'ThiSinhNgoai',
   // Obsolete - giữ lại để tránh break dữ liệu cũ, không hiển thị trên UI
   /** @deprecated Use DEPT_MANAGER instead */
   TEACHER: 'Teacher',
@@ -19,6 +20,7 @@ export const ROLE_IDS = {
   STUDENT: 3,
   SUPERVISOR: 4,    // Obsolete
   DEPT_MANAGER: 5,
+  THI_SINH_NGOAI: 6,
 } as const
 
 // Admin full access

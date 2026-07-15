@@ -1,0 +1,53 @@
+HƯỚNG DẪN CÀI ĐẶT HỆ THỐNG KIỂM TRA NỘI BỘ - BÀN TAY VÀNG
+=========================================================
+
+1. YÊU CẦU HỆ THỐNG
+-------------------
+- Backend: .NET 8 SDK, SQL Server 2019 trở lên
+- Frontend: Node.js (phiên bản 18 trở lên), npm
+
+2. CÀI ĐẶT CƠ SỞ DỮ LIỆU (DATABASE)
+-----------------------------------
+- Mở SQL Server Management Studio (SSMS).
+- Tạo một database mới tên là: HeThongBanTayVang (hoặc tên tuỳ ý).
+- Chạy các script SQL (ví dụ: database.sql, update12.sql) được cung cấp trong dự án để tạo các bảng và dữ liệu mẫu.
+
+3. CẤU HÌNH VÀ CHẠY BACKEND (API)
+---------------------------------
+Bước 3.1: Cấu hình kết nối Database
+- Mở file: backend_bantayvang/BanTayVang.API/appsettings.json
+- Sửa lại chuỗi kết nối "DefaultConnection" cho đúng với SQL Server của bạn:
+  "Server=TÊN_SERVER;Database=HeThongBanTayVang;User Id=sa;Password=MẬT_KHẨU;TrustServerCertificate=True;"
+
+Bước 3.2: Chạy Backend
+- Mở Terminal / Command Prompt.
+- Di chuyển vào thư mục backend: 
+  cd backend_bantayvang/BanTayVang.API
+- Khôi phục các gói thư viện:
+  dotnet restore
+- Khởi chạy API:
+  dotnet run
+- Hệ thống sẽ hiển thị port đang chạy (ví dụ: https://localhost:7001). Khi chạy lần đầu, hệ thống sẽ TỰ ĐỘNG TẠO tài khoản Admin mặc định.
+
+4. CẤU HÌNH VÀ CHẠY FRONTEND (GIAO DIỆN)
+----------------------------------------
+Bước 4.1: Cấu hình API URL
+- Mở file: bantayvang-fe/.env
+- Sửa lại VITE_API_URL trỏ đúng tới địa chỉ Backend đang chạy ở Bước 3.2 (ví dụ: https://localhost:7001)
+
+Bước 4.2: Chạy Frontend
+- Mở một Terminal / Command Prompt mới.
+- Di chuyển vào thư mục frontend:
+  cd bantayvang-fe
+- Cài đặt thư viện:
+  npm install
+- Khởi chạy giao diện:
+  npm run dev
+- Truy cập vào đường dẫn hiển thị trên terminal (thường là http://localhost:5173).
+
+5. TÀI KHOẢN ĐĂNG NHẬP MẶC ĐỊNH
+-------------------------------
+Hệ thống tự động khởi tạo tài khoản quản trị viên cao nhất:
+- Tên đăng nhập: admin
+- Mật khẩu: admin123
+*Lưu ý: Bắt buộc đổi mật khẩu sau khi đăng nhập thành công vào hệ thống.

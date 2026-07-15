@@ -14,6 +14,7 @@ export interface UserDto {
   trangThai: boolean | null
   ngayTao: string | null
   lanDangNhapCuoi: string | null
+  isDeleted: boolean
 }
 
 export interface CreateUserDto {
@@ -49,4 +50,5 @@ export interface UserFilterDto {
   trangThai?: boolean
   khoaPhong?: string
   searchKeyword?: string
+  includeDeleted?: boolean
 }

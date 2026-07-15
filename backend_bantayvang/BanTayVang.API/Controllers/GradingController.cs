@@ -159,6 +159,105 @@ namespace BanTayVang.API.Controllers
         }
 
         /// <summary>
+        /// GET /api/grading/pending-essay
+        /// Trả về danh sách bài thi còn câu tự luận chưa được chấm (cho Admin & Quản lý Khoa)
+        /// </summary>
+        [HttpGet("pending-essay")]
+        [Authorize(Policy = "ManagementOnly")]
+        public async Task<ActionResult<BaseResponseDto<List<object>>>> GetPendingEssay([FromQuery] bool isGraded = false)
+        {
+            var myKhoa = DepartmentAuthHelper.IsDeptManager(User) ? DepartmentAuthHelper.GetKhoaPhong(User) : null;
+
+            var pendingQuery = _db.Baithis
+                .Where(b => b.TrangThai == "Completed" || b.TrangThai == "Submitted")
+                .Include(b => b.IdTaiKhoanNavigation)
+                .Include(b => b.IdDeThiNavigation)
+                .Include(b => b.KyThiNavigation)
+                .AsQueryable();
+
+            if (!isGraded)
+            {
+                pendingQuery = pendingQuery.Where(b => b.Chitietlambais.Any(c =>
+                    c.IdCauHoiNavigation != null &&
+                    c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
+                    (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" ||
+                     c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan" ||
+                     c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL") &&
+                    c.DiemDatDuoc == null));
+            }
+            else
+            {
+                pendingQuery = pendingQuery.Where(b => 
+                    b.Chitietlambais.Any(c =>
+                        c.IdCauHoiNavigation != null &&
+                        c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
+                        (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" ||
+                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan" ||
+                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL"))
+                    && 
+                    !b.Chitietlambais.Any(c =>
+                        c.IdCauHoiNavigation != null &&
+                        c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
+                        (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" ||
+                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan" ||
+                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL") &&
+                        c.DiemDatDuoc == null));
+            }
+
+            // Nếu là Quản lý Khoa thì lọc theo khoa của mình
+            if (myKhoa != null)
+            {
+                pendingQuery = pendingQuery.Where(b =>
+                    b.IdTaiKhoanNavigation!.KhoaPhong == myKhoa ||
+                    b.IdDeThiNavigation!.KhoaPhong == myKhoa ||
+                    b.KyThiNavigation!.DonViToChuc == myKhoa);
+            }
+
+            var baithis = await pendingQuery
+                .OrderByDescending(b => b.ThoiGianNop)
+                .Take(200)
+                .Select(b => new
+                {
+                    BaiThiId = b.Id,
+                    UserId = b.IdTaiKhoan,
+                    Username = b.IdTaiKhoanNavigation!.TenDangNhap,
+                    FullName = b.IdTaiKhoanNavigation.HoTen,
+                    MaNhanVien = b.IdTaiKhoanNavigation.MaNhanVien,
+                    KhoaPhong = b.IdTaiKhoanNavigation.KhoaPhong,
+                    MaDeThi = b.MaDeThi,
+                    TenDeThi = b.IdDeThiNavigation != null ? b.IdDeThiNavigation.TenDeThi : null,
+                    ThoiGianNop = b.ThoiGianNop,
+                    TongDiem = b.TongDiem,
+                    SoCauDung = b.SoCauDung,
+                    TongSoCau = b.TongSoCau,
+                    TrangThai = b.TrangThai,
+                    // Đếm số câu tự luận chưa chấm
+                    SoCauTuLuanChuaCham = b.Chitietlambais.Count(c =>
+                        c.IdCauHoiNavigation != null &&
+                        c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
+                        (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" ||
+                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan" ||
+                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL") &&
+                        c.DiemDatDuoc == null),
+                    TongSoCauTuLuan = b.Chitietlambais.Count(c =>
+                        c.IdCauHoiNavigation != null &&
+                        c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
+                        (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" ||
+                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan" ||
+                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL")),
+                    TenKyThi = b.KyThiNavigation != null ? b.KyThiNavigation.TenKyThi : null,
+                })
+                .ToListAsync();
+
+            return Ok(new BaseResponseDto<List<object>>
+            {
+                Success = true,
+                Message = $"Tìm thấy {baithis.Count} bài thi cần chấm tự luận",
+                Data = baithis.Cast<object>().ToList()
+            });
+        }
+
+        /// <summary>
         /// Chấm thủ công câu tự luận
         /// </summary>
         [HttpPost("manual-grade")]
@@ -594,7 +693,7 @@ namespace BanTayVang.API.Controllers
                 .AnyAsync(c => c.IdBaiThi == baiThiId
                             && c.IdCauHoiNavigation != null
                             && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null
-                            && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan")
+                            && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan" || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL")
                             && c.DiemDatDuoc == null);
             if (hasUngraded)
             {
@@ -646,3 +745,4 @@ namespace BanTayVang.API.Controllers
         }
     }
 }
+

@@ -418,7 +418,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                     .ToHashSet();
 
                 var tenLoai = question.IdLoaiCauHoiNavigation?.TenLoai;
-                var isEssay = tenLoai == "Tự luận" || tenLoai == "TuLuan" || correctChoiceIds.Count == 0;
+                var moTa = question.IdLoaiCauHoiNavigation?.MoTa;
+                var isEssay = tenLoai == "Tự luận" || tenLoai == "TuLuan" || tenLoai == "TL" || correctChoiceIds.Count == 0;
 
                 if (isEssay)
                 {
@@ -546,3 +547,6 @@ namespace BanTayVang.API.Services.Impl.Exams
         #endregion
     }
 }
+
+
+

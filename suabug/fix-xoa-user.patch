@@ -1,0 +1,116 @@
+diff --git a/backend_bantayvang/BanTayVang.API/Controllers/UserController.cs b/backend_bantayvang/BanTayVang.API/Controllers/UserController.cs
+index d6066a3..9f5c732 100644
+--- a/backend_bantayvang/BanTayVang.API/Controllers/UserController.cs
++++ b/backend_bantayvang/BanTayVang.API/Controllers/UserController.cs
+@@ -92,8 +92,15 @@ namespace BanTayVang.API.Controllers
+         }
+ 
+         [HttpDelete("{id}")]
++        [Authorize(Policy = "AdminOnly")]
+         public async Task<ActionResult<BaseResponseDto>> DeleteUser(int id)
+         {
++            var currentUserId = DepartmentAuthHelper.GetUserId(User);
++            if (currentUserId.HasValue && currentUserId.Value == id)
++            {
++                return BadRequest(BaseResponseDto.FailureResult("Không thể tự xóa tài khoản của chính mình"));
++            }
++
+             var result = await _userService.DeleteUserAsync(id);
+             if (!result.Success) return BadRequest(result);
+             return Ok(result);
+diff --git a/backend_bantayvang/BanTayVang.API/Services/Impl/UserManagementService.cs b/backend_bantayvang/BanTayVang.API/Services/Impl/UserManagementService.cs
+index 2d1ec44..28f28aa 100644
+--- a/backend_bantayvang/BanTayVang.API/Services/Impl/UserManagementService.cs
++++ b/backend_bantayvang/BanTayVang.API/Services/Impl/UserManagementService.cs
+@@ -353,13 +353,79 @@ namespace BanTayVang.API.Services.Impl
+         {
+             try
+             {
+-                // Soft delete - just deactivate
+-                return await DeactivateUserAsync(id);
++                // 1. Xác nhận user tồn tại trước khi làm bất cứ điều gì
++                var target = await _userRepository.GetByIdAsync(id);
++                if (target == null)
++                {
++                    return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
++                }
++
++                // 2. Không cho xóa Admin cuối cùng của hệ thống (tránh khóa quyền truy cập vĩnh viễn)
++                if (target.IdVaiTro == 1)
++                {
++                    var admins = await _userRepository.GetByRoleAsync(1);
++                    var otherAdminsCount = admins.Count(a => a.Id != id);
++                    if (otherAdminsCount == 0)
++                    {
++                        return new BaseResponseDto { Success = false, Message = "Không thể xóa Admin cuối cùng trong hệ thống" };
++                    }
++                }
++
++                // 3. Sử dụng raw SQL để xóa tận gốc các dữ liệu liên kết trước (Cascade Delete bằng tay)
++                // Các bảng như LOGTHAOTAC có thể cấu hình SET_NULL nhưng xóa sạch cho an toàn.
++                // SET XACT_ABORT ON + TRY/CATCH/ROLLBACK đảm bảo toàn bộ script là 1 khối atomic:
++                // nếu bất kỳ câu lệnh nào lỗi (vd: vướng 1 FK chưa lường tới), mọi thay đổi trước đó
++                // sẽ được rollback thay vì bị COMMIT dở dang gây "mồ côi" dữ liệu.
++                string sql = @"
++                    SET XACT_ABORT ON;
++                    BEGIN TRY
++                        BEGIN TRANSACTION;
++
++                        -- Xóa cảnh báo gian lận và log liên quan đến bài thi
++                        DELETE FROM CANHBAOGIANLAN WHERE IdBaiThi IN (SELECT Id FROM BAITHI WHERE IdTaiKhoan = {0});
++                        DELETE FROM LOGTHAOTAC WHERE IdBaiThi IN (SELECT Id FROM BAITHI WHERE IdTaiKhoan = {0});
++
++                        -- Xóa lịch sử thi (anti-cheat), có FK NOT NULL tới TAIKHOAN - nếu bảng tồn tại
++                        IF OBJECT_ID('dbo.LICHSU_THI', 'U') IS NOT NULL
++                            DELETE FROM LICHSU_THI WHERE IdThiSinh = {0};
++
++                        -- Xóa chi tiết làm bài thi
++                        DELETE FROM CHITIETLAMBAI WHERE IdBaiThi IN (SELECT Id FROM BAITHI WHERE IdTaiKhoan = {0});
++                        -- Xóa bài thi
++                        DELETE FROM BAITHI WHERE IdTaiKhoan = {0};
++                        -- Gỡ trưởng khoa (chuyển NULL) để KHOA_PHONG không mồ côi quản lý
++                        UPDATE KHOA_PHONG SET DeptManagerId = NULL WHERE DeptManagerId = {0};
++                        -- Xóa phân công thi
++                        DELETE FROM PHANCONG_THI WHERE UserId = {0};
++                        -- Xóa tài khoản vai trò
++                        DELETE FROM TAIKHOAN_VAITRO WHERE IdTaiKhoan = {0};
++                        -- Xóa các bảng liên quan phiên đăng nhập, JWT, Thông báo
++                        DELETE FROM PHIENDANGNHAP WHERE IdTaiKhoan = {0};
++                        DELETE FROM PHIEN_NGUOIDUNG WHERE UserId = {0};
++                        DELETE FROM TOKEN_LAM_MOI WHERE UserId = {0};
++                        DELETE FROM THONGBAO WHERE UserId = {0};
++                        DELETE FROM LOGTHAOTAC WHERE IdTaiKhoan = {0};
++
++                        -- Xóa tài khoản chính
++                        DELETE FROM TAIKHOAN WHERE Id = {0};
++
++                        COMMIT TRANSACTION;
++                    END TRY
++                    BEGIN CATCH
++                        IF @@TRANCOUNT > 0
++                            ROLLBACK TRANSACTION;
++                        THROW;
++                    END CATCH
++                ";
++
++                await _context.Database.ExecuteSqlRawAsync(sql, id);
++
++                return new BaseResponseDto { Success = true, Message = "Đã xóa vĩnh viễn người dùng và các dữ liệu liên quan" };
+             }
+             catch (Exception ex)
+             {
+-                _logger.LogError(ex, "Error deleting user");
+-                return new BaseResponseDto { Success = false, Message = ex.Message };
++                _logger.LogError(ex, "Error deleting user {UserId}", id);
++                return new BaseResponseDto { Success = false, Message = "Có lỗi xảy ra khi xóa vĩnh viễn người dùng: " + ex.Message };
+             }
+         }
+ 
+@@ -392,6 +458,7 @@ namespace BanTayVang.API.Services.Impl
+             3 => "Student",
+             4 => "Supervisor", // Obsolete
+             5 => "DeptManager",
++            6 => "ThiSinhNgoai",
+             _ => "Unknown"
+         };
+ 

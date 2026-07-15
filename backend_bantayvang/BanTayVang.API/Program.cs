@@ -205,6 +205,7 @@ builder.Services.AddScoped<ILoaicauhoiRepository, LoaicauhoiRepository>();
 
 // JWT Authentication Services
 builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.IDangKyThiService, BanTayVang.API.Services.Impl.DangKyThiService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 

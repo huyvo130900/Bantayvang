@@ -33,8 +33,9 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var users = await _userRepository.GetAllAsync();
-                var query = users.AsQueryable();
+                var query = filter.IncludeDeleted 
+                    ? _context.Taikhoans.IgnoreQueryFilters().Where(u => u.IsDeleted).AsQueryable() 
+                    : _context.Taikhoans.AsQueryable();
 
                 if (filter.IdVaiTro.HasValue)
                     query = query.Where(u => u.IdVaiTro == filter.IdVaiTro);
@@ -56,6 +57,8 @@ namespace BanTayVang.API.Services.Impl
                 var pagedUsers = query
                     .Skip((filter.PageNumber - 1) * filter.PageSize)
                     .Take(filter.PageSize)
+                    .Include(u => u.KhoaQuanLy)
+                    .ToList()
                     .Select(u => MapToDto(u))
                     .ToList();
 
@@ -82,7 +85,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var user = await _userRepository.GetByIdAsync(id);
+                var user = await _context.Taikhoans.IgnoreQueryFilters().Include(u => u.KhoaQuanLy).FirstOrDefaultAsync(u => u.Id == id);
                 if (user == null)
                     return new BaseResponseDto<UserDto> { Success = false, Message = "Không tìm thấy người dùng" };
 
@@ -104,15 +107,16 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var existing = await _userRepository.GetByUsernameOrEmailAsync(createDto.TenDangNhap);
+                var existing = await _context.Taikhoans.IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(u => u.TenDangNhap == createDto.TenDangNhap || u.MaNhanVien == createDto.TenDangNhap);
                 if (existing != null)
-                    return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại" };
+                    return new BaseResponseDto<UserDto> { Success = false, Message = "Tên đăng nhập đã tồn tại trong hệ thống (bao gồm cả thùng rác)" };
 
                 if (!string.IsNullOrWhiteSpace(createDto.MaNhanVien))
                 {
-                    var existingByEmpCode = await _context.Taikhoans.FirstOrDefaultAsync(u => u.MaNhanVien == createDto.MaNhanVien);
+                    var existingByEmpCode = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.MaNhanVien == createDto.MaNhanVien);
                     if (existingByEmpCode != null)
-                        return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại" };
+                        return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại trong hệ thống (bao gồm cả thùng rác)" };
                 }
 
                 // Validate department manager assignment
@@ -188,9 +192,9 @@ namespace BanTayVang.API.Services.Impl
 
                 if (!string.IsNullOrWhiteSpace(updateDto.MaNhanVien))
                 {
-                    var existingByEmpCode = await _context.Taikhoans.FirstOrDefaultAsync(u => u.MaNhanVien == updateDto.MaNhanVien && u.Id != id);
+                    var existingByEmpCode = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.MaNhanVien == updateDto.MaNhanVien && u.Id != id);
                     if (existingByEmpCode != null)
-                        return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại" };
+                        return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại trong hệ thống (bao gồm cả thùng rác)" };
                 }
 
                 // Validate new department manager assignment before proceeding
@@ -353,13 +357,197 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                // Soft delete - just deactivate
-                return await DeactivateUserAsync(id);
+                // 1. Xác nhận user tồn tại trước khi làm bất cứ điều gì
+                var target = await _userRepository.GetByIdAsync(id);
+                if (target == null)
+                {
+                    return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
+                }
+
+                // 2. Không cho xóa Admin cuối cùng của hệ thống (tránh khóa quyền truy cập vĩnh viễn)
+                if (target.IdVaiTro == 1)
+                {
+                    var admins = await _userRepository.GetByRoleAsync(1);
+                    var otherAdminsCount = admins.Count(a => a.Id != id);
+                    if (otherAdminsCount == 0)
+                    {
+                        return new BaseResponseDto { Success = false, Message = "Không thể xóa Admin cuối cùng trong hệ thống" };
+                    }
+                }
+
+                // 3. Nếu là DeptManager, giải phóng liên kết khôa/phòng trước khi xóa mềm
+                if (target.IdVaiTro == 5 && target.IdKhoaQuanLy.HasValue)
+                {
+                    var khoa = await _context.KhoaPhongs.FindAsync(target.IdKhoaQuanLy.Value);
+                    if (khoa != null && khoa.DeptManagerId == target.Id)
+                    {
+                        khoa.DeptManagerId = null;
+                        khoa.NgayCapNhat = DateTime.Now;
+                    }
+                    target.IdKhoaQuanLy = null;
+                }
+
+                // 4. Thực hiện Soft Delete
+                target.IsDeleted = true;
+                target.TrangThai = false;
+
+                // Xóa token đăng nhập qua DbContext (chưa SaveChanges)
+                var tokens = _context.RefreshTokens.Where(t => t.UserId == id);
+                _context.RefreshTokens.RemoveRange(tokens);
+                var sessions = _context.UserSessions.Where(s => s.UserId == id);
+                _context.UserSessions.RemoveRange(sessions);
+                var loginSessions = _context.Phiendangnhaps.Where(s => s.IdTaiKhoan == id);
+                _context.Phiendangnhaps.RemoveRange(loginSessions);
+
+                // Update trực tiếp qua DbContext để chỉ cần 1 lần SaveChanges
+                _context.Taikhoans.Update(target);
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseDto { Success = true, Message = "Đã đưa người dùng vào thùng rác" };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting user");
-                return new BaseResponseDto { Success = false, Message = ex.Message };
+                _logger.LogError(ex, "Error deleting user {UserId}", id);
+                return new BaseResponseDto { Success = false, Message = "Có lỗi xảy ra khi xóa người dùng: " + ex.Message };
+            }
+        }
+
+        public async Task<BaseResponseDto> RestoreUserAsync(int id)
+        {
+            try
+            {
+                var target = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
+                if (target == null)
+                {
+                    return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
+                }
+
+                target.IsDeleted = false;
+                target.TrangThai = true;
+                await _userRepository.UpdateAsync(target);
+
+                return new BaseResponseDto { Success = true, Message = "Đã khôi phục người dùng thành công" };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error restoring user {UserId}", id);
+                return new BaseResponseDto { Success = false, Message = "Có lỗi xảy ra khi khôi phục người dùng: " + ex.Message };
+            }
+        }
+
+        public async Task<BaseResponseDto> HardDeleteUserAsync(int id)
+        {
+            try
+            {
+                var target = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
+                if (target == null)
+                {
+                    return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
+                }
+
+                if (target.IdVaiTro == 1)
+                {
+                    var otherAdminsCount = await _context.Taikhoans.IgnoreQueryFilters().CountAsync(a => a.IdVaiTro == 1 && a.Id != id);
+                    if (otherAdminsCount == 0)
+                    {
+                        return new BaseResponseDto { Success = false, Message = "Không thể xóa Admin cuối cùng trong hệ thống" };
+                    }
+                }
+
+                // 3. Sử dụng raw SQL để xóa tận gốc các dữ liệu liên kết trước (Cascade Delete bằng tay)
+                // Các bảng như LOGTHAOTAC có thể cấu hình SET_NULL nhưng xóa sạch cho an toàn.
+                // SET XACT_ABORT ON + TRY/CATCH/ROLLBACK đảm bảo toàn bộ script là 1 khối atomic:
+                // nếu bất kỳ câu lệnh nào lỗi (vd: vướng 1 FK chưa lường tới), mọi thay đổi trước đó
+                // sẽ được rollback thay vì bị COMMIT dở dang gây "mồ côi" dữ liệu.
+                string sql = @"
+                    SET XACT_ABORT ON;
+                    BEGIN TRY
+                        BEGIN TRANSACTION;
+
+                        -- Xóa cảnh báo gian lận và log liên quan đến bài thi
+                        DELETE FROM CANHBAOGIANLAN WHERE IdBaiThi IN (SELECT Id FROM BAITHI WHERE IdTaiKhoan = {0});
+                        DELETE FROM LOGTHAOTAC WHERE IdBaiThi IN (SELECT Id FROM BAITHI WHERE IdTaiKhoan = {0});
+
+                        -- Xóa lịch sử thi (anti-cheat), có FK NOT NULL tới TAIKHOAN - nếu bảng tồn tại
+                        IF OBJECT_ID('dbo.LICHSU_THI', 'U') IS NOT NULL
+                            DELETE FROM LICHSU_THI WHERE IdThiSinh = {0};
+
+                        -- Xóa chi tiết làm bài thi
+                        DELETE FROM CHITIETLAMBAI WHERE IdBaiThi IN (SELECT Id FROM BAITHI WHERE IdTaiKhoan = {0});
+                        -- Xóa bài thi
+                        DELETE FROM BAITHI WHERE IdTaiKhoan = {0};
+                        -- Gỡ trưởng khoa (chuyển NULL) để KHOA_PHONG không mồ côi quản lý
+                        UPDATE KHOA_PHONG SET DeptManagerId = NULL WHERE DeptManagerId = {0};
+                        -- Gỡ người duyệt trong DANG_KY_THI (NguoiDuyetId không có FK constraint nhưng cần set NULL để tránh orphan data)
+                        UPDATE DANG_KY_THI SET NguoiDuyetId = NULL WHERE NguoiDuyetId = {0};
+                        -- Xóa phân công thi
+                        DELETE FROM PHANCONG_THI WHERE UserId = {0};
+                        -- Xóa tài khoản vai trò
+                        DELETE FROM TAIKHOAN_VAITRO WHERE IdTaiKhoan = {0};
+                        -- Xóa các bảng liên quan phiên đăng nhập, JWT, Thông báo
+                        DELETE FROM PHIENDANGNHAP WHERE IdTaiKhoan = {0};
+                        DELETE FROM PHIEN_NGUOIDUNG WHERE UserId = {0};
+                        DELETE FROM TOKEN_LAM_MOI WHERE UserId = {0};
+                        DELETE FROM THONGBAO WHERE UserId = {0};
+                        DELETE FROM LOGTHAOTAC WHERE IdTaiKhoan = {0};
+
+                        -- Xóa tài khoản chính
+                        DELETE FROM TAIKHOAN WHERE Id = {0};
+
+                        COMMIT TRANSACTION;
+                    END TRY
+                    BEGIN CATCH
+                        IF @@TRANCOUNT > 0
+                            ROLLBACK TRANSACTION;
+                        THROW;
+                    END CATCH
+                ";
+
+                await _context.Database.ExecuteSqlRawAsync(sql, id);
+
+                return new BaseResponseDto { Success = true, Message = "Đã xóa vĩnh viễn người dùng và các dữ liệu liên quan" };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting user {UserId}", id);
+                return new BaseResponseDto { Success = false, Message = "Có lỗi xảy ra khi xóa vĩnh viễn người dùng: " + ex.Message };
+            }
+        }
+
+        public async Task<BaseResponseDto> BulkDeleteUsersAsync(List<int> ids)
+        {
+            try
+            {
+                if (ids == null || ids.Count == 0)
+                {
+                    return new BaseResponseDto { Success = false, Message = "Không có người dùng nào được chọn" };
+                }
+
+                var targetUsers = await _context.Taikhoans.Where(t => ids.Contains(t.Id)).ToListAsync();
+                if (targetUsers.Count == 0)
+                {
+                    return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng nào hợp lệ" };
+                }
+
+                int count = 0;
+                foreach (var user in targetUsers)
+                {
+                    // Skip admin
+                    if (user.IdVaiTro == 1) continue;
+
+                    user.IsDeleted = true;
+                    user.TrangThai = false; // Cũng vô hiệu hóa luôn
+                    count++;
+                }
+
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseDto { Success = true, Message = $"Đã đưa {count} tài khoản vào Thùng rác thành công." };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error bulk deleting users");
+                return new BaseResponseDto { Success = false, Message = "Lỗi khi xóa hàng loạt: " + ex.Message };
             }
         }
 
@@ -380,6 +568,7 @@ namespace BanTayVang.API.Services.Impl
                 TrangThai = u.TrangThai,
                 NgayTao = u.NgayTao,
                 LanDangNhapCuoi = u.LanDangNhapCuoi,
+                IsDeleted = u.IsDeleted,
                 Email = u.Email,
                 SoDienThoai = u.SoDienThoai
             };
@@ -392,6 +581,7 @@ namespace BanTayVang.API.Services.Impl
             3 => "Student",
             4 => "Supervisor", // Obsolete
             5 => "DeptManager",
+            6 => "ThiSinhNgoai",
             _ => "Unknown"
         };
 
@@ -713,8 +903,8 @@ namespace BanTayVang.API.Services.Impl
                     }
 
                     // Check if maNhanVien / TenDangNhap already exists
-                    var existingUserByUsername = await _context.Taikhoans.FirstOrDefaultAsync(u => u.TenDangNhap == maNhanVien);
-                    var existingUserByEmpCode = await _context.Taikhoans.FirstOrDefaultAsync(u => u.MaNhanVien == maNhanVien);
+                    var existingUserByUsername = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.TenDangNhap == maNhanVien);
+                    var existingUserByEmpCode = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.MaNhanVien == maNhanVien);
                     if (existingUserByUsername != null || existingUserByEmpCode != null)
                     {
                         resultDto.Failed++;

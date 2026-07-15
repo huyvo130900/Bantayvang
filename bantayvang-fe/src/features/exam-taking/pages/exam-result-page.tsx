@@ -64,15 +64,27 @@ export function ExamResultPage() {
     ? Math.round(((result.soCauDung ?? 0) / result.tongSoCau) * 100)
     : 0
 
-  const isForced = !!forcedReason || result.trangThai === 'BiBHuyGianLan'
+  const isTimeout = forcedReason === 'Hết giờ làm bài'
+  const isCheating = (!!forcedReason && forcedReason !== 'Hết giờ làm bài') || result.trangThai === 'BiBHuyGianLan'
   const congBoKetQua = result.congBoKetQua ?? false
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-4 sm:py-10 px-4">
       <div className="max-w-xl mx-auto space-y-4 sm:space-y-5">
 
+        {/* Timeout banner */}
+        {isTimeout && (
+          <div className="bg-amber-500 text-white rounded-2xl p-4 flex items-center gap-3">
+            <Clock className="h-6 w-6 shrink-0" />
+            <div>
+              <p className="font-semibold text-sm sm:text-base">Hết thời gian làm bài</p>
+              <p className="text-xs sm:text-sm text-amber-100">Bài thi đã được hệ thống tự động nộp.</p>
+            </div>
+          </div>
+        )}
+
         {/* Forced termination banner */}
-        {isForced && (
+        {isCheating && (
           <div className="bg-red-600 text-white rounded-2xl p-4 flex items-center gap-3">
             <AlertTriangle className="h-6 w-6 shrink-0" />
             <div>
@@ -85,8 +97,8 @@ export function ExamResultPage() {
         {/* Result card */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           {/* Header band */}
-          <div className={`p-4 sm:p-6 text-center ${isForced ? 'bg-red-600' : !congBoKetQua ? 'bg-gray-500' : 'bg-primary'}`}>
-            {isForced ? (
+          <div className={`p-4 sm:p-6 text-center ${isCheating ? 'bg-red-600' : !congBoKetQua ? 'bg-gray-500' : 'bg-primary'}`}>
+            {isCheating ? (
               <XCircle className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-2" />
             ) : !congBoKetQua ? (
               <EyeOff className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-2" />
@@ -94,7 +106,7 @@ export function ExamResultPage() {
               <Trophy className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-2" />
             )}
             <h1 className="text-xl sm:text-2xl font-bold text-white">
-              {isForced ? 'Bài thi bị hủy' : !congBoKetQua ? 'Đã nộp bài' : 'Kết quả bài thi'}
+              {isCheating ? 'Bài thi bị hủy' : !congBoKetQua ? 'Đã nộp bài' : 'Kết quả bài thi'}
             </h1>
             <p className="text-white/80 text-xs sm:text-sm mt-1">{result.tenDeThi || 'Bài thi'}</p>
           </div>
@@ -180,10 +192,16 @@ export function ExamResultPage() {
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm text-gray-500">
-                  {result.durationMinutes != null && (
+                  {(result.durationSeconds != null || result.durationMinutes != null) && (
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 shrink-0" />
-                      <span>Thời gian làm bài: <strong className="text-gray-700">{result.durationMinutes} phút</strong></span>
+                      <span>Thời gian làm bài: <strong className="text-gray-700">
+                        {result.durationSeconds != null
+                          ? result.durationSeconds >= 60
+                            ? `${Math.floor(result.durationSeconds / 60)} phút ${result.durationSeconds % 60} giây`
+                            : `${result.durationSeconds} giây`
+                          : `${result.durationMinutes} phút`}
+                      </strong></span>
                     </div>
                   )}
                   {((result.soCanhBao ?? 0) > 0 || (result.soLanGianLan ?? 0) > 0) && (

@@ -15,26 +15,27 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 
 interface UseExamTimerOptions {
   initialSeconds: number
+  isLoaded: boolean
   onTimeUp: () => void
 }
 
-export function useExamTimer({ initialSeconds, onTimeUp }: UseExamTimerOptions) {
+export function useExamTimer({ initialSeconds, isLoaded, onTimeUp }: UseExamTimerOptions) {
   const [remainingSeconds, setRemainingSeconds] = useState(initialSeconds)
-  // FIX: track xem timer đã thực sự bắt đầu chưa
   const hasStartedRef = useRef(false)
   const onTimeUpRef = useRef(onTimeUp)
   onTimeUpRef.current = onTimeUp
 
-  // Khi initialSeconds thay đổi từ 0 → giá trị thực, reset timer
   useEffect(() => {
-    if (initialSeconds > 0) {
+    if (isLoaded) {
       hasStartedRef.current = true
       setRemainingSeconds(initialSeconds)
+      if (initialSeconds <= 0) {
+        onTimeUpRef.current()
+      }
     }
-  }, [initialSeconds])
+  }, [initialSeconds, isLoaded])
 
   useEffect(() => {
-    // FIX: Không làm gì nếu timer chưa được khởi động (data chưa load)
     if (!hasStartedRef.current) return
 
     if (remainingSeconds <= 0) {
@@ -46,7 +47,6 @@ export function useExamTimer({ initialSeconds, onTimeUp }: UseExamTimerOptions) 
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
           clearInterval(interval)
-          onTimeUpRef.current()
           return 0
         }
         return prev - 1
@@ -54,7 +54,7 @@ export function useExamTimer({ initialSeconds, onTimeUp }: UseExamTimerOptions) 
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [remainingSeconds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remainingSeconds])
 
   const formatTime = useCallback((seconds: number) => {
     const h = Math.floor(seconds / 3600)

@@ -21,6 +21,7 @@ namespace BanTayVang.API.DTOs.KyThi
         public string? MaDeThi { get; set; }
         public int? SoCauDungToiThieu { get; set; }
         public int? TongSoCauHoi { get; set; }
+        public int? ThoiGianLamBai { get; set; }
     }
 
     public class CreateKyThiDto
@@ -45,6 +46,7 @@ namespace BanTayVang.API.DTOs.KyThi
         public string? DonViToChuc { get; set; }
         public int? SoCauDungToiThieu { get; set; }
         public int? TongSoCauHoi { get; set; }
+        public int? ThoiGianLamBai { get; set; }
     }
 
     public class UpdateKyThiDto : CreateKyThiDto

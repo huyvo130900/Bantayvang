@@ -55,14 +55,13 @@ namespace BanTayVang.API.Services.Impl.Exams
                         createDto.ThoiGianBatDau = kyThi.ThoiGianBatDau;
                         createDto.KhoaPhong = kyThi.KhoaPhong?.TenKhoa;
 
-                        if (kyThi.ThoiGianBatDau.HasValue && kyThi.ThoiGianKetThuc.HasValue)
+                        if (kyThi.ThoiGianLamBai.HasValue && kyThi.ThoiGianLamBai.Value > 0)
                         {
-                            var diff = kyThi.ThoiGianKetThuc.Value - kyThi.ThoiGianBatDau.Value;
-                            var duration = (int)diff.TotalMinutes;
-                            if (duration > 0)
-                            {
-                                createDto.ThoiGianLamBai = duration;
-                            }
+                            createDto.ThoiGianLamBai = kyThi.ThoiGianLamBai.Value;
+                        }
+                        else 
+                        {
+                            createDto.ThoiGianLamBai = 60; // Default if not specified
                         }
                     }
                 }
@@ -249,14 +248,9 @@ namespace BanTayVang.API.Services.Impl.Exams
                         updateDto.TenDeThi = kyThi.TenKyThi;
                         updateDto.ThoiGianBatDau = kyThi.ThoiGianBatDau;
 
-                        if (kyThi.ThoiGianBatDau.HasValue && kyThi.ThoiGianKetThuc.HasValue)
+                        if (kyThi.ThoiGianLamBai.HasValue && kyThi.ThoiGianLamBai.Value > 0)
                         {
-                            var diff = kyThi.ThoiGianKetThuc.Value - kyThi.ThoiGianBatDau.Value;
-                            var duration = (int)diff.TotalMinutes;
-                            if (duration > 0)
-                            {
-                                updateDto.ThoiGianLamBai = duration;
-                            }
+                            updateDto.ThoiGianLamBai = kyThi.ThoiGianLamBai.Value;
                         }
                     }
                 }

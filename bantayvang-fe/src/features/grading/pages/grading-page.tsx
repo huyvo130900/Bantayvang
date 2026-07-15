@@ -4,9 +4,10 @@ import { fetchActiveExams } from '@/features/exams/slice'
 import { gradingApi } from '../api'
 import { ExamResultsTable } from '../components/exam-results-table'
 import { ResultDetailDialog } from '../components/result-detail-dialog'
-import type { ExamResultDetailDto } from '../types'
+import { PendingEssayTable } from '../components/pending-essay-table'
+import type { ExamResultDetailDto, PendingEssayDto } from '../types'
 import { Button } from '@/components/ui/button'
-import { Download, RefreshCw, Eye, EyeOff, Building2, CalendarDays } from 'lucide-react'
+import { Download, RefreshCw, Eye, EyeOff, Building2, CalendarDays, PenLine } from 'lucide-react'
 import { departmentApi } from '@/features/departments/api'
 import { kyThiApi } from '@/features/ky-thi/api'
 import type { KyThiDto } from '@/features/ky-thi/types'
@@ -34,6 +35,24 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
+  // Pending essay state
+  const [activeTab, setActiveTab] = useState<'results' | 'pending-essay'>('results')
+  const [pendingEssayFilter, setPendingEssayFilter] = useState<'ungraded' | 'graded'>('ungraded')
+  const [pendingEssays, setPendingEssays] = useState<PendingEssayDto[]>([])
+  const [pendingLoading, setPendingLoading] = useState(false)
+
+  const loadPendingEssay = async (isGraded: boolean = pendingEssayFilter === 'graded') => {
+    setPendingLoading(true)
+    try {
+      const res = await gradingApi.getPendingEssay(isGraded)
+      if (res.data.success && res.data.data) {
+        setPendingEssays(res.data.data)
+      }
+    } catch { /* silent */ } finally {
+      setPendingLoading(false)
+    }
+  }
+
   // Load KyThi list
   const loadKyThiList = async () => {
     try {
@@ -47,6 +66,7 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   useEffect(() => {
     dispatch(fetchActiveExams())
     loadKyThiList()
+    loadPendingEssay()
   }, [dispatch])
 
   // Sync selectedKyThiId from preselectedExamId if provided
@@ -177,6 +197,36 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
         <h1 className="text-2xl font-bold text-gray-900">Kết quả & Chấm điểm</h1>
       </div>
 
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b">
+        <button
+          onClick={() => setActiveTab('results')}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+            activeTab === 'results'
+              ? 'border-blue-600 text-blue-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          📊 Xem kết quả theo kỳ thi
+        </button>
+        <button
+          onClick={() => { setActiveTab('pending-essay'); loadPendingEssay() }}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+            activeTab === 'pending-essay'
+              ? 'border-orange-500 text-orange-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <PenLine className="h-4 w-4" />
+          Tự luận chờ chấm
+          {pendingEssays.length > 0 && (
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-orange-500 text-white">
+              {pendingEssays.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {successMsg && (
         <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-2.5 text-sm transition-all duration-300">
           ✓ {successMsg}
@@ -290,7 +340,50 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
       )}
 
       {/* Content area */}
-      {!selectedKyThiId ? (
+      {activeTab === 'pending-essay' ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 bg-orange-50/50 p-1 rounded-lg w-fit border border-orange-100">
+            <button
+              onClick={() => { setPendingEssayFilter('ungraded'); loadPendingEssay(false) }}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                pendingEssayFilter === 'ungraded'
+                  ? 'bg-white text-orange-700 shadow-sm border border-orange-200'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Chưa chấm
+            </button>
+            <button
+              onClick={() => { setPendingEssayFilter('graded'); loadPendingEssay(true) }}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                pendingEssayFilter === 'graded'
+                  ? 'bg-white text-orange-700 shadow-sm border border-orange-200'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Đã chấm
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-orange-700 font-medium">
+              {pendingEssays.length > 0
+                ? `Có ${pendingEssays.length} bài thi tự luận ${pendingEssayFilter === 'ungraded' ? 'đang chờ chấm' : 'đã chấm'}`
+                : `Không có bài thi nào ${pendingEssayFilter === 'ungraded' ? 'chờ chấm' : 'đã chấm'}`}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => loadPendingEssay()} disabled={pendingLoading}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${pendingLoading ? 'animate-spin' : ''}`} />
+              Làm mới
+            </Button>
+          </div>
+          <PendingEssayTable
+            items={pendingEssays}
+            isLoading={pendingLoading}
+            onViewDetail={(id) => setDetailBaiThiId(id)}
+            isGraded={pendingEssayFilter === 'graded'}
+          />
+        </div>
+      ) : !selectedKyThiId ? (
         <div className="text-center py-16 border-2 border-dashed rounded-xl text-gray-400 bg-white">
           <CalendarDays className="h-14 w-14 mx-auto mb-3 opacity-30 text-gray-400" />
           <p className="font-medium text-gray-500">Chọn kỳ thi để xem kết quả & chấm điểm</p>
@@ -379,6 +472,8 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
           if (selectedKyThiId) {
             loadKyThiResults(selectedKyThiId)
           }
+          // Cũng refresh lại danh sách tự luận chờ chấm
+          loadPendingEssay()
         }}
         isAdmin={true}
       />

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, FileQuestion, CalendarDays,
-  Award, BarChart3, ScrollText, Bell, ChevronLeft, LogOut, Building2, Trophy, Layers
+  Award, BarChart3, ScrollText, Bell, ChevronLeft, LogOut, Building2, Trophy, Layers, UserPlus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ const menuItems = [
   { path: '/admin/ky-thi', label: 'Kỳ thi', icon: CalendarDays },
   { path: '/admin/results', label: 'Kết quả thi', icon: Trophy },
   { path: '/admin/grading', label: 'Chấm điểm', icon: Award },
+  { path: '/admin/dang-ky-thi', label: 'Duyệt đăng ký', icon: UserPlus },
   { path: '/admin/statistics', label: 'Thống kê', icon: BarChart3 },
   { path: '/admin/audit-log', label: 'Audit Log', icon: ScrollText },
   { path: '/admin/notifications', label: 'Thông báo', icon: Bell },

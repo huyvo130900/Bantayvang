@@ -18,6 +18,7 @@ namespace BanTayVang.API.DTOs.Grading
         public DateTime? ThoiGianBatDau { get; set; }
         public DateTime? ThoiGianNop { get; set; }
         public int? DurationMinutes { get; set; }
+        public int? DurationSeconds { get; set; }
         public double? TongDiem { get; set; }
         public int? SoCauDung { get; set; }
         public int? TongSoCau { get; set; }
@@ -66,7 +67,7 @@ namespace BanTayVang.API.DTOs.Grading
     {
         public int ChiTietLamBaiId { get; set; }
         /// <summary>Đánh dấu câu trả lời là Đúng (true) hay Sai (false)</summary>
-        public bool IsCorrect { get; set; }
+        public bool? IsCorrect { get; set; }
         public string? NhanXet { get; set; }
     }
 

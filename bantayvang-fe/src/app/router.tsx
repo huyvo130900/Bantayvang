@@ -21,6 +21,8 @@ import { ExamWaitingPage } from '@/pages/exam-waiting-page'
 import { UnauthorizedPage } from '@/pages/unauthorized-page'
 import { DepartmentsPage } from '@/features/departments/pages/departments-page'
 import { ResultsByKyThiPage } from '@/features/results-by-kythi/pages/results-by-kythi-page'
+import { PublicRegistrationPage } from '@/features/registration/pages/public-registration-page'
+import { AdminRegistrationPage } from '@/features/registration/pages/admin-registration-page'
 import { ADMIN_ROLES, ROLES } from '@/lib/constants'
 import { useAuthListener } from '@/hooks/use-auth-listener'
 import { useRealtimeNotifications } from '@/hooks/use-realtime-notifications'
@@ -33,6 +35,7 @@ function AppRoutes() {
     <Routes>
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/dang-ky" element={<PublicRegistrationPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
       {/* ========== ADMIN routes ========== */}
@@ -55,6 +58,7 @@ function AppRoutes() {
         <Route path="grading" element={<GradingPage />} />
         <Route path="results" element={<ResultsByKyThiPage />} />
         <Route path="statistics" element={<StatisticsPage />} />
+        <Route path="dang-ky-thi" element={<AdminRegistrationPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>
@@ -73,6 +77,7 @@ function AppRoutes() {
         <Route path="questions" element={<QuestionsPage />} />
         <Route path="ky-thi" element={<KyThiPage />} />
         <Route path="results" element={<ResultsByKyThiPage />} />
+        <Route path="dang-ky-thi" element={<AdminRegistrationPage />} />
         <Route path="grading" element={<GradingPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>

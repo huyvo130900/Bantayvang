@@ -45,5 +45,7 @@ namespace BanTayVang.API.Models
         public int? SoCauDungToiThieu { get; set; }
 
         public int? TongSoCauHoi { get; set; }
+
+        public int? ThoiGianLamBai { get; set; }
     }
 }

@@ -20,6 +20,7 @@ namespace BanTayVang.API.DTOs.User
         public bool? TrangThai { get; set; }
         public DateTime? NgayTao { get; set; }
         public DateTime? LanDangNhapCuoi { get; set; }
+        public bool IsDeleted { get; set; }
         public string? Email { get; set; }
         public string? SoDienThoai { get; set; }
     }
@@ -82,6 +83,7 @@ namespace BanTayVang.API.DTOs.User
         public bool? TrangThai { get; set; }
         public string? KhoaPhong { get; set; }
         public string? SearchKeyword { get; set; }
+        public bool IncludeDeleted { get; set; } = false;
     }
 
     /// <summary>

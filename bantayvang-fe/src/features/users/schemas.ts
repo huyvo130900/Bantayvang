@@ -17,8 +17,8 @@ export const createUserSchema = z.object({
   khoaPhong: z.string().max(100).optional().or(z.literal('')),
   email: z.union([z.string().email('Email không hợp lệ'), z.literal('')]).optional(),
   soDienThoai: z.string().max(20, 'Số điện thoại tối đa 20 ký tự').optional().or(z.literal('')),
-  // Allow 1,3,5 (Admin, Student, DeptManager) - 2 and 4 are obsolete
-  idVaiTro: z.number().min(1).max(5),
+  // Allow 1,3,5,6 (Admin, Student, DeptManager, ThiSinhNgoai) - 2 and 4 are obsolete
+  idVaiTro: z.number().min(1).max(6),
   idKhoaQuanLy: z.number().optional().nullable(),
   trangThai: z.boolean(),
 }).superRefine((data, ctx) => {

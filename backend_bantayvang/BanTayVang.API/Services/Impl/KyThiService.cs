@@ -162,9 +162,10 @@ namespace BanTayVang.API.Services.Impl
                     DonViToChuc = donViToChuc,
                     NguoiTao = nguoiTao,
                     NgayTao = DateTime.Now,
-                    TrangThai = "DangChuanBi", // Vẫn lưu DB, nhưng khi đọc sẽ tính lại
+                    TrangThai = "DangChuanBi", 
                     SoCauDungToiThieu = dto.SoCauDungToiThieu,
-                    TongSoCauHoi = dto.TongSoCauHoi
+                    TongSoCauHoi = dto.TongSoCauHoi,
+                    ThoiGianLamBai = dto.ThoiGianLamBai
                 };
 
                 _context.Set<KyThi>().Add(kyThi);
@@ -253,6 +254,7 @@ namespace BanTayVang.API.Services.Impl
                 kyThi.NgayCapNhat = DateTime.Now;
                 kyThi.SoCauDungToiThieu = dto.SoCauDungToiThieu;
                 kyThi.TongSoCauHoi = dto.TongSoCauHoi;
+                kyThi.ThoiGianLamBai = dto.ThoiGianLamBai;
 
                 // Sync related exams (Dethi) properties if time/name has changed
                 var relatedExams = await _context.Set<Dethi>()
@@ -262,14 +264,9 @@ namespace BanTayVang.API.Services.Impl
                 foreach (var exam in relatedExams)
                 {
                     exam.ThoiGianBatDau = dto.ThoiGianBatDau;
-                    if (dto.ThoiGianBatDau.HasValue && dto.ThoiGianKetThuc.HasValue)
+                    if (dto.ThoiGianLamBai.HasValue && dto.ThoiGianLamBai.Value > 0)
                     {
-                        var diff = dto.ThoiGianKetThuc.Value - dto.ThoiGianBatDau.Value;
-                        var duration = (int)diff.TotalMinutes;
-                        if (duration > 0)
-                        {
-                            exam.ThoiGianLamBai = duration;
-                        }
+                        exam.ThoiGianLamBai = dto.ThoiGianLamBai.Value;
                     }
                     
                     if (!string.IsNullOrEmpty(exam.TenDeThi) && exam.TenDeThi.Contains(" - "))
@@ -409,7 +406,8 @@ namespace BanTayVang.API.Services.Impl
                 DonViToChuc = k.DonViToChuc,
                 NgayTao = k.NgayTao,
                 SoCauDungToiThieu = k.SoCauDungToiThieu,
-                TongSoCauHoi = k.TongSoCauHoi
+                TongSoCauHoi = k.TongSoCauHoi,
+                ThoiGianLamBai = k.ThoiGianLamBai
             };
         }
 
@@ -655,11 +653,9 @@ namespace BanTayVang.API.Services.Impl
 
                         // Determine duration from ky thi or default to 60
                         int duration = 60;
-                        if (kyThi.ThoiGianBatDau.HasValue && kyThi.ThoiGianKetThuc.HasValue)
+                        if (kyThi.ThoiGianLamBai.HasValue && kyThi.ThoiGianLamBai.Value > 0)
                         {
-                            var diff = kyThi.ThoiGianKetThuc.Value - kyThi.ThoiGianBatDau.Value;
-                            duration = (int)diff.TotalMinutes;
-                            if (duration <= 0) duration = 60;
+                            duration = kyThi.ThoiGianLamBai.Value;
                         }
 
                         var dethi = new Dethi

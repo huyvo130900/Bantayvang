@@ -15,6 +15,7 @@ const buildQueryString = (filter: UserFilterDto): string => {
   if (filter.trangThai !== undefined) params.set('trangThai', String(filter.trangThai))
   if (filter.khoaPhong) params.set('khoaPhong', filter.khoaPhong)
   if (filter.searchKeyword) params.set('searchKeyword', filter.searchKeyword)
+  if (filter.includeDeleted) params.set('includeDeleted', 'true')
   return params.toString()
 }
 
@@ -40,6 +41,12 @@ export const usersApi = {
     apiClient.post<ApiResponse>(`/user/${id}/reset-password`, { newPassword }),
 
   delete: (id: number) => apiClient.delete<ApiResponse>(`/user/${id}`),
+
+  restore: (id: number) => apiClient.post<ApiResponse>(`/user/${id}/restore`),
+
+  hardDelete: (id: number) => apiClient.delete<ApiResponse>(`/user/${id}/hard`),
+
+  bulkDelete: (ids: number[]) => apiClient.post<ApiResponse>('/user/bulk-delete', ids),
 }
 
 // Extended user API methods

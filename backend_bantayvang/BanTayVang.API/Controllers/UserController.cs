@@ -92,9 +92,49 @@ namespace BanTayVang.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<BaseResponseDto>> DeleteUser(int id)
         {
+            var currentUserId = DepartmentAuthHelper.GetUserId(User);
+            if (currentUserId.HasValue && currentUserId.Value == id)
+            {
+                return BadRequest(BaseResponseDto.FailureResult("Không thể tự xóa tài khoản của chính mình"));
+            }
+
             var result = await _userService.DeleteUserAsync(id);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/restore")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<BaseResponseDto>> RestoreUser(int id)
+        {
+            var result = await _userService.RestoreUserAsync(id);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpDelete("{id}/hard")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<BaseResponseDto>> HardDeleteUser(int id)
+        {
+            var currentUserId = DepartmentAuthHelper.GetUserId(User);
+            if (currentUserId.HasValue && currentUserId.Value == id)
+            {
+                return BadRequest(BaseResponseDto.FailureResult("Không thể tự xóa tài khoản của chính mình"));
+            }
+
+            var result = await _userService.HardDeleteUserAsync(id);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPost("bulk-delete")]
+        [Authorize(Policy = "ManagementOnly")]
+        public async Task<ActionResult<BaseResponseDto>> BulkDeleteUsers([FromBody] List<int> ids)
+        {
+            var result = await _userService.BulkDeleteUsersAsync(ids);
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }

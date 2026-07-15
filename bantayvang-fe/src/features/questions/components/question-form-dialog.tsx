@@ -47,21 +47,23 @@ export function QuestionFormDialog({
   const khoaPhongValue = form.watch('khoaPhong')
   const idLoaiCauHoi = form.watch('idLoaiCauHoi')
   const selectedType = questionTypes.find((t) => t.id === idLoaiCauHoi)
-  const isEssay = selectedType?.tenLoai?.toLowerCase().includes('tự luận') || selectedType?.tenLoai?.toLowerCase().includes('tu luan')
+  const isEssay = selectedType?.tenLoai?.toLowerCase().includes('tự luận') || selectedType?.tenLoai?.toLowerCase().includes('tu luan') || selectedType?.moTa?.toLowerCase().includes('tự luận') || selectedType?.moTa?.toLowerCase().includes('tu luan')
 
   useEffect(() => {
     if (isEssay) {
-      // Clear choices and images when essay is selected to avoid validation errors
-      form.setValue('danhSachLuaChon', [])
+      const currentChoices = form.getValues('danhSachLuaChon')
+      if (!currentChoices || currentChoices.length !== 1) {
+        form.setValue('danhSachLuaChon', [
+          { noiDung: currentChoices?.[0]?.noiDung || '', thuTu: 1, laDapAnDung: true },
+        ])
+      }
       form.setValue('hinhAnh', undefined)
       setImagePreview(null)
-      form.clearErrors('danhSachLuaChon')
     } else {
-      // If switched back to multiple choice, restore default choices if empty
       const currentChoices = form.getValues('danhSachLuaChon')
-      if (!currentChoices || currentChoices.length === 0) {
+      if (!currentChoices || currentChoices.length < 2) {
         form.setValue('danhSachLuaChon', [
-          { noiDung: '', thuTu: 1, laDapAnDung: true },
+          { noiDung: currentChoices?.[0]?.noiDung || '', thuTu: 1, laDapAnDung: true },
           { noiDung: '', thuTu: 2, laDapAnDung: false },
           { noiDung: '', thuTu: 3, laDapAnDung: false },
           { noiDung: '', thuTu: 4, laDapAnDung: false },
@@ -297,8 +299,21 @@ export function QuestionFormDialog({
             </div>
           )}
 
-          {/* Choices */}
-          {!isEssay && (
+          {/* Choices / Standard Answer */}
+          {isEssay ? (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">Đáp án chuẩn / Hướng dẫn chấm</label>
+              <textarea
+                {...form.register('danhSachLuaChon.0.noiDung')}
+                rows={4}
+                placeholder="Nhập đáp án chuẩn hoặc các ý chính cần có..."
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+              />
+              {form.formState.errors.danhSachLuaChon?.[0]?.noiDung && (
+                <p className="text-xs text-red-500">{form.formState.errors.danhSachLuaChon[0].noiDung.message}</p>
+              )}
+            </div>
+          ) : (
             <Controller
               name="danhSachLuaChon"
               control={form.control}

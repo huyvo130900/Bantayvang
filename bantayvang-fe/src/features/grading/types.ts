@@ -10,9 +10,10 @@ export interface ExamResultDetailDto {
   maDeThi: string | null
   tenDeThi: string | null
   thoiGianBatDau: string | null
-  thoiGianNop: string | null
-  durationMinutes: number | null
-  tongDiem: number | null
+  thoiGianNop?: string
+  durationMinutes?: number
+  durationSeconds?: number
+  tongDiem?: number | null
   soCauDung: number | null
   tongSoCau: number | null
   trangThai: string | null
@@ -49,6 +50,25 @@ export interface AnswerDetailDto {
 
 export interface ManualGradingDto {
   chiTietLamBaiId: number
-  isCorrect: boolean
+  isCorrect: boolean | null
   nhanXet?: string
+}
+
+export interface PendingEssayDto {
+  baiThiId: number
+  userId: number | null
+  username: string | null
+  fullName: string | null
+  maNhanVien?: string | null
+  khoaPhong: string | null
+  maDeThi: string | null
+  tenDeThi: string | null
+  thoiGianNop: string | null
+  tongDiem?: number | null
+  soCauDung: number | null
+  tongSoCau: number | null
+  trangThai: string | null
+  soCauTuLuanChuaCham: number
+  tongSoCauTuLuan: number
+  tenKyThi?: string | null
 }

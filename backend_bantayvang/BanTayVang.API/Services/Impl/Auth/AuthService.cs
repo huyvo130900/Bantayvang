@@ -3,6 +3,7 @@ using BanTayVang.API.DTOs.Common;
 using BanTayVang.API.Models;
 using BanTayVang.API.Repositories.Interfaces;
 using BanTayVang.API.Services.Interfaces.Auth;
+using Microsoft.EntityFrameworkCore;
 
 namespace BanTayVang.API.Services.Impl.Auth
 {
@@ -14,6 +15,7 @@ namespace BanTayVang.API.Services.Impl.Auth
         private readonly IJwtService _jwtService;
         private readonly IPasswordService _passwordService;
         private readonly Services.Interfaces.IEmailService _emailService;
+        private readonly BanTayVangDbContext _context;
         private readonly ILogger<AuthService> _logger;
 
         public AuthService(
@@ -23,6 +25,7 @@ namespace BanTayVang.API.Services.Impl.Auth
             IJwtService jwtService,
             IPasswordService passwordService,
             Services.Interfaces.IEmailService emailService,
+            BanTayVangDbContext context,
             ILogger<AuthService> logger)
         {
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
@@ -31,6 +34,7 @@ namespace BanTayVang.API.Services.Impl.Auth
             _jwtService = jwtService ?? throw new ArgumentNullException(nameof(jwtService));
             _passwordService = passwordService ?? throw new ArgumentNullException(nameof(passwordService));
             _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
+            _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -183,7 +187,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 }
 
                 // Check if username already exists
-                var existingUser = await _userRepository.GetByUsernameOrEmailAsync(registerDto.Username);
+                var existingUser = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.TenDangNhap == registerDto.Username || u.MaNhanVien == registerDto.Username);
                 if (existingUser != null)
                 {
                     return new BaseResponseDto<AuthResponseDto>

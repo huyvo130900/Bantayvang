@@ -54,7 +54,7 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
 
   const form = useForm<CreateKyThiFormData>({
     resolver: zodResolver(getKyThiSchema(isEdit, kyThi?.thoiGianBatDau, kyThi?.thoiGianKetThuc)) as any,
-    defaultValues: { maKyThi: '', tenKyThi: '', moTa: '', khoaPhongId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any },
+    defaultValues: { maKyThi: '', tenKyThi: '', moTa: '', khoaPhongId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any, thoiGianLamBai: '' as any },
   })
 
   // Programmatically register custom fields
@@ -97,6 +97,7 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
         donViToChuc: kyThi.donViToChuc || '',
         soCauDungToiThieu: kyThi.soCauDungToiThieu ?? '' as any,
         tongSoCauHoi: kyThi.tongSoCauHoi ?? '' as any,
+        thoiGianLamBai: kyThi.thoiGianLamBai ?? '' as any,
       })
       setSearchTerm(kyThi.tenKhoa || 'Tất cả các khoa')
     } else {
@@ -110,11 +111,23 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
           thoiGianKetThuc: '',
           donViToChuc: currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || '',
           soCauDungToiThieu: '' as any,
-          tongSoCauHoi: '' as any
+          tongSoCauHoi: '' as any,
+          thoiGianLamBai: '' as any
         })
         setSearchTerm(currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || '')
       } else {
-        form.reset({ maKyThi: generateKyThiCode(), tenKyThi: '', moTa: '', khoaPhongId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any })
+        form.reset({
+          maKyThi: generateKyThiCode(),
+          tenKyThi: '',
+          moTa: '',
+          khoaPhongId: '' as any,
+          thoiGianBatDau: '',
+          thoiGianKetThuc: '',
+          donViToChuc: '',
+          soCauDungToiThieu: '' as any,
+          tongSoCauHoi: '' as any,
+          thoiGianLamBai: '' as any,
+        })
         setSearchTerm('Tất cả các khoa')
       }
     }
@@ -264,6 +277,22 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
             )}
             <p className="text-[11px] text-gray-400">
               Số câu hỏi bắt buộc khi tạo đề thi cho kỳ thi này.
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Thời gian làm bài (phút)</label>
+            <Input
+              type="number"
+              min={1}
+              {...form.register('thoiGianLamBai')}
+              placeholder="VD: 60"
+            />
+            {form.formState.errors.thoiGianLamBai && (
+              <p className="text-xs text-red-500">{form.formState.errors.thoiGianLamBai.message}</p>
+            )}
+            <p className="text-[11px] text-gray-400">
+              Mặc định 60 phút nếu để trống. Áp dụng cho các đề thi.
             </p>
           </div>
 

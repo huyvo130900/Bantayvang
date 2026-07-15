@@ -1,5 +1,5 @@
 import apiClient from '@/lib/axios'
-import type { ExamResultDetailDto, ManualGradingDto } from './types'
+import type { ExamResultDetailDto, ManualGradingDto, PendingEssayDto } from './types'
 import type { ApiResponse } from '@/types'
 
 export const gradingApi = {
@@ -33,4 +33,8 @@ export const gradingApi = {
 
   unpublishSingle: (baiThiId: number) =>
     apiClient.post<ApiResponse>(`/grading/unpublish-single/${baiThiId}`),
+
+  // ✨ Danh sách bài thi còn câu tự luận chưa được chấm
+  getPendingEssay: (isGraded?: boolean) =>
+    apiClient.get<ApiResponse<PendingEssayDto[]>>(`/grading/pending-essay?isGraded=${isGraded ? 'true' : 'false'}`),
 }

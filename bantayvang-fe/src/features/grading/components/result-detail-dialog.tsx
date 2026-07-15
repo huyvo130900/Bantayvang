@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { gradingApi } from '../api'
 import type { ExamResultDetailDto } from '../types'
 import { Button } from '@/components/ui/button'
-import { X, CheckCircle2, XCircle, AlertTriangle, ThumbsUp, ThumbsDown, Loader2, ListFilter } from 'lucide-react'
+import { X, CheckCircle2, XCircle, AlertTriangle, ThumbsUp, ThumbsDown, Loader2, ListFilter, RotateCcw } from 'lucide-react'
 
 type QuestionFilter = 'all' | 'tracnghiem' | 'tuLuan'
 
@@ -41,7 +41,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
     }
   }
 
-  const handleManualGrade = async (chiTietLamBaiId: number, isCorrect: boolean) => {
+  const handleManualGrade = async (chiTietLamBaiId: number, isCorrect: boolean | null) => {
     if (!baiThiId) return
     setGradingId(chiTietLamBaiId)
     try {
@@ -61,7 +61,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
 
   // Kiểm tra xem bài thi có câu tự luận chưa chấm không
   const hasUngradedEssay = detail?.answers?.some(
-    a => (a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan') && a.diemDatDuoc == null
+    a => (a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL') && a.diemDatDuoc == null
   ) ?? false
 
   return (
@@ -150,7 +150,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
               const indexed = detail.answers.map((a, idx) => ({ a, origIdx: idx }))
 
               const filtered = indexed.filter(({ a }) => {
-                const isTuLuan = a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan'
+                const isTuLuan = a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL'
                 if (filter === 'tracnghiem') return !isTuLuan
                 if (filter === 'tuLuan') return isTuLuan
                 return true
@@ -158,8 +158,8 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
 
               // Sắp xếp: tự luận chưa chấm lên trên, giữ nguyên thứ tự gốc trong từng nhóm
               const sorted = [...filtered].sort((x, y) => {
-                const xTuLuan = x.a.loaiCauHoi === 'Tự luận' || x.a.loaiCauHoi === 'TuLuan'
-                const yTuLuan = y.a.loaiCauHoi === 'Tự luận' || y.a.loaiCauHoi === 'TuLuan'
+                const xTuLuan = x.a.loaiCauHoi === 'Tự luận' || x.a.loaiCauHoi === 'TuLuan' || x.a.loaiCauHoi === 'TL'
+                const yTuLuan = y.a.loaiCauHoi === 'Tự luận' || y.a.loaiCauHoi === 'TuLuan' || y.a.loaiCauHoi === 'TL'
                 const xUngraded = xTuLuan && x.a.diemDatDuoc == null
                 const yUngraded = yTuLuan && y.a.diemDatDuoc == null
                 if (xUngraded && !yUngraded) return -1
@@ -167,9 +167,9 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
                 return x.origIdx - y.origIdx
               })
 
-              const tracNghiemCount = indexed.filter(({ a }) => !(a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan')).length
-              const tuLuanCount = indexed.filter(({ a }) => a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan').length
-              const ungradedEssayCount = indexed.filter(({ a }) => (a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan') && a.diemDatDuoc == null).length
+              const tracNghiemCount = indexed.filter(({ a }) => !(a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL')).length
+              const tuLuanCount = indexed.filter(({ a }) => a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL').length
+              const ungradedEssayCount = indexed.filter(({ a }) => (a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL') && a.diemDatDuoc == null).length
 
               return (
                 <div className="space-y-3">
@@ -219,7 +219,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
                     <div className="text-center text-sm text-gray-400 py-6">Không có câu hỏi nào</div>
                   ) : (
                     sorted.map(({ a, origIdx }) => {
-                      const isTuLuan = a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan'
+                      const isTuLuan = a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL'
                       const isGraded = a.diemDatDuoc != null
                       const isEssayCorrect = isTuLuan && a.diemDatDuoc === 1
                       const isGrading = gradingId === a.chiTietLamBaiId
@@ -282,6 +282,14 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
                                 </p>
                               )}
 
+                              {/* Đáp án chuẩn cho tự luận */}
+                              {isTuLuan && a.noiDungDapAnDung && (
+                                <div className="mt-2 bg-green-50/50 border border-green-100 p-2 rounded-lg text-xs">
+                                  <span className="font-semibold text-green-800">💡 Đáp án chuẩn / Hướng dẫn chấm:</span>
+                                  <p className="text-green-700 whitespace-pre-wrap mt-0.5">{a.noiDungDapAnDung}</p>
+                                </div>
+                              )}
+
                               {/* Chấm điểm tự luận - chỉ admin mới thấy nút */}
                               {isTuLuan && isAdmin && (
                                 <div className="mt-2 flex items-center gap-2">
@@ -317,6 +325,16 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
                                     {isGrading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsDown className="h-3 w-3" />}
                                     Sai
                                   </button>
+                                  {isGraded && (
+                                    <button
+                                      disabled={isGrading}
+                                      onClick={() => a.chiTietLamBaiId != null && handleManualGrade(a.chiTietLamBaiId, null)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50 ml-2"
+                                    >
+                                      {isGrading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                                      Chấm lại
+                                    </button>
+                                  )}
                                 </div>
                               )}
 

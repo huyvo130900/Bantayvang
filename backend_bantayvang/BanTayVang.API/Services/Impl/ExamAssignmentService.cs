@@ -21,6 +21,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var assignments = await _context.ExamAssignments
+                    .IgnoreQueryFilters()
                     .Where(a => a.ExamId == examId && a.IsActive)
                     .Include(a => a.Exam)
                     .Include(a => a.User)
@@ -69,6 +70,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var assignments = await _context.ExamAssignments
+                    .IgnoreQueryFilters()
                     .Where(a => a.UserId == userId && a.IsActive)
                     .Include(a => a.Exam)
                     .Include(a => a.User)
