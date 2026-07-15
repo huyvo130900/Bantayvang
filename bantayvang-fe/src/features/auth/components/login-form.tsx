@@ -27,7 +27,7 @@ export function LoginForm() {
     const result = await dispatch(login(data))
     if (login.fulfilled.match(result)) {
       const user = result.payload.user
-      if ((user.role || user.tenVaiTro) === ROLES.STUDENT) {
+      if ((user.role || user.roleName) === ROLES.STUDENT) {
         navigate('/exam-waiting')
       } else {
         navigate('/admin/dashboard')

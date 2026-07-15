@@ -22,8 +22,8 @@ interface UserFormDialogProps {
 export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: UserFormDialogProps) {
   const isEdit = !!user
   const currentUser = useAppSelector((state) => state.auth.user)
-  const isUserDeptManager = currentUser?.role === 'DeptManager' || currentUser?.tenVaiTro === 'DeptManager'
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
+  const isUserDeptManager = currentUser?.role === 'DeptManager' || currentUser?.roleName === 'DeptManager'
+  const myKhoa = currentUser?.deptManagerDeptName || currentUser?.department || null
 
   const [departments, setDepartments] = useState<DepartmentDto[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -35,7 +35,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
     defaultValues: {
       username: '', password: '', fullName: '',
       employeeCode: '', jobTitle: '', department: '',
-      roleId: 3, idKhoaQuanLy: null as any, status: true,
+      roleId: 3, deptManagerDeptId: null as any, status: true,
       email: '', phoneNumber: '',
     },
   })
@@ -72,7 +72,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
           fullName: user.fullName || '',
           employeeCode: user.employeeCode || '', jobTitle: user.jobTitle || '',
           department: user.department || '', roleId: user.roleId || 3,
-          idKhoaQuanLy: user.idKhoaQuanLy || null as any,
+          deptManagerDeptId: user.deptManagerDeptId || null as any,
           status: user.status ?? true,
           email: user.email || '',
           phoneNumber: user.phoneNumber || '',
@@ -82,7 +82,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
         form.reset({
           username: '', password: '', fullName: '',
           employeeCode: '', jobTitle: '', department: isUserDeptManager && myKhoa ? myKhoa : '', roleId: 3,
-          idKhoaQuanLy: null as any,
+          deptManagerDeptId: null as any,
           status: true,
           email: '',
           phoneNumber: '',
@@ -252,10 +252,10 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
 
           {/* Chọn Khoa khi role = DeptManager */}
           {isDeptManager && (
-            <Field label="Khoa quản lý *" error={form.formState.errors.idKhoaQuanLy?.message}>
+            <Field label="Khoa quản lý *" error={form.formState.errors.deptManagerDeptId?.message}>
               <select
-                {...form.register('idKhoaQuanLy', { setValueAs: (v) => v === "" || Number.isNaN(parseInt(v)) ? null : parseInt(v) })}
-                value={form.watch('idKhoaQuanLy') ?? ''}
+                {...form.register('deptManagerDeptId', { setValueAs: (v) => v === "" || Number.isNaN(parseInt(v)) ? null : parseInt(v) })}
+                value={form.watch('deptManagerDeptId') ?? ''}
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
                 <option value="">— Chọn khoa —</option>

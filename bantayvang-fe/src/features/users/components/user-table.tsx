@@ -79,8 +79,8 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
               </td>
               <td className="px-4 py-3 text-gray-600">{user.username}</td>
               <td className="px-4 py-3 text-xs">
-                {user.roleId === 5 && user.tenKhoaQuanLy ? (
-                  <span className="text-blue-700 font-medium">{user.tenKhoaQuanLy}</span>
+                {user.roleId === 5 && user.deptManagerDeptName ? (
+                  <span className="text-blue-700 font-medium">{user.deptManagerDeptName}</span>
                 ) : (
                   <span className="text-gray-600">{user.department || '—'}</span>
                 )}
@@ -88,7 +88,7 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
               <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.phoneNumber || '—'}</td>
               <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.email || '—'}</td>
               <td className="px-4 py-3">
-                <RoleBadge role={user.tenVaiTro} />
+                <RoleBadge role={user.roleName} />
               </td>
               <td className="px-4 py-3">
                 {user.isDeleted ? (

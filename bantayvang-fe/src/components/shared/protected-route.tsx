@@ -25,7 +25,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (allowedRoles && user) {
-    const userRole = user.role || user.tenVaiTro || ''
+    const userRole = user.role || user.roleName || ''
     if (!allowedRoles.includes(userRole)) {
       return <Navigate to={getDefaultRedirect(userRole)} replace />
     }

@@ -16,10 +16,10 @@ namespace BanTayVang.API.DTOs.User
         public int? RoleId { get; set; }
         public string? RoleName { get; set; }
         public int? DeptManagerDeptId { get; set; }
-        public string? TenKhoaQuanLy { get; set; }
+        public string? DeptManagerDeptName { get; set; }
         public bool? Status { get; set; }
         public DateTime? CreatedAt { get; set; }
-        public DateTime? LanDangNhapCuoi { get; set; }
+        public DateTime? LastLoginAt { get; set; }
         public bool IsDeleted { get; set; }
         public string? Email { get; set; }
         public string? PhoneNumber { get; set; }

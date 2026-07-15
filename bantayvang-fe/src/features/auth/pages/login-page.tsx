@@ -9,7 +9,7 @@ export function LoginPage() {
   const { isAuthenticated, user } = useAppSelector((state) => state.auth)
 
   if (isAuthenticated && user) {
-    const role = user.role || user.tenVaiTro || ''
+    const role = user.role || user.roleName || ''
     if (role === ROLES.STUDENT)       return <Navigate to="/exam-waiting" replace />
     if (role === ROLES.DEPT_MANAGER)  return <Navigate to="/dept-manager/dashboard" replace />
     return <Navigate to="/admin/dashboard" replace />

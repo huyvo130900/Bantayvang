@@ -564,10 +564,10 @@ namespace BanTayVang.API.Services.Impl
                 RoleId = u.RoleId,
                 RoleName = GetRoleName(u.RoleId),
                 DeptManagerDeptId = u.DeptManagerDeptId,
-                TenKhoaQuanLy = u.ManagedDepartment?.DepartmentName,
+                DeptManagerDeptName = u.ManagedDepartment?.DepartmentName,
                 Status = u.Status,
                 CreatedAt = u.CreatedAt,
-                LanDangNhapCuoi = u.LanDangNhapCuoi,
+                LastLoginAt = u.LastLoginAt,
                 IsDeleted = u.IsDeleted,
                 Email = u.Email,
                 PhoneNumber = u.PhoneNumber
@@ -941,13 +941,13 @@ namespace BanTayVang.API.Services.Impl
                     string? finalKhoaPhong = string.IsNullOrWhiteSpace(department) ? null : department;
 
                     // Auto-assign DeptManager to Department
-                    int? idKhoaQuanLy = null;
+                    int? deptManagerDeptId = null;
                     if (roleId == 5 && !string.IsNullOrEmpty(finalKhoaPhong))
                     {
                         var khoa = await _context.Departments.FirstOrDefaultAsync(k => k.DepartmentName == finalKhoaPhong);
                         if (khoa != null)
                         {
-                            idKhoaQuanLy = khoa.Id;
+                            deptManagerDeptId = khoa.Id;
                         }
                     }
 
@@ -960,7 +960,7 @@ namespace BanTayVang.API.Services.Impl
                         JobTitle = finalChucDanh,
                         Department = finalKhoaPhong,
                         RoleId = roleId,
-                        DeptManagerDeptId = idKhoaQuanLy,
+                        DeptManagerDeptId = deptManagerDeptId,
                         Status = true,
                         CreatedAt = DateTime.Now,
                         PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber,

@@ -20,7 +20,7 @@ namespace BanTayVang.API.Repositories.Impl
                 return null;
 
             // BUG FIX: Include ManagedDepartment để AuthService có thể lấy DepartmentName gán vào UserInfoDto.
-            // Nếu thiếu Include này thì ManagedDepartment = null → TenKhoaQuanLy không bao giờ được set
+            // Nếu thiếu Include này thì ManagedDepartment = null → DeptManagerDeptName không bao giờ được set
             // → Frontend filter theo department bị null → GET /api/Question không kèm department param
             // → Backend DeptManager scope trả về danh sách rỗng vì filter.Department = null.
             return await _dbSet
@@ -99,7 +99,7 @@ namespace BanTayVang.API.Repositories.Impl
                 if (user == null)
                     return false;
 
-                user.LanDangNhapCuoi = loginTime;
+                user.LastLoginAt = loginTime;
                 await UpdateAsync(user);
                 return true;
             }
@@ -117,7 +117,7 @@ namespace BanTayVang.API.Repositories.Impl
                 .ToListAsync();
         }
 
-        /// <summary>Override GetByIdAsync to include ManagedDepartment so TenKhoaQuanLy is available in AuthService</summary>
+        /// <summary>Override GetByIdAsync to include ManagedDepartment so DeptManagerDeptName is available in AuthService</summary>
         public override async Task<User?> GetByIdAsync(int id)
         {
             return await _dbSet

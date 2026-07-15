@@ -5,15 +5,15 @@ export interface User {
   email?: string
   fullName?: string
   role?: string
-  tenVaiTro?: string
+  roleName?: string
   isActive?: boolean
   status?: boolean
   lastLoginAt?: string
   department?: string
   employeeCode?: string
   jobTitle?: string
-  idKhoaQuanLy?: number
-  tenKhoaQuanLy?: string
+  deptManagerDeptId?: number
+  deptManagerDeptName?: string
 }
 
 export interface LoginRequest {

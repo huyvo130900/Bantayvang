@@ -22,7 +22,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
     }
 
     const handleNotificationClick = () => {
-      const role = user?.tenVaiTro || user?.role || ''
+      const role = user?.roleName || user?.role || ''
       if (role === 'DeptManager' || role === 'Quản lý Khoa') {
         navigate('/dept-manager/notifications')
       } else {
@@ -65,7 +65,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
 
   // Support both Vietnamese and English field names from backend
   const displayName = user?.fullName || user?.fullName || user?.username || user?.username || 'User'
-  const displayRole = user?.tenVaiTro || user?.role || ''
+  const displayRole = user?.roleName || user?.role || ''
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white px-4 sm:px-6 shadow-sm">
@@ -106,7 +106,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
           title="Thông báo"
           className="relative text-gray-600 hover:text-primary"
           onClick={() => {
-            const role = user?.tenVaiTro || user?.role || ''
+            const role = user?.roleName || user?.role || ''
             if (role === 'DeptManager' || role === 'Quản lý Khoa') {
               navigate('/dept-manager/notifications')
             } else {

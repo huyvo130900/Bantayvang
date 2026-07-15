@@ -34,7 +34,7 @@ public partial class User
 
     public DateTime? UpdatedAt { get; set; }
 
-    public DateTime? LanDangNhapCuoi { get; set; }
+    public DateTime? LastLoginAt { get; set; }
 
     /// <summary>
     /// FK -> ExamRegistrations.Id - chỉ dùng cho role DeptManager (ID=5)

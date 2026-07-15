@@ -46,6 +46,6 @@ namespace BanTayVang.API.DTOs.Auth
         public DateTime LastLoginAt { get; set; }
         public string? Department { get; set; }
         public int? DeptManagerDeptId { get; set; }
-        public string? TenKhoaQuanLy { get; set; }
+        public string? DeptManagerDeptName { get; set; }
     }
 }

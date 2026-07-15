@@ -20,9 +20,9 @@ export function ExamsPage() {
   const { exams, isLoading } = useAppSelector((state) => state.exams)
   const currentUser = useAppSelector((state) => state.auth.user)
 
-  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.tenVaiTro === 'DeptManager'
+  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.roleName === 'DeptManager'
   const isAdmin = !isDeptManager
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
+  const myKhoa = currentUser?.deptManagerDeptName || currentUser?.department || null
 
   const [formOpen, setFormOpen] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)

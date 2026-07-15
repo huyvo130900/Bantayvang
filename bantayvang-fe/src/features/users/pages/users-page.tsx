@@ -17,8 +17,8 @@ export function UsersPage() {
   const { users, isLoading, filter } = useAppSelector((state) => state.users)
   const currentUser = useAppSelector((state) => state.auth.user)
 
-  const isDeptManager = currentUser?.role === 'DeptManager' || currentUser?.tenVaiTro === 'DeptManager'
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
+  const isDeptManager = currentUser?.role === 'DeptManager' || currentUser?.roleName === 'DeptManager'
+  const myKhoa = currentUser?.deptManagerDeptName || currentUser?.department || null
 
   const [formOpen, setFormOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -70,7 +70,7 @@ export function UsersPage() {
     try {
       const sanitizedData = {
         ...data,
-        idKhoaQuanLy: data.idKhoaQuanLy || undefined
+        deptManagerDeptId: data.deptManagerDeptId || undefined
       } as any
 
       if (isDeptManager && myKhoa) {

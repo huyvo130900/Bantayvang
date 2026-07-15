@@ -8,12 +8,12 @@ export interface UserDto {
   jobTitle: string | null
   department: string | null
   roleId: number | null
-  tenVaiTro: string | null
-  idKhoaQuanLy?: number | null
-  tenKhoaQuanLy?: string | null
+  roleName: string | null
+  deptManagerDeptId?: number | null
+  deptManagerDeptName?: string | null
   status: boolean | null
   createdAt: string | null
-  lanDangNhapCuoi: string | null
+  lastLoginAt: string | null
   isDeleted: boolean
 }
 
@@ -27,7 +27,7 @@ export interface CreateUserDto {
   jobTitle?: string
   department?: string
   roleId: number
-  idKhoaQuanLy?: number
+  deptManagerDeptId?: number
   status: boolean
 }
 
@@ -39,7 +39,7 @@ export interface UpdateUserDto {
   jobTitle?: string
   department?: string
   roleId: number
-  idKhoaQuanLy?: number
+  deptManagerDeptId?: number
   status: boolean
 }
 

@@ -22,10 +22,10 @@ export function QuestionsPage() {
     useAppSelector((state) => state.questions)
   const currentUser = useAppSelector((state) => state.auth.user)
 
-  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.tenVaiTro === 'DeptManager'
+  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.roleName === 'DeptManager'
   const isAdmin = !isDeptManager
-  // Khoa của DeptManager: ưu tiên tenKhoaQuanLy, fallback department
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
+  // Khoa của DeptManager: ưu tiên deptManagerDeptName, fallback department
+  const myKhoa = currentUser?.deptManagerDeptName || currentUser?.department || null
 
   const [khoaList, setKhoaList] = useState<string[]>([])
   const [kyThiList, setKyThiList] = useState<ExamCampaignDto[]>([])

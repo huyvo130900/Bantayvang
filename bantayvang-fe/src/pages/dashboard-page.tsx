@@ -588,7 +588,7 @@ function StudentDashboard() {
 // --- Main DashboardPage ---
 export function DashboardPage() {
   const { user } = useAppSelector((state) => state.auth)
-  const role = user?.role || user?.tenVaiTro
+  const role = user?.role || user?.roleName
   const isStudent = role === ROLES.STUDENT
 
   return (

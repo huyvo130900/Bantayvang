@@ -17,8 +17,8 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   const dispatch = useAppDispatch()
   const { exams } = useAppSelector((state) => state.exams)
   const currentUser = useAppSelector((state) => state.auth.user)
-  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.tenVaiTro === 'DeptManager'
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
+  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.roleName === 'DeptManager'
+  const myKhoa = currentUser?.deptManagerDeptName || currentUser?.department || null
 
   const [selectedKhoa, setSelectedKhoa] = useState<string | null>(isDeptManager && myKhoa ? myKhoa : null)
   const [kyThiList, setKyThiList] = useState<ExamCampaignDto[]>([])

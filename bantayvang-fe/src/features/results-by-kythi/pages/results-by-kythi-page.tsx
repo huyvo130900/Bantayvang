@@ -223,9 +223,9 @@ export function ResultsByKyThiPage() {
   const [searchParams] = useSearchParams()
   const currentUser = useAppSelector((state) => state.auth.user)
 
-  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.tenVaiTro === 'DeptManager'
+  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.roleName === 'DeptManager'
   const isAdmin = !isDeptManager
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
+  const myKhoa = currentUser?.deptManagerDeptName || currentUser?.department || null
 
   const [kyThiList, setKyThiList] = useState<KyThiItem[]>([])
   const [selectedKyThi, setSelectedKyThi] = useState<KyThiItem | null>(null)

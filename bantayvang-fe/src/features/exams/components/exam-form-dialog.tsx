@@ -44,7 +44,7 @@ const generateDeThiCode = () => {
 
 export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa, kyThiList, defaultKyThiId }: ExamFormDialogProps) {
   const currentUser = useAppSelector((state) => state.auth.user)
-  const isAdmin = currentUser?.role === ROLES.ADMIN || currentUser?.tenVaiTro === 'Admin'
+  const isAdmin = currentUser?.role === ROLES.ADMIN || currentUser?.roleName === 'Admin'
 
   const [selectedKhoa, setSelectedKhoa] = useState(lockedKhoa || '')
   const [questionMode, setQuestionMode] = useState<QuestionMode>('manual')
@@ -210,7 +210,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
     try {
       let khoaFilter = poolKhoa || selectedKhoa
       if (!isAdmin) {
-        khoaFilter = currentUser?.tenKhoaQuanLy || currentUser?.department || ''
+        khoaFilter = currentUser?.deptManagerDeptName || currentUser?.department || ''
       }
       const response = await questionsApi.list({
         pageNumber: poolPage,
@@ -278,7 +278,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
           : 'Không thuộc ngân hàng'
 
         if (!isAdmin && themVaoNganHang) {
-          targetKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || ''
+          targetKhoa = currentUser?.deptManagerDeptName || currentUser?.department || ''
         }
 
         // 1 = Trắc nghiệm, isExamImport = true, expectedCount
@@ -466,7 +466,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                     {!isAdmin ? (
                       <input
                         type="text"
-                        value={currentUser?.tenKhoaQuanLy || currentUser?.department || ''}
+                        value={currentUser?.deptManagerDeptName || currentUser?.department || ''}
                         readOnly
                         disabled
                         className="h-8 w-40 rounded border border-gray-200 bg-gray-50 text-gray-500 px-2 text-xs cursor-not-allowed"
@@ -653,7 +653,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                         {!isAdmin ? (
                           <input
                             type="text"
-                            value={currentUser?.tenKhoaQuanLy || currentUser?.department || ''}
+                            value={currentUser?.deptManagerDeptName || currentUser?.department || ''}
                             disabled
                             className="h-8 w-full rounded border border-gray-200 bg-gray-50 px-2 text-xs text-gray-500 cursor-not-allowed"
                           />

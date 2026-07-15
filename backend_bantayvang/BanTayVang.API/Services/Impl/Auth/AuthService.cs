@@ -118,7 +118,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 await _sessionRepository.AddAsync(userSession);
 
                 // Update user last login
-                user.LanDangNhapCuoi = DateTime.Now;
+                user.LastLoginAt = DateTime.Now;
                 await _userRepository.UpdateAsync(user);
 
                 // Create response
@@ -130,13 +130,13 @@ namespace BanTayVang.API.Services.Impl.Auth
                     FullName = user.FullName ?? string.Empty,
                     Role = GetRoleName(user.RoleId),
                     IsActive = user.Status ?? false,
-                    LastLoginAt = user.LanDangNhapCuoi ?? DateTime.Now,
+                    LastLoginAt = user.LastLoginAt ?? DateTime.Now,
                     Department = user.Department,
                     DeptManagerDeptId = user.DeptManagerDeptId,
-                    // BUG FIX: Gán TenKhoaQuanLy từ navigation property ManagedDepartment.
+                    // BUG FIX: Gán DeptManagerDeptName từ navigation property ManagedDepartment.
                     // Field này bị thiếu khiến frontend (DeptManager) không biết mình thuộc khoa nào
                     // → filter department = null → GET /api/Question trả 0 kết quả.
-                    TenKhoaQuanLy = user.ManagedDepartment?.DepartmentName ?? user.Department
+                    DeptManagerDeptName = user.ManagedDepartment?.DepartmentName ?? user.Department
                 };
 
                 var authResponse = new AuthResponseDto
@@ -249,7 +249,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 await _sessionRepository.AddAsync(userSession);
 
                 // Update last login
-                savedUser.LanDangNhapCuoi = DateTime.Now;
+                savedUser.LastLoginAt = DateTime.Now;
                 await _userRepository.UpdateAsync(savedUser);
 
                 _logger.LogInformation("User registered successfully: {Username}, ID: {UserId}", 
@@ -264,7 +264,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                     FullName = savedUser.FullName ?? string.Empty,
                     Role = GetRoleName(savedUser.RoleId),
                     IsActive = savedUser.Status ?? true,
-                    LastLoginAt = savedUser.LanDangNhapCuoi ?? DateTime.Now,
+                    LastLoginAt = savedUser.LastLoginAt ?? DateTime.Now,
                     Department = savedUser.Department,
                     DeptManagerDeptId = savedUser.DeptManagerDeptId
                 };
@@ -354,10 +354,10 @@ namespace BanTayVang.API.Services.Impl.Auth
                     FullName = user.FullName ?? string.Empty,
                     Role = GetRoleName(user.RoleId),
                     IsActive = user.Status ?? false,
-                    LastLoginAt = user.LanDangNhapCuoi ?? DateTime.Now,
+                    LastLoginAt = user.LastLoginAt ?? DateTime.Now,
                     Department = user.Department,
                     DeptManagerDeptId = user.DeptManagerDeptId,
-                    TenKhoaQuanLy = user.ManagedDepartment?.DepartmentName ?? user.Department
+                    DeptManagerDeptName = user.ManagedDepartment?.DepartmentName ?? user.Department
                 };
 
                 var authResponse = new AuthResponseDto
@@ -551,10 +551,10 @@ namespace BanTayVang.API.Services.Impl.Auth
                     FullName = user.FullName ?? string.Empty,
                     Role = GetRoleName(user.RoleId),
                     IsActive = user.Status ?? false,
-                    LastLoginAt = user.LanDangNhapCuoi ?? DateTime.Now,
+                    LastLoginAt = user.LastLoginAt ?? DateTime.Now,
                     Department = user.Department,
                     DeptManagerDeptId = user.DeptManagerDeptId,
-                    TenKhoaQuanLy = user.ManagedDepartment?.DepartmentName ?? user.Department
+                    DeptManagerDeptName = user.ManagedDepartment?.DepartmentName ?? user.Department
                 };
 
                 return new BaseResponseDto<UserInfoDto>
@@ -599,10 +599,10 @@ namespace BanTayVang.API.Services.Impl.Auth
                     FullName = user.FullName ?? string.Empty,
                     Role = GetRoleName(user.RoleId),
                     IsActive = user.Status ?? false,
-                    LastLoginAt = user.LanDangNhapCuoi ?? DateTime.Now,
+                    LastLoginAt = user.LastLoginAt ?? DateTime.Now,
                     Department = user.Department,
                     DeptManagerDeptId = user.DeptManagerDeptId,
-                    TenKhoaQuanLy = user.ManagedDepartment?.DepartmentName ?? user.Department
+                    DeptManagerDeptName = user.ManagedDepartment?.DepartmentName ?? user.Department
                 };
 
                 return new BaseResponseDto<UserInfoDto>

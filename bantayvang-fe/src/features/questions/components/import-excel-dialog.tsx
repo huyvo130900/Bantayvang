@@ -27,8 +27,8 @@ export function ImportExcelDialog({ open, onClose, onSuccess }: ImportExcelDialo
   
   const isDeptManager =
     currentUser?.role === ROLES.DEPT_MANAGER ||
-    currentUser?.tenVaiTro === 'DeptManager'
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
+    currentUser?.roleName === 'DeptManager'
+  const myKhoa = currentUser?.deptManagerDeptName || currentUser?.department || null
 
   // Tìm ID động của loại câu hỏi từ Redux (DB đang lưu categoryName là TN/TL, description chứa tên đầy đủ)
   const tracNghiemType = questionTypes.find(

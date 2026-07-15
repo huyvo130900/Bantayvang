@@ -33,9 +33,9 @@ export function KyThiPage() {
   const dispatch = useAppDispatch()
   const currentUser = useAppSelector((state) => state.auth.user)
 
-  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.tenVaiTro === 'DeptManager'
+  const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.roleName === 'DeptManager'
   const isAdmin = !isDeptManager
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
+  const myKhoa = currentUser?.deptManagerDeptName || currentUser?.department || null
 
   const [examCampaigns, setKyThis] = useState<ExamCampaignDto[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -110,12 +110,12 @@ export function KyThiPage() {
       }
       if (editingKyThi) {
         const updateData: any = isDeptManager
-          ? { ...formattedData, departmentId: currentUser?.idKhoaQuanLy || null, status: editingKyThi.status || 'DangChuanBi' }
+          ? { ...formattedData, departmentId: currentUser?.deptManagerDeptId || null, status: editingKyThi.status || 'DangChuanBi' }
           : { ...formattedData, status: editingKyThi.status || 'DangChuanBi' }
         await kyThiApi.update(editingKyThi.id, updateData)
       } else {
         const createData: CreateKyThiDto = isDeptManager
-          ? { ...formattedData, departmentId: currentUser?.idKhoaQuanLy || null }
+          ? { ...formattedData, departmentId: currentUser?.deptManagerDeptId || null }
           : formattedData
         await kyThiApi.create(createData)
       }
@@ -243,9 +243,9 @@ export function KyThiPage() {
     }
   }
 
-  // Scope: DeptManager chỉ thấy kỳ thi do khoa mình quản lý (departmentId = idKhoaQuanLy)
-  const scopedKyThis = isDeptManager && currentUser?.idKhoaQuanLy
-    ? examCampaigns.filter((k) => k.departmentId === currentUser.idKhoaQuanLy)
+  // Scope: DeptManager chỉ thấy kỳ thi do khoa mình quản lý (departmentId = deptManagerDeptId)
+  const scopedKyThis = isDeptManager && currentUser?.deptManagerDeptId
+    ? examCampaigns.filter((k) => k.departmentId === currentUser.deptManagerDeptId)
     : examCampaigns
 
   // Danh sách khoa duy nhất cho tab admin

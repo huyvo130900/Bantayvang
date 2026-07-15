@@ -232,7 +232,7 @@ function BroadcastDialog({
   onSubmit: (data: CreateNotificationDto) => void
 }) {
   const { user } = useAppSelector((state) => state.auth)
-  const isDeptManager = user?.role === 'DeptManager' || user?.tenVaiTro === 'DeptManager' || user?.tenVaiTro === 'Quản lý Khoa'
+  const isDeptManager = user?.role === 'DeptManager' || user?.roleName === 'DeptManager' || user?.roleName === 'Quản lý Khoa'
   
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')

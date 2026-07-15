@@ -45,7 +45,7 @@ const generateKyThiCode = () => {
 export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoading }: KyThiFormDialogProps) {
   const isEdit = !!examCampaign
   const currentUser = useAppSelector((state) => state.auth.user)
-  const isDeptManager = currentUser?.role === 'DeptManager' || currentUser?.tenVaiTro === 'DeptManager'
+  const isDeptManager = currentUser?.role === 'DeptManager' || currentUser?.roleName === 'DeptManager'
 
   const [departments, setDepartments] = useState<DepartmentDto[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -106,15 +106,15 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
           campaignCode: generateKyThiCode(),
           campaignName: '',
           description: '',
-          departmentId: currentUser?.idKhoaQuanLy || '' as any,
+          departmentId: currentUser?.deptManagerDeptId || '' as any,
           thoiGianBatDau: '',
           thoiGianKetThuc: '',
-          donViToChuc: currentUser?.tenKhoaQuanLy || currentUser?.department || '',
+          donViToChuc: currentUser?.deptManagerDeptName || currentUser?.department || '',
           soCauDungToiThieu: '' as any,
           tongSoCauHoi: '' as any,
           durationMinutes: '' as any
         })
-        setSearchTerm(currentUser?.tenKhoaQuanLy || currentUser?.department || '')
+        setSearchTerm(currentUser?.deptManagerDeptName || currentUser?.department || '')
       } else {
         form.reset({
           campaignCode: generateKyThiCode(),

@@ -36,7 +36,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const { user } = useAppSelector((state) => state.auth)
 
   const displayName = user?.fullName || user?.fullName || user?.username || user?.username || ''
-  const displayRole = user?.tenVaiTro || user?.role || ''
+  const displayRole = user?.roleName || user?.role || ''
 
   const handleLogout = async () => {
     await dispatch(logout())
