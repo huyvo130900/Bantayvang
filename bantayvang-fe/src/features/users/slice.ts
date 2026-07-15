@@ -192,7 +192,7 @@ const usersSlice = createSlice({
         const { id, activate } = action.payload
         const user = state.users.find((u) => u.id === id)
         if (user) {
-          user.trangThai = activate
+          user.status = activate
         }
       })
       .addCase(deleteUser.fulfilled, (state, action) => {

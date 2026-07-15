@@ -33,8 +33,8 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                var exam = await _context.Dethis.FindAsync(examId);
-                if (exam == null || exam.KhoaPhong != myKhoa)
+                var exam = await _context.ExamPapers.FindAsync(examId);
+                if (exam == null || exam.Department != myKhoa)
                 {
                     return Forbid();
                 }
@@ -80,8 +80,8 @@ namespace BanTayVang.API.Controllers
                 }
 
                 // Check if the exam belongs to their department
-                var exam = await _context.Dethis.FindAsync(dto.ExamId);
-                if (exam == null || exam.KhoaPhong != myKhoa)
+                var exam = await _context.ExamPapers.FindAsync(dto.ExamId);
+                if (exam == null || exam.Department != myKhoa)
                 {
                     return Forbid();
                 }
@@ -89,8 +89,8 @@ namespace BanTayVang.API.Controllers
                 // Check if all assigned users belong to their department
                 if (dto.UserIds != null && dto.UserIds.Any())
                 {
-                    var usersCount = await _context.Taikhoans
-                        .CountAsync(u => dto.UserIds.Contains(u.Id) && u.KhoaPhong == myKhoa);
+                    var usersCount = await _context.Users
+                        .CountAsync(u => dto.UserIds.Contains(u.Id) && u.Department == myKhoa);
                     if (usersCount != dto.UserIds.Count)
                     {
                         return BadRequest(BaseResponseDto<int>.FailureResult("Chỉ được phép phân công thí sinh thuộc khoa của mình."));
@@ -115,7 +115,7 @@ namespace BanTayVang.API.Controllers
                 var assignment = await _context.ExamAssignments
                     .Include(a => a.Exam)
                     .FirstOrDefaultAsync(a => a.Id == assignmentId);
-                if (assignment == null || assignment.Exam?.KhoaPhong != myKhoa)
+                if (assignment == null || assignment.Exam?.Department != myKhoa)
                 {
                     return Forbid();
                 }
@@ -145,10 +145,10 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                var baithi = await _context.Baithis
+                var examSubmission = await _context.ExamSubmissions
                     .Include(b => b.IdTaiKhoanNavigation)
                     .FirstOrDefaultAsync(b => b.Id == dto.BaiThiId);
-                if (baithi == null || baithi.IdTaiKhoanNavigation?.KhoaPhong != myKhoa)
+                if (examSubmission == null || examSubmission.IdTaiKhoanNavigation?.Department != myKhoa)
                 {
                     return Forbid();
                 }

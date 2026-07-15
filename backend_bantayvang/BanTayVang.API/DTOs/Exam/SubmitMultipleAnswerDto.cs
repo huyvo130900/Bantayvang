@@ -5,9 +5,9 @@ namespace BanTayVang.API.DTOs.Exam
     /// </summary>
     public class SubmitMultipleAnswerDto
     {
-        public int IdBaiThi { get; set; }
-        public int IdCauHoi { get; set; }
-        public List<int> IdLuaChonDaChon { get; set; } = new();
+        public int ExamSubmissionId { get; set; }
+        public int QuestionId { get; set; }
+        public List<int> SelectedOptionId { get; set; } = new();
         public string? CauTraLoiTuLuan { get; set; }
         public bool DaLuu { get; set; }
     }

@@ -1,14 +1,14 @@
 import { Button } from '@/components/ui/button'
 import { Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { CauhoiDto } from '../types'
+import type { QuestionDto } from '../types'
 import type { PaginationDto } from '@/types'
 
 interface QuestionTableProps {
-  questions: CauhoiDto[]
+  questions: QuestionDto[]
   pagination: PaginationDto | null
   isLoading: boolean
-  onEdit: (question: CauhoiDto) => void
-  onDelete: (question: CauhoiDto) => void
+  onEdit: (question: QuestionDto) => void
+  onDelete: (question: QuestionDto) => void
   onPageChange: (page: number) => void
 }
 
@@ -49,14 +49,14 @@ export function QuestionTable({
   }
 
   // Define unique group keys by combining department and normalized content
-  const getGroupKey = (q: CauhoiDto): string => {
-    const dept = (q.khoaPhong || '').trim().toLowerCase()
-    const norm = normalizeText(q.noiDung)
+  const getGroupKey = (q: QuestionDto): string => {
+    const dept = (q.department || '').trim().toLowerCase()
+    const norm = normalizeText(q.content)
     return `${dept}|||${norm}`
   }
 
   // 1. Group questions by department and content
-  const groups: { [key: string]: CauhoiDto[] } = {}
+  const groups: { [key: string]: QuestionDto[] } = {}
   questions.forEach((q) => {
     const key = getGroupKey(q)
     if (!groups[key]) {
@@ -66,8 +66,8 @@ export function QuestionTable({
   })
 
   // 2. Separate duplicate questions and single questions
-  const duplicateGroups: { [key: string]: CauhoiDto[] } = {}
-  const nonDuplicateQuestions: CauhoiDto[] = []
+  const duplicateGroups: { [key: string]: QuestionDto[] } = {}
+  const nonDuplicateQuestions: QuestionDto[] = []
 
   Object.keys(groups).forEach((key) => {
     if (groups[key].length > 1) {
@@ -104,7 +104,7 @@ export function QuestionTable({
   })
 
   // 5. Place duplicate questions at the top of the table
-  const sortedDuplicates: CauhoiDto[] = []
+  const sortedDuplicates: QuestionDto[] = []
   duplicateKeysSorted.forEach((key) => {
     sortedDuplicates.push(...duplicateGroups[key])
   })
@@ -145,12 +145,12 @@ export function QuestionTable({
                     {pagination ? (pagination.pageNumber - 1) * pagination.pageSize + idx + 1 : idx + 1}
                   </td>
                   <td className="px-4 py-3 max-w-xs">
-                    <p className="font-medium text-gray-900 truncate" title={q.noiDung || ''}>
-                      {q.noiDung || '—'}
+                    <p className="font-medium text-gray-900 truncate" title={q.content || ''}>
+                      {q.content || '—'}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      {q.khoaPhong && (
-                        <span className="text-xs text-gray-400 shrink-0">{q.khoaPhong}</span>
+                      {q.department && (
+                        <span className="text-xs text-gray-400 shrink-0">{q.department}</span>
                       )}
                       {isDuplicate && (
                         <span className="text-[10px] font-semibold px-1 py-0.25 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase scale-90 origin-left shrink-0">
@@ -159,22 +159,22 @@ export function QuestionTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{q.tenLoaiCauHoi || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{q.categoryName || '—'}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {renderDifficultyBadge(q.doKho)}
+                    {renderDifficultyBadge(q.difficulty)}
                   </td>
                   <td className="px-4 py-3 text-left">
-                    <span className="text-xs text-gray-600">{q.khoaPhong || '—'}</span>
+                    <span className="text-xs text-gray-600">{q.department || '—'}</span>
                   </td>
                   <td className="px-4 py-3 max-w-[180px]">
-                    {q.danhSachKyThi && q.danhSachKyThi.length > 0 ? (
+                    {q.campaigns && q.campaigns.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         <span 
                           className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 text-[11px] font-semibold truncate max-w-full shadow-sm"
-                          title={q.danhSachKyThi.join(', ')}
+                          title={q.campaigns.join(', ')}
                         >
-                          {q.danhSachKyThi[0]}
-                          {q.danhSachKyThi.length > 1 && ` (+${q.danhSachKyThi.length - 1})`}
+                          {q.campaigns[0]}
+                          {q.campaigns.length > 1 && ` (+${q.campaigns.length - 1})`}
                         </span>
                       </div>
                     ) : (
@@ -182,14 +182,14 @@ export function QuestionTable({
                     )}
                   </td>
                   <td className="px-4 py-3 max-w-[180px]">
-                    {q.danhSachDeThi && q.danhSachDeThi.length > 0 ? (
+                    {q.examPapers && q.examPapers.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         <span 
                           className="inline-flex items-center px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-100 text-[11px] font-semibold truncate max-w-full shadow-sm"
-                          title={q.danhSachDeThi.join(', ')}
+                          title={q.examPapers.join(', ')}
                         >
-                          {q.danhSachDeThi[0]}
-                          {q.danhSachDeThi.length > 1 && ` (+${q.danhSachDeThi.length - 1})`}
+                          {q.examPapers[0]}
+                          {q.examPapers.length > 1 && ` (+${q.examPapers.length - 1})`}
                         </span>
                       </div>
                     ) : (
@@ -197,8 +197,8 @@ export function QuestionTable({
                     )}
                   </td>
                   <td className="px-4 py-3 text-center text-xs text-gray-500">
-                    {q.danhSachLuaChon.length > 0 ? (
-                      <span>{q.danhSachLuaChon.filter((l) => l.laDapAnDung).length}/{q.danhSachLuaChon.length}</span>
+                    {q.options.length > 0 ? (
+                      <span>{q.options.filter((l) => l.isCorrect).length}/{q.options.length}</span>
                     ) : (
                       <span className="text-gray-300">Tự luận</span>
                     )}
@@ -291,8 +291,8 @@ function SmartPagination({ current, total, onPageChange }: { current: number; to
   )
 }
 
-function renderDifficultyBadge(doKho: string | null | undefined) {
-  const normalized = (doKho || 'Dễ').trim().toLowerCase()
+function renderDifficultyBadge(difficulty: string | null | undefined) {
+  const normalized = (difficulty || 'Dễ').trim().toLowerCase()
   if (normalized === 'khó') {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100 shadow-sm">

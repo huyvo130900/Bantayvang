@@ -9,7 +9,7 @@ namespace BanTayVang.API.Services.Impl.Auth
 {
     public class AuthService : IAuthService
     {
-        private readonly ITaikhoanRepository _userRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly IUserSessionRepository _sessionRepository;
         private readonly IJwtService _jwtService;
@@ -19,7 +19,7 @@ namespace BanTayVang.API.Services.Impl.Auth
         private readonly ILogger<AuthService> _logger;
 
         public AuthService(
-            ITaikhoanRepository userRepository,
+            IUserRepository userRepository,
             IRefreshTokenRepository refreshTokenRepository,
             IUserSessionRepository sessionRepository,
             IJwtService jwtService,
@@ -66,7 +66,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 }
 
                 // Check if user is active
-                if (user.TrangThai != true)
+                if (user.Status != true)
                 {
                     return new BaseResponseDto<AuthResponseDto>
                     {
@@ -76,7 +76,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 }
 
                 // Verify password
-                if (!_passwordService.VerifyPassword(loginDto.Password, user.MatKhau ?? string.Empty))
+                if (!_passwordService.VerifyPassword(loginDto.Password, user.Password ?? string.Empty))
                 {
                     return new BaseResponseDto<AuthResponseDto>
                     {
@@ -125,18 +125,18 @@ namespace BanTayVang.API.Services.Impl.Auth
                 var userInfo = new UserInfoDto
                 {
                     Id = user.Id,
-                    Username = user.TenDangNhap ?? string.Empty,
+                    Username = user.Username ?? string.Empty,
                     Email = string.Empty,
-                    FullName = user.HoTen ?? string.Empty,
-                    Role = GetRoleName(user.IdVaiTro),
-                    IsActive = user.TrangThai ?? false,
+                    FullName = user.FullName ?? string.Empty,
+                    Role = GetRoleName(user.RoleId),
+                    IsActive = user.Status ?? false,
                     LastLoginAt = user.LanDangNhapCuoi ?? DateTime.Now,
-                    KhoaPhong = user.KhoaPhong,
-                    IdKhoaQuanLy = user.IdKhoaQuanLy,
-                    // BUG FIX: Gán TenKhoaQuanLy từ navigation property KhoaQuanLy.
+                    Department = user.Department,
+                    DeptManagerDeptId = user.DeptManagerDeptId,
+                    // BUG FIX: Gán TenKhoaQuanLy từ navigation property ManagedDepartment.
                     // Field này bị thiếu khiến frontend (DeptManager) không biết mình thuộc khoa nào
-                    // → filter khoaPhong = null → GET /api/Cauhoi trả 0 kết quả.
-                    TenKhoaQuanLy = user.KhoaQuanLy?.TenKhoa ?? user.KhoaPhong
+                    // → filter department = null → GET /api/Question trả 0 kết quả.
+                    TenKhoaQuanLy = user.ManagedDepartment?.DepartmentName ?? user.Department
                 };
 
                 var authResponse = new AuthResponseDto
@@ -187,7 +187,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 }
 
                 // Check if username already exists
-                var existingUser = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.TenDangNhap == registerDto.Username || u.MaNhanVien == registerDto.Username);
+                var existingUser = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Username == registerDto.Username || u.MaNhanVien == registerDto.Username);
                 if (existingUser != null)
                 {
                     return new BaseResponseDto<AuthResponseDto>
@@ -198,26 +198,26 @@ namespace BanTayVang.API.Services.Impl.Auth
                 }
 
                 // Validate role
-                if (registerDto.IdVaiTro < 1 || registerDto.IdVaiTro > 4)
+                if (registerDto.RoleId < 1 || registerDto.RoleId > 4)
                 {
-                    registerDto.IdVaiTro = 3; // Default to Student
+                    registerDto.RoleId = 3; // Default to Student
                 }
 
                 // Hash password
                 var hashedPassword = _passwordService.HashPassword(registerDto.Password);
 
                 // Create new user
-                var newUser = new Taikhoan
+                var newUser = new User
                 {
-                    TenDangNhap = registerDto.Username,
-                    MatKhau = hashedPassword,
-                    HoTen = registerDto.HoTen,
-                    IdVaiTro = registerDto.IdVaiTro,
+                    Username = registerDto.Username,
+                    Password = hashedPassword,
+                    FullName = registerDto.FullName,
+                    RoleId = registerDto.RoleId,
                     MaNhanVien = registerDto.MaNhanVien,
                     ChucDanh = registerDto.ChucDanh,
-                    KhoaPhong = registerDto.KhoaPhong,
-                    TrangThai = true,
-                    NgayTao = DateTime.Now
+                    Department = registerDto.Department,
+                    Status = true,
+                    CreatedAt = DateTime.Now
                 };
 
                 var savedUser = await _userRepository.AddAsync(newUser);
@@ -253,20 +253,20 @@ namespace BanTayVang.API.Services.Impl.Auth
                 await _userRepository.UpdateAsync(savedUser);
 
                 _logger.LogInformation("User registered successfully: {Username}, ID: {UserId}", 
-                    savedUser.TenDangNhap, savedUser.Id);
+                    savedUser.Username, savedUser.Id);
 
                 // Build response
                 var userInfo = new UserInfoDto
                 {
                     Id = savedUser.Id,
-                    Username = savedUser.TenDangNhap ?? string.Empty,
+                    Username = savedUser.Username ?? string.Empty,
                     Email = string.Empty,
-                    FullName = savedUser.HoTen ?? string.Empty,
-                    Role = GetRoleName(savedUser.IdVaiTro),
-                    IsActive = savedUser.TrangThai ?? true,
+                    FullName = savedUser.FullName ?? string.Empty,
+                    Role = GetRoleName(savedUser.RoleId),
+                    IsActive = savedUser.Status ?? true,
                     LastLoginAt = savedUser.LanDangNhapCuoi ?? DateTime.Now,
-                    KhoaPhong = savedUser.KhoaPhong,
-                    IdKhoaQuanLy = savedUser.IdKhoaQuanLy
+                    Department = savedUser.Department,
+                    DeptManagerDeptId = savedUser.DeptManagerDeptId
                 };
 
                 var authResponse = new AuthResponseDto
@@ -315,7 +315,7 @@ namespace BanTayVang.API.Services.Impl.Auth
 
                 // Get user
                 var user = refreshToken.User;
-                if (user == null || user.TrangThai != true)
+                if (user == null || user.Status != true)
                 {
                     return new BaseResponseDto<AuthResponseDto>
                     {
@@ -349,15 +349,15 @@ namespace BanTayVang.API.Services.Impl.Auth
                 var userInfo = new UserInfoDto
                 {
                     Id = user.Id,
-                    Username = user.TenDangNhap ?? string.Empty,
+                    Username = user.Username ?? string.Empty,
                     Email = string.Empty,
-                    FullName = user.HoTen ?? string.Empty,
-                    Role = GetRoleName(user.IdVaiTro),
-                    IsActive = user.TrangThai ?? false,
+                    FullName = user.FullName ?? string.Empty,
+                    Role = GetRoleName(user.RoleId),
+                    IsActive = user.Status ?? false,
                     LastLoginAt = user.LanDangNhapCuoi ?? DateTime.Now,
-                    KhoaPhong = user.KhoaPhong,
-                    IdKhoaQuanLy = user.IdKhoaQuanLy,
-                    TenKhoaQuanLy = user.KhoaQuanLy?.TenKhoa ?? user.KhoaPhong
+                    Department = user.Department,
+                    DeptManagerDeptId = user.DeptManagerDeptId,
+                    TenKhoaQuanLy = user.ManagedDepartment?.DepartmentName ?? user.Department
                 };
 
                 var authResponse = new AuthResponseDto
@@ -435,7 +435,7 @@ namespace BanTayVang.API.Services.Impl.Auth
             {
                 // Get user
                 var user = await _userRepository.GetByIdAsync(userId);
-                if (user == null || user.TrangThai != true)
+                if (user == null || user.Status != true)
                 {
                     return new BaseResponseDto
                     {
@@ -445,7 +445,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 }
 
                 // Verify current password
-                if (!_passwordService.VerifyPassword(changePasswordDto.CurrentPassword, user.MatKhau ?? string.Empty))
+                if (!_passwordService.VerifyPassword(changePasswordDto.CurrentPassword, user.Password ?? string.Empty))
                 {
                     return new BaseResponseDto
                     {
@@ -470,8 +470,8 @@ namespace BanTayVang.API.Services.Impl.Auth
                 var hashedPassword = _passwordService.HashPassword(changePasswordDto.NewPassword);
                 
                 // Update user password
-                user.MatKhau = hashedPassword;
-                user.NgayCapNhat = DateTime.Now;
+                user.Password = hashedPassword;
+                user.UpdatedAt = DateTime.Now;
                 await _userRepository.UpdateAsync(user);
 
                 // Revoke all existing tokens to force re-login
@@ -534,7 +534,7 @@ namespace BanTayVang.API.Services.Impl.Auth
 
                 // Get user from database
                 var user = await _userRepository.GetByIdAsync(userId.Value);
-                if (user == null || user.TrangThai != true)
+                if (user == null || user.Status != true)
                 {
                     return new BaseResponseDto<UserInfoDto>
                     {
@@ -546,15 +546,15 @@ namespace BanTayVang.API.Services.Impl.Auth
                 var userInfo = new UserInfoDto
                 {
                     Id = user.Id,
-                    Username = user.TenDangNhap ?? string.Empty,
+                    Username = user.Username ?? string.Empty,
                     Email = string.Empty,
-                    FullName = user.HoTen ?? string.Empty,
-                    Role = GetRoleName(user.IdVaiTro),
-                    IsActive = user.TrangThai ?? false,
+                    FullName = user.FullName ?? string.Empty,
+                    Role = GetRoleName(user.RoleId),
+                    IsActive = user.Status ?? false,
                     LastLoginAt = user.LanDangNhapCuoi ?? DateTime.Now,
-                    KhoaPhong = user.KhoaPhong,
-                    IdKhoaQuanLy = user.IdKhoaQuanLy,
-                    TenKhoaQuanLy = user.KhoaQuanLy?.TenKhoa ?? user.KhoaPhong
+                    Department = user.Department,
+                    DeptManagerDeptId = user.DeptManagerDeptId,
+                    TenKhoaQuanLy = user.ManagedDepartment?.DepartmentName ?? user.Department
                 };
 
                 return new BaseResponseDto<UserInfoDto>
@@ -582,7 +582,7 @@ namespace BanTayVang.API.Services.Impl.Auth
             try
             {
                 var user = await _userRepository.GetByIdAsync(userId);
-                if (user == null || user.TrangThai != true)
+                if (user == null || user.Status != true)
                 {
                     return new BaseResponseDto<UserInfoDto>
                     {
@@ -594,15 +594,15 @@ namespace BanTayVang.API.Services.Impl.Auth
                 var userInfo = new UserInfoDto
                 {
                     Id = user.Id,
-                    Username = user.TenDangNhap ?? string.Empty,
+                    Username = user.Username ?? string.Empty,
                     Email = string.Empty,
-                    FullName = user.HoTen ?? string.Empty,
-                    Role = GetRoleName(user.IdVaiTro),
-                    IsActive = user.TrangThai ?? false,
+                    FullName = user.FullName ?? string.Empty,
+                    Role = GetRoleName(user.RoleId),
+                    IsActive = user.Status ?? false,
                     LastLoginAt = user.LanDangNhapCuoi ?? DateTime.Now,
-                    KhoaPhong = user.KhoaPhong,
-                    IdKhoaQuanLy = user.IdKhoaQuanLy,
-                    TenKhoaQuanLy = user.KhoaQuanLy?.TenKhoa ?? user.KhoaPhong
+                    Department = user.Department,
+                    DeptManagerDeptId = user.DeptManagerDeptId,
+                    TenKhoaQuanLy = user.ManagedDepartment?.DepartmentName ?? user.Department
                 };
 
                 return new BaseResponseDto<UserInfoDto>
@@ -660,7 +660,7 @@ namespace BanTayVang.API.Services.Impl.Auth
             {
                 // Get user by email
                 var user = await _userRepository.GetByUsernameOrEmailAsync(email);
-                if (user == null || user.TrangThai != true)
+                if (user == null || user.Status != true)
                 {
                     // Don't reveal if email exists or not for security
                     return new BaseResponseDto
@@ -676,7 +676,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 // Send email with reset token
                 await _emailService.SendPasswordResetEmailAsync(
                     email,
-                    user.HoTen ?? user.TenDangNhap ?? "User",
+                    user.FullName ?? user.Username ?? "User",
                     resetToken);
 
                 _logger.LogInformation("Password reset email sent for user {UserId}", user.Id);
@@ -728,7 +728,7 @@ namespace BanTayVang.API.Services.Impl.Auth
 
                 // Get user
                 var user = await _userRepository.GetByIdAsync(userId);
-                if (user == null || user.TrangThai != true)
+                if (user == null || user.Status != true)
                 {
                     return new BaseResponseDto
                     {
@@ -753,8 +753,8 @@ namespace BanTayVang.API.Services.Impl.Auth
                 var hashedPassword = _passwordService.HashPassword(newPassword);
                 
                 // Update user password
-                user.MatKhau = hashedPassword;
-                user.NgayCapNhat = DateTime.Now;
+                user.Password = hashedPassword;
+                user.UpdatedAt = DateTime.Now;
                 await _userRepository.UpdateAsync(user);
 
                 // Revoke all existing tokens to force re-login

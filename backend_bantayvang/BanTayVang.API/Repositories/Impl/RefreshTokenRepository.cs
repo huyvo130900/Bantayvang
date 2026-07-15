@@ -21,7 +21,7 @@ namespace BanTayVang.API.Repositories.Impl
 
             return await _dbSet
                 .Include(rt => rt.User)
-                    .ThenInclude(u => u!.KhoaQuanLy)
+                    .ThenInclude(u => u!.ManagedDepartment)
                 .FirstOrDefaultAsync(rt => rt.Token == token);
         }
 

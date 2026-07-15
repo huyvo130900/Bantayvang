@@ -1,26 +1,26 @@
 export interface DepartmentDto {
   id: number
   maKhoa: string
-  tenKhoa: string
+  departmentName: string
   moTa?: string
-  trangThai: boolean
+  status: boolean
   deptManagerId?: number
   tenQuanLy?: string
-  ngayTao: string
-  ngayCapNhat?: string
+  createdAt: string
+  updatedAt?: string
 }
 
 export interface CreateDepartmentDto {
   maKhoa: string
-  tenKhoa: string
+  departmentName: string
   moTa?: string
-  trangThai: boolean
+  status: boolean
 }
 
 export interface UpdateDepartmentDto {
-  tenKhoa: string
+  departmentName: string
   moTa?: string
-  trangThai: boolean
+  status: boolean
 }
 
 export interface AssignManagerDto {
@@ -28,12 +28,12 @@ export interface AssignManagerDto {
 }
 
 export interface ExamVisibilityDto {
-  congBoKetQua: boolean
+  isResultPublished: boolean
 }
 
 export interface DepartmentDashboardDto {
   idKhoa: number
-  tenKhoa: string
+  departmentName: string
   tongSoCauHoi: number
   tongSoDeThi: number
   tongSoThiSinh: number
@@ -43,10 +43,10 @@ export interface DepartmentDashboardDto {
 
 export interface KyThiSummaryDto {
   id: number
-  tenKyThi: string
+  campaignName: string
   thoiGianBatDau?: string
   thoiGianKetThuc?: string
-  trangThai: string
+  status: string
   soDeThi: number
   soThiSinh: number
 }

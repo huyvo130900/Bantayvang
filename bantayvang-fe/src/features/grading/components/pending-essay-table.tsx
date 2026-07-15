@@ -1,4 +1,4 @@
-import { PenLine, Clock, ChevronRight } from 'lucide-react'
+import { PenLine, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { PendingEssayDto } from '../types'
 
@@ -54,16 +54,16 @@ export function PendingEssayTable({ items, isLoading, onViewDetail, isGraded }: 
                 <p className="font-semibold text-gray-900">{item.fullName || '—'}</p>
                 <p className="text-xs text-gray-400">{item.username} {item.maNhanVien ? `· ${item.maNhanVien}` : ''}</p>
               </td>
-              <td className="px-4 py-3 text-gray-600 text-xs">{item.khoaPhong || '—'}</td>
+              <td className="px-4 py-3 text-gray-600 text-xs">{item.department || '—'}</td>
               <td className="px-4 py-3">
-                <p className="text-gray-800 font-medium">{item.tenDeThi || item.maDeThi || '—'}</p>
-                {item.tenKyThi && (
-                  <p className="text-xs text-gray-400">{item.tenKyThi}</p>
+                <p className="text-gray-800 font-medium">{item.examPaperName || item.examPaperCode || '—'}</p>
+                {item.campaignName && (
+                  <p className="text-xs text-gray-400">{item.campaignName}</p>
                 )}
               </td>
               <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                {item.thoiGianNop
-                  ? new Date(item.thoiGianNop).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+                {item.submitTime
+                  ? new Date(item.submitTime).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
                   : '—'}
               </td>
               <td className="px-4 py-3 text-center">

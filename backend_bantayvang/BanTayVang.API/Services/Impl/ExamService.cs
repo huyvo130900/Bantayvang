@@ -21,8 +21,8 @@ namespace BanTayVang.API.Services.Impl
         private readonly IExamSessionService _sessionService;
         private readonly IExamSubmissionService _submissionService;
         private readonly IExamSecurityService _securityService;
-        private readonly ICanhbaogianlanRepository _canhbaoRepository;
-        private readonly IBaithiRepository _baithiRepository;
+        private readonly ICheatWarningRepository _canhbaoRepository;
+        private readonly IExamSubmissionRepository _examSubmissionRepository;
         private readonly BanTayVangDbContext _context;
         private readonly ILogger<ExamService> _logger;
 
@@ -31,8 +31,8 @@ namespace BanTayVang.API.Services.Impl
             IExamSessionService sessionService,
             IExamSubmissionService submissionService,
             IExamSecurityService securityService,
-            ICanhbaogianlanRepository canhbaoRepository,
-            IBaithiRepository baithiRepository,
+            ICheatWarningRepository canhbaoRepository,
+            IExamSubmissionRepository baithiRepository,
             BanTayVangDbContext context,
             ILogger<ExamService> logger)
         {
@@ -41,45 +41,45 @@ namespace BanTayVang.API.Services.Impl
             _submissionService = submissionService ?? throw new ArgumentNullException(nameof(submissionService));
             _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
             _canhbaoRepository = canhbaoRepository ?? throw new ArgumentNullException(nameof(canhbaoRepository));
-            _baithiRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
+            _examSubmissionRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         #region Exam Management Operations (Delegated to IExamManagementService)
 
-        public async Task<BaseResponseDto<DethiDto>> CreateExamAsync(CreateDethiDto createDto, int nguoiTao)
+        public async Task<BaseResponseDto<ExamPaperDto>> CreateExamAsync(CreateExamPaperDto createDto, int createdBy)
         {
-            return await _managementService.CreateExamAsync(createDto, nguoiTao);
+            return await _managementService.CreateExamAsync(createDto, createdBy);
         }
 
-        public async Task<BaseResponseDto<DethiDto>> GetExamByCodeAsync(string maDeThi)
+        public async Task<BaseResponseDto<ExamPaperDto>> GetExamByCodeAsync(string examPaperCode)
         {
-            return await _managementService.GetExamByCodeAsync(maDeThi);
+            return await _managementService.GetExamByCodeAsync(examPaperCode);
         }
 
-        public async Task<BaseResponseDto<List<DethiDto>>> GetActiveExamsAsync()
+        public async Task<BaseResponseDto<List<ExamPaperDto>>> GetActiveExamsAsync()
         {
             return await _managementService.GetActiveExamsAsync();
         }
 
-        public async Task<BaseResponseDto<List<DethiDto>>> GetAllExamsAsync(string? trangThai = null, string? khoaPhong = null)
+        public async Task<BaseResponseDto<List<ExamPaperDto>>> GetAllExamsAsync(string? status = null, string? department = null)
         {
-            var result = await _managementService.GetAllExamsAsync(trangThai);
-            // Apply department filter in-memory if khoaPhong provided
-            if (result.Success && result.Data != null && !string.IsNullOrEmpty(khoaPhong))
-                result.Data = result.Data.Where(d => d.KhoaPhong == khoaPhong).ToList();
+            var result = await _managementService.GetAllExamsAsync(status);
+            // Apply department filter in-memory if department provided
+            if (result.Success && result.Data != null && !string.IsNullOrEmpty(department))
+                result.Data = result.Data.Where(d => d.Department == department).ToList();
             return result;
         }
 
-        public async Task<BaseResponseDto<DethiDto>> UpdateExamAsync(int examId, UpdateDethiDto updateDto, int nguoiCapNhat)
+        public async Task<BaseResponseDto<ExamPaperDto>> UpdateExamAsync(int examId, UpdateExamPaperDto updateDto, int updatedBy)
         {
-            return await _managementService.UpdateExamAsync(examId, updateDto, nguoiCapNhat);
+            return await _managementService.UpdateExamAsync(examId, updateDto, updatedBy);
         }
 
-        public async Task<BaseResponseDto<DethiDto>> UpdateExamStatusAsync(int examId, string trangThai, int nguoiCapNhat)
+        public async Task<BaseResponseDto<ExamPaperDto>> UpdateExamStatusAsync(int examId, string status, int updatedBy)
         {
-            return await _managementService.UpdateExamStatusAsync(examId, trangThai, nguoiCapNhat);
+            return await _managementService.UpdateExamStatusAsync(examId, status, updatedBy);
         }
 
         #endregion
@@ -91,7 +91,7 @@ namespace BanTayVang.API.Services.Impl
             return await _managementService.DeleteExamAsync(examId, nguoiXoa);
         }
 
-        public async Task<BaseResponseDto<BaithiDto>> StartExamAsync(StartExamDto startDto, int taikhoanId)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> StartExamAsync(StartExamDto startDto, int taikhoanId)
         {
             return await _sessionService.StartExamAsync(startDto, taikhoanId);
         }
@@ -101,7 +101,7 @@ namespace BanTayVang.API.Services.Impl
             return await _sessionService.GetExamQuestionsAsync(baithiId, taikhoanId);
         }
 
-        public async Task<BaseResponseDto<BaithiDto>> GetExamProgressAsync(int baithiId, int taikhoanId)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> GetExamProgressAsync(int baithiId, int taikhoanId)
         {
             return await _sessionService.GetExamProgressAsync(baithiId, taikhoanId);
         }
@@ -115,7 +115,7 @@ namespace BanTayVang.API.Services.Impl
             return await _submissionService.SaveAnswerAsync(answerDto, taikhoanId);
         }
 
-        public async Task<BaseResponseDto<BaithiDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId)
         {
             return await _submissionService.SubmitExamAsync(submitDto, taikhoanId);
         }
@@ -132,42 +132,42 @@ namespace BanTayVang.API.Services.Impl
         /// <summary>
         /// Lấy danh sách bài thi đã hoàn thành của user hiện tại
         /// </summary>
-        public async Task<BaseResponseDto<List<BaithiDto>>> GetMyResultsAsync(int taikhoanId)
+        public async Task<BaseResponseDto<List<ExamSubmissionDto>>> GetMyResultsAsync(int taikhoanId)
         {
             try
             {
-                var baithis = await _baithiRepository.GetByTaiKhoanAsync(taikhoanId);
-                var completed = baithis
-                    .Where(b => b.TrangThai == "Completed")
-                    .OrderByDescending(b => b.ThoiGianNop ?? b.ThoiGianBatDau)
-                    .GroupBy(b => b.MaDeThi ?? b.IdDeThi?.ToString())
+                var examSubmissions = await _examSubmissionRepository.GetByTaiKhoanAsync(taikhoanId);
+                var completed = examSubmissions
+                    .Where(b => b.Status == "Completed")
+                    .OrderByDescending(b => b.SubmitTime ?? b.StartTime)
+                    .GroupBy(b => b.ExamPaperCode ?? b.ExamPaperId?.ToString())
                     .Select(g => g.First())
                     .Select(b => {
-                        var congBo = b.CongBoRieng || (b.IdDeThiNavigation?.CongBoKetQua ?? false);
-                        return new BaithiDto
+                        var congBo = b.CongBoRieng || (b.IdDeThiNavigation?.IsResultPublished ?? false);
+                        return new ExamSubmissionDto
                         {
                             Id = b.Id,
-                            IdTaiKhoan = b.IdTaiKhoan ?? 0,
-                            IdDeThi = b.IdDeThi ?? 0,
-                            TrangThai = b.TrangThai,
-                            ThoiGianNop = b.ThoiGianNop,
-                            TongDiem = congBo ? (b.TongSoCau > 0
-                                ? Math.Round((b.SoCauDung ?? 0) * 10.0 / b.TongSoCau!.Value, 2)
-                                : b.TongDiem) : null,
-                            SoCauDung = congBo ? b.SoCauDung : null,
-                            TongSoCau = b.TongSoCau,
-                            TenDeThi = b.IdDeThiNavigation?.TenDeThi,
-                            MaDeThi = b.MaDeThi ?? b.IdDeThiNavigation?.MaDeThi,
-                            ThoiGianBatDau = b.ThoiGianBatDau,
-                            CongBoKetQua = congBo,
-                            Pass = congBo ? (b.TongSoCau > 0
-                                ? (b.SoCauDung ?? 0) * 10.0 / b.TongSoCau!.Value >= 5
-                                : (b.TongDiem ?? 0) >= 5) : false,
+                            UserId = b.UserId ?? 0,
+                            ExamPaperId = b.ExamPaperId ?? 0,
+                            Status = b.Status,
+                            SubmitTime = b.SubmitTime,
+                            TotalScore = congBo ? (b.TotalQuestions > 0
+                                ? Math.Round((b.CorrectAnswers ?? 0) * 10.0 / b.TotalQuestions!.Value, 2)
+                                : b.TotalScore) : null,
+                            CorrectAnswers = congBo ? b.CorrectAnswers : null,
+                            TotalQuestions = b.TotalQuestions,
+                            ExamPaperName = b.IdDeThiNavigation?.ExamPaperName,
+                            ExamPaperCode = b.ExamPaperCode ?? b.IdDeThiNavigation?.ExamPaperCode,
+                            StartTime = b.StartTime,
+                            IsResultPublished = congBo,
+                            Pass = congBo ? (b.TotalQuestions > 0
+                                ? (b.CorrectAnswers ?? 0) * 10.0 / b.TotalQuestions!.Value >= 5
+                                : (b.TotalScore ?? 0) >= 5) : false,
                         };
                     })
                     .ToList();
 
-                return new BaseResponseDto<List<BaithiDto>>
+                return new BaseResponseDto<List<ExamSubmissionDto>>
                 {
                     Success = true,
                     Data = completed
@@ -176,7 +176,7 @@ namespace BanTayVang.API.Services.Impl
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting my results for user {UserId}", taikhoanId);
-                return new BaseResponseDto<List<BaithiDto>>
+                return new BaseResponseDto<List<ExamSubmissionDto>>
                 {
                     Success = false,
                     Message = "Có lỗi xảy ra khi lấy kết quả bài thi",
@@ -196,10 +196,10 @@ namespace BanTayVang.API.Services.Impl
                 _logger.LogWarning("Suspicious activity detected - Session: {SessionId}, Type: {Type}, Description: {Description}",
                     baithiId, loaiCanhBao, moTa);
 
-                var baithi = await _baithiRepository.GetByIdAsync(baithiId);
-                if (baithi != null)
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(baithiId);
+                if (examSubmission != null)
                 {
-                    if (baithi.TrangThai == "Completed")
+                    if (examSubmission.Status == "Completed")
                     {
                         return new BaseResponseDto
                         {
@@ -210,22 +210,22 @@ namespace BanTayVang.API.Services.Impl
 
                     if (loaiCanhBao == "FULLSCREEN_EXIT")
                     {
-                        baithi.TongSoCanhBao = Math.Max(baithi.TongSoCanhBao ?? 0, 6);
+                        examSubmission.TongSoCanhBao = Math.Max(examSubmission.TongSoCanhBao ?? 0, 6);
                     }
                     else
                     {
-                        baithi.TongSoCanhBao = (baithi.TongSoCanhBao ?? 0) + 1;
+                        examSubmission.TongSoCanhBao = (examSubmission.TongSoCanhBao ?? 0) + 1;
                     }
-                    await _baithiRepository.UpdateAsync(baithi);
+                    await _examSubmissionRepository.UpdateAsync(examSubmission);
                 }
 
                 // OWASP A09: Security Logging - Enhanced security event logging
-                var canhbao = new Canhbaogianlan
+                var canhbao = new CheatWarning
                 {
-                    IdBaiThi = baithiId,
+                    ExamSubmissionId = baithiId,
                     LoaiCanhBao = loaiCanhBao,
-                    MoTa = SanitizeInput(moTa), // OWASP A03: Injection prevention
-                    ThoiGian = DateTime.Now
+                    Description = SanitizeInput(moTa), // OWASP A03: Injection prevention
+                    ActionTime = DateTime.Now
                 };
 
                 await _canhbaoRepository.AddAsync(canhbao);
@@ -328,14 +328,14 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var dethi = await _context.Dethis
+                var examPaper = await _context.ExamPapers
                     .Include(d => d.KyThiNavigation)
-                    .Include(d => d.DethiCauhois)
+                    .Include(d => d.ExamPaperQuestions)
                         .ThenInclude(dc => dc.IdCauHoiNavigation)
-                            .ThenInclude(c => c.Luachons)
+                            .ThenInclude(c => c.QuestionOptions)
                     .FirstOrDefaultAsync(d => d.Id == examId);
 
-                if (dethi == null)
+                if (examPaper == null)
                     return BaseResponseDto<ExamPreviewDto>.FailureResult("Không tìm thấy đề thi");
 
                 // Shuffle mỗi lần preview để Reload tạo ra bản in khác nhau
@@ -343,64 +343,64 @@ namespace BanTayVang.API.Services.Impl
 
                 var preview = new ExamPreviewDto
                 {
-                    Id = dethi.Id,
-                    MaDeThi = dethi.MaDeThi,
-                    TenDeThi = dethi.TenDeThi,
-                    ThoiGianLamBai = dethi.ThoiGianLamBai,
-                    TrangThai = dethi.TrangThai,
-                    KhoaPhong = dethi.KhoaPhong,
-                    CongBoKetQua = dethi.CongBoKetQua,
+                    Id = examPaper.Id,
+                    ExamPaperCode = examPaper.ExamPaperCode,
+                    ExamPaperName = examPaper.ExamPaperName,
+                    DurationMinutes = examPaper.DurationMinutes,
+                    Status = examPaper.Status,
+                    Department = examPaper.Department,
+                    IsResultPublished = examPaper.IsResultPublished,
                     // Shuffle thứ tự câu hỏi
-                    CauHois = dethi.DethiCauhois
+                    Questions = examPaper.ExamPaperQuestions
                         .OrderBy(_ => rng.Next())
                         .Select(dc => new QuestionPreviewDto
                         {
                             Id = dc.IdCauHoiNavigation?.Id ?? 0,
-                            NoiDung = dc.IdCauHoiNavigation?.NoiDung,
+                            Content = dc.IdCauHoiNavigation?.Content,
                             ChuDe = null,
                             // Shuffle thứ tự đáp án
-                            Luachons = dc.IdCauHoiNavigation?.Luachons
+                            QuestionOptions = dc.IdCauHoiNavigation?.QuestionOptions
                                 .OrderBy(_ => rng.Next())
                                 .Select(lc => new ChoicePreviewDto
                                 {
                                     Id = lc.Id,
-                                    NoiDung = lc.NoiDung,
-                                    LaDapAnDung = lc.LaDapAnDung
+                                    Content = lc.Content,
+                                    IsCorrect = lc.IsCorrect
                                 }).ToList() ?? new()
                         }).ToList()
                 };
 
-                // If no questions in DethiCauhoi (random pool exam), fetch from KhoaPhong pool
-                if (!preview.CauHois.Any() && !string.IsNullOrEmpty(dethi.KhoaPhong))
+                // If no questions in ExamPaperQuestion (random pool exam), fetch from Department pool
+                if (!preview.Questions.Any() && !string.IsNullOrEmpty(examPaper.Department))
                 {
-                    var allPoolQuestions = await _context.Cauhois
-                        .Include(c => c.Luachons)
-                        .Where(c => c.KhoaPhong == dethi.KhoaPhong && c.DaXoa != true)
+                    var allPoolQuestions = await _context.Questions
+                        .Include(c => c.QuestionOptions)
+                        .Where(c => c.Department == examPaper.Department && c.DaXoa != true)
                         .ToListAsync();
 
                     // Shuffle ngẫu nhiên mỗi lần preview (dùng lại rng ở trên), lọc trùng lặp theo nội dung câu hỏi
                     var poolQuestions = allPoolQuestions
-                        .GroupBy(q => q.NoiDung?.Trim().ToLower() ?? "")
+                        .GroupBy(q => q.Content?.Trim().ToLower() ?? "")
                         .Select(g => g.First())
                         .OrderBy(_ => rng.Next())
-                        .Take(dethi.KyThiNavigation?.TongSoCauHoi ?? 10)
+                        .Take(examPaper.KyThiNavigation?.TotalQuestions ?? 10)
                         .ToList();
 
-                    preview.CauHois = poolQuestions.Select(c => new QuestionPreviewDto
+                    preview.Questions = poolQuestions.Select(c => new QuestionPreviewDto
                     {
                         Id = c.Id,
-                        NoiDung = c.NoiDung,
+                        Content = c.Content,
                         ChuDe = null,
-                        Luachons = c.Luachons.OrderBy(_ => rng.Next()).Select(lc => new ChoicePreviewDto
+                        QuestionOptions = c.QuestionOptions.OrderBy(_ => rng.Next()).Select(lc => new ChoicePreviewDto
                         {
                             Id = lc.Id,
-                            NoiDung = lc.NoiDung,
-                            LaDapAnDung = lc.LaDapAnDung
+                            Content = lc.Content,
+                            IsCorrect = lc.IsCorrect
                         }).ToList()
                     }).ToList();
                 }
 
-                return BaseResponseDto<ExamPreviewDto>.SuccessResult(preview, $"Đề thi có {preview.CauHois.Count} câu hỏi");
+                return BaseResponseDto<ExamPreviewDto>.SuccessResult(preview, $"Đề thi có {preview.Questions.Count} câu hỏi");
             }
             catch (Exception ex)
             {

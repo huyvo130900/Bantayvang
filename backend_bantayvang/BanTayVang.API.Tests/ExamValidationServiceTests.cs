@@ -15,15 +15,15 @@ namespace BanTayVang.API.Tests
 {
     public class ExamValidationServiceTests
     {
-        private readonly Mock<IDethiRepository> _mockDethiRepository;
-        private readonly Mock<ICauhoiRepository> _mockCauhoiRepository;
+        private readonly Mock<IExamPaperRepository> _mockDethiRepository;
+        private readonly Mock<IQuestionRepository> _mockCauhoiRepository;
         private readonly ExamValidationService _validationService;
 
         public ExamValidationServiceTests()
         {
-            _mockDethiRepository = new Mock<IDethiRepository>();
-            _mockCauhoiRepository = new Mock<ICauhoiRepository>();
-            var mockBaithiRepository = new Mock<IBaithiRepository>();
+            _mockDethiRepository = new Mock<IExamPaperRepository>();
+            _mockCauhoiRepository = new Mock<IQuestionRepository>();
+            var mockBaithiRepository = new Mock<IExamSubmissionRepository>();
             var mockLogger = new Mock<ILogger<ExamValidationService>>();
 
             _validationService = new ExamValidationService(
@@ -39,16 +39,16 @@ namespace BanTayVang.API.Tests
         public async Task ValidateCreateExamAsync_ValidLowercaseExamCode_ReturnsSuccess()
         {
             // Arrange
-            var createDto = new CreateDethiDto
+            var createDto = new CreateExamPaperDto
             {
-                MaDeThi = "dethi-001", // Lowercase and hyphen
-                TenDeThi = "Test Exam",
-                ThoiGianLamBai = 60,
+                ExamPaperCode = "examPaper-001", // Lowercase and hyphen
+                ExamPaperName = "Test Exam",
+                DurationMinutes = 60,
                 DanhSachIdCauHoi = new List<int>()
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Dethi?)null); // No duplicate
+                .ReturnsAsync((ExamPaper?)null); // No duplicate
 
             // Act
             var result = await _validationService.ValidateCreateExamAsync(createDto);
@@ -62,16 +62,16 @@ namespace BanTayVang.API.Tests
         public async Task ValidateCreateExamAsync_ValidUppercaseExamCode_ReturnsSuccess()
         {
             // Arrange
-            var createDto = new CreateDethiDto
+            var createDto = new CreateExamPaperDto
             {
-                MaDeThi = "DETHI_002", // Uppercase and underscore
-                TenDeThi = "Test Exam",
-                ThoiGianLamBai = 60,
+                ExamPaperCode = "DETHI_002", // Uppercase and underscore
+                ExamPaperName = "Test Exam",
+                DurationMinutes = 60,
                 DanhSachIdCauHoi = new List<int>()
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Dethi?)null); // No duplicate
+                .ReturnsAsync((ExamPaper?)null); // No duplicate
 
             // Act
             var result = await _validationService.ValidateCreateExamAsync(createDto);
@@ -85,16 +85,16 @@ namespace BanTayVang.API.Tests
         public async Task ValidateCreateExamAsync_InvalidExamCodeFormat_ReturnsError()
         {
             // Arrange
-            var createDto = new CreateDethiDto
+            var createDto = new CreateExamPaperDto
             {
-                MaDeThi = "dethi 003", // Invalid because of space
-                TenDeThi = "Test Exam",
-                ThoiGianLamBai = 60,
+                ExamPaperCode = "examPaper 003", // Invalid because of space
+                ExamPaperName = "Test Exam",
+                DurationMinutes = 60,
                 DanhSachIdCauHoi = new List<int>()
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Dethi?)null);
+                .ReturnsAsync((ExamPaper?)null);
 
             // Act
             var result = await _validationService.ValidateCreateExamAsync(createDto);
@@ -108,16 +108,16 @@ namespace BanTayVang.API.Tests
         public async Task ValidateCreateExamAsync_DuplicateExamCode_ReturnsError()
         {
             // Arrange
-            var createDto = new CreateDethiDto
+            var createDto = new CreateExamPaperDto
             {
-                MaDeThi = "DETHI_004",
-                TenDeThi = "Test Exam",
-                ThoiGianLamBai = 60,
+                ExamPaperCode = "DETHI_004",
+                ExamPaperName = "Test Exam",
+                DurationMinutes = 60,
                 DanhSachIdCauHoi = new List<int>()
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new Dethi()); // Returns an existing exam => Duplicate!
+                .ReturnsAsync(new ExamPaper()); // Returns an existing exam => Duplicate!
 
             // Act
             var result = await _validationService.ValidateCreateExamAsync(createDto);
@@ -131,16 +131,16 @@ namespace BanTayVang.API.Tests
         public async Task ValidateCreateExamAsync_InvalidQuestionIds_ReturnsError()
         {
             // Arrange
-            var createDto = new CreateDethiDto
+            var createDto = new CreateExamPaperDto
             {
-                MaDeThi = "DETHI_005",
-                TenDeThi = "Test Exam",
-                ThoiGianLamBai = 60,
+                ExamPaperCode = "DETHI_005",
+                ExamPaperName = "Test Exam",
+                DurationMinutes = 60,
                 DanhSachIdCauHoi = new List<int> { 1, 2, 3 } // Needs 1, 2, 3
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Dethi?)null);
+                .ReturnsAsync((ExamPaper?)null);
 
             // Mock repository returns only 1 and 2, missing 3
             _mockCauhoiRepository.Setup(r => r.GetValidQuestionIdsAsync(It.IsAny<List<int>>()))

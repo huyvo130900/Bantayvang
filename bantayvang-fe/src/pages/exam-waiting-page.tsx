@@ -3,19 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { kyThiApi } from '@/features/ky-thi/api'
 import { examTakingApi } from '@/features/exam-taking/api'
 import { useAppSelector } from '@/app/hooks'
-import type { KyThiDto } from '@/features/ky-thi/types'
-import type { BaithiDto } from '@/features/exam-taking/types'
+import type { ExamCampaignDto } from '@/features/ky-thi/types'
+import type { ExamSubmissionDto } from '@/features/exam-taking/types'
 import { formatDate } from '@/lib/utils'
 import { Clock, Play, RefreshCw, ClipboardList } from 'lucide-react'
 
 export function ExamWaitingPage() {
   const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
-  const [kyThis, setKyThis] = useState<KyThiDto[]>([])
+  const [examCampaigns, setKyThis] = useState<ExamCampaignDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [startingId, setStartingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [myResults, setMyResults] = useState<Map<string, BaithiDto>>(new Map())
+  const [myResults, setMyResults] = useState<Map<string, ExamSubmissionDto>>(new Map())
 
   const loadData = async () => {
     setIsLoading(true)
@@ -27,20 +27,20 @@ export function ExamWaitingPage() {
       ])
 
       if (myResultsRes.data.success && myResultsRes.data.data) {
-        const map = new Map<string, BaithiDto>()
-        // Lấy bài thi gần nhất cho mỗi maDeThi (sort theo thoiGianNop desc)
+        const map = new Map<string, ExamSubmissionDto>()
+        // Lấy bài thi gần nhất cho mỗi examPaperCode (sort theo submitTime desc)
         const sorted = [...myResultsRes.data.data].sort((a, b) => {
-          const ta = a.thoiGianNop ? new Date(a.thoiGianNop).getTime() : 0
-          const tb = b.thoiGianNop ? new Date(b.thoiGianNop).getTime() : 0
+          const ta = a.submitTime ? new Date(a.submitTime).getTime() : 0
+          const tb = b.submitTime ? new Date(b.submitTime).getTime() : 0
           return tb - ta
         })
         sorted.forEach((b) => {
-          if (b.maDeThi && !map.has(b.maDeThi)) map.set(b.maDeThi, b)
+          if (b.examPaperCode && !map.has(b.examPaperCode)) map.set(b.examPaperCode, b)
         })
         setMyResults(map)
       }
 
-      const list: KyThiDto[] = (kyThiRes.data.success && kyThiRes.data.data)
+      const list: ExamCampaignDto[] = (kyThiRes.data.success && kyThiRes.data.data)
         ? kyThiRes.data.data : []
       setKyThis(list)
     } catch {
@@ -56,11 +56,11 @@ export function ExamWaitingPage() {
     return () => clearInterval(interval)
   }, []) // eslint-disable-line
 
-  const handleStartExam = async (maDeThi: string | null | undefined, kyThiId: number) => {
+  const handleStartExam = async (examPaperCode: string | null | undefined, kyThiId: number) => {
     setStartingId(kyThiId)
     setError(null)
     try {
-      const res = await examTakingApi.start({ maDeThi: maDeThi || undefined, kyThiId })
+      const res = await examTakingApi.start({ examPaperCode: examPaperCode || undefined, kyThiId })
       if (res.data.success && res.data.data) {
         navigate(`/exam/${res.data.data.id}`)
       } else {
@@ -78,22 +78,22 @@ export function ExamWaitingPage() {
 
   const now = new Date()
 
-  const hasTakenKyThi = (ky: KyThiDto) => {
+  const hasTakenKyThi = (ky: ExamCampaignDto) => {
     const resultsArray = Array.from(myResults.values())
-    const hasByKyThiId = resultsArray.some((r) => r.idKyThi === ky.id)
+    const hasByKyThiId = resultsArray.some((r) => r.examCampaignId === ky.id)
     if (hasByKyThiId) return true
 
     if (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0) {
       return ky.danhSachMaDeThi.some((code) => myResults.has(code))
     }
 
-    return ky.maDeThi ? myResults.has(ky.maDeThi) : false
+    return ky.examPaperCode ? myResults.has(ky.examPaperCode) : false
   }
 
 
 
-  const available = kyThis.filter((ky) => {
-    const hasExams = ky.maDeThi || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
+  const available = examCampaigns.filter((ky) => {
+    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
     if (!hasExams) return false
     
     // Cho phép thi lại nếu còn hạn của kỳ thi
@@ -104,8 +104,8 @@ export function ExamWaitingPage() {
     return true
   })
 
-  const upcoming = kyThis.filter((ky) => {
-    const hasExams = ky.maDeThi || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
+  const upcoming = examCampaigns.filter((ky) => {
+    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
     if (!hasExams) return false
     if (hasTakenKyThi(ky)) return false
     const start = ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : null
@@ -121,7 +121,7 @@ export function ExamWaitingPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Phòng chờ thi</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Xin chào, <span className="font-medium">{user?.hoTen || user?.fullName || user?.tenDangNhap || user?.username}</span>
+            Xin chào, <span className="font-medium">{user?.fullName || user?.fullName || user?.username || user?.username}</span>
           </p>
         </div>
         <button
@@ -140,7 +140,7 @@ export function ExamWaitingPage() {
         </div>
       )}
 
-      {isLoading && kyThis.length === 0 ? (
+      {isLoading && examCampaigns.length === 0 ? (
         <div className="space-y-3">
           {[1, 2].map((i) => (
             <div key={i} className="bg-gray-100 rounded-xl h-24 animate-pulse" />
@@ -161,14 +161,14 @@ export function ExamWaitingPage() {
                   }`}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-gray-900">{ky.tenKyThi}</p>
+                        <p className="font-semibold text-gray-900">{ky.campaignName}</p>
                         {hasTakenKyThi(ky) && (
                           <span className="inline-flex items-center text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">
                             {ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now ? 'Kỳ thi đã kết thúc' : 'Đã thi (Cho phép thi lại)'}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-primary mt-0.5">{ky.maKyThi}</p>
+                      <p className="text-xs text-primary mt-0.5">{ky.campaignCode}</p>
                       <div className="flex flex-wrap gap-3 mt-1">
                         {ky.thoiGianBatDau && (
                           <span className="text-xs text-gray-400 flex items-center gap-1">
@@ -183,8 +183,8 @@ export function ExamWaitingPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => handleStartExam(ky.maDeThi, ky.id)}
-                      disabled={startingId === ky.id || !(ky.maDeThi || (ky.soLuongDeThi && ky.soLuongDeThi > 0)) || !!(ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now)}
+                      onClick={() => handleStartExam(ky.examPaperCode, ky.id)}
+                      disabled={startingId === ky.id || !(ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0)) || !!(ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now)}
                       className={`shrink-0 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors w-full sm:w-auto text-center ${
                         ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed border'
@@ -211,8 +211,8 @@ export function ExamWaitingPage() {
                 {upcoming.map((ky) => (
                   <div key={ky.id} className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <p className="font-semibold text-gray-900">{ky.tenKyThi}</p>
-                      <p className="text-xs text-primary mt-0.5">{ky.maKyThi}</p>
+                      <p className="font-semibold text-gray-900">{ky.campaignName}</p>
+                      <p className="text-xs text-primary mt-0.5">{ky.campaignCode}</p>
                       <p className="text-xs text-blue-600 mt-1">
                         🕐 Bắt đầu: {formatDate(ky.thoiGianBatDau)}
                       </p>

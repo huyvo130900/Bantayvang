@@ -8,13 +8,13 @@ import { QuestionFilter } from '../components/question-filter'
 import { QuestionTable } from '../components/question-table'
 import { QuestionFormDialog } from '../components/question-form-dialog'
 import { ImportExcelDialog } from '../components/import-excel-dialog'
-import type { CauhoiDto, QuestionFilterDto } from '../types'
+import type { QuestionDto, QuestionFilterDto } from '../types'
 import type { CreateQuestionFormData } from '../schemas'
 import { ROLES } from '@/lib/constants'
 import { kyThiApi } from '@/features/ky-thi/api'
 import { examsApiExtended } from '@/features/exams/api'
-import type { KyThiDto } from '@/features/ky-thi/types'
-import type { DethiDto } from '@/features/exams/types'
+import type { ExamCampaignDto } from '@/features/ky-thi/types'
+import type { ExamPaperDto } from '@/features/exams/types'
 
 export function QuestionsPage() {
   const dispatch = useAppDispatch()
@@ -24,15 +24,15 @@ export function QuestionsPage() {
 
   const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.tenVaiTro === 'DeptManager'
   const isAdmin = !isDeptManager
-  // Khoa của DeptManager: ưu tiên tenKhoaQuanLy, fallback khoaPhong
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || null
+  // Khoa của DeptManager: ưu tiên tenKhoaQuanLy, fallback department
+  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
 
   const [khoaList, setKhoaList] = useState<string[]>([])
-  const [kyThiList, setKyThiList] = useState<KyThiDto[]>([])
-  const [deThiList, setDeThiList] = useState<DethiDto[]>([])
+  const [kyThiList, setKyThiList] = useState<ExamCampaignDto[]>([])
+  const [deThiList, setDeThiList] = useState<ExamPaperDto[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
-  const [editingQuestion, setEditingQuestion] = useState<CauhoiDto | null>(null)
+  const [editingQuestion, setEditingQuestion] = useState<QuestionDto | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
@@ -46,9 +46,9 @@ export function QuestionsPage() {
     
     // Fetch all active departments to populate the department filters dynamically
     if (isAdmin) {
-      departmentApi.getAll({ trangThai: true, pageSize: 100 })
+      departmentApi.getAll({ status: true, pageSize: 100 })
         .then((res) => {
-          const list = (res.data?.data as DepartmentDto[] | undefined)?.map((d) => d.tenKhoa).filter(Boolean) as string[]
+          const list = (res.data?.data as DepartmentDto[] | undefined)?.map((d) => d.departmentName).filter(Boolean) as string[]
           setKhoaList(Array.from(new Set(list)).sort())
         })
         .catch(() => {})
@@ -75,7 +75,7 @@ export function QuestionsPage() {
   useEffect(() => {
     // Nếu là DeptManager, bắt buộc filter theo khoa của họ
     if (isDeptManager && myKhoa) {
-      dispatch(setFilter({ khoaPhong: myKhoa, pageNumber: 1 }))
+      dispatch(setFilter({ department: myKhoa, pageNumber: 1 }))
     }
   }, [isDeptManager, myKhoa]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -90,9 +90,9 @@ export function QuestionsPage() {
 
   const handleFilterChange = useCallback(
     (changes: Partial<QuestionFilterDto>) => {
-      // DeptManager không được thay đổi khoaPhong
-      if (isDeptManager && myKhoa && 'khoaPhong' in changes) {
-        changes = { ...changes, khoaPhong: myKhoa }
+      // DeptManager không được thay đổi department
+      if (isDeptManager && myKhoa && 'department' in changes) {
+        changes = { ...changes, department: myKhoa }
       }
       // Reset deThiId if kyThiId is explicitly changed/cleared
       if ('kyThiId' in changes) {
@@ -108,13 +108,13 @@ export function QuestionsPage() {
     setFormOpen(true)
   }
 
-  const handleEdit = (question: CauhoiDto) => {
+  const handleEdit = (question: QuestionDto) => {
     setEditingQuestion(question)
     setFormOpen(true)
   }
 
-  const handleDelete = async (question: CauhoiDto) => {
-    const preview = (question.noiDung || '').slice(0, 60)
+  const handleDelete = async (question: QuestionDto) => {
+    const preview = (question.content || '').slice(0, 60)
     if (!window.confirm(`Xóa câu hỏi:\n"${preview}..."\n\nHành động này không thể hoàn tác.`)) return
     try {
       await questionsApi.delete(question.id)
@@ -130,7 +130,7 @@ export function QuestionsPage() {
     try {
       // DeptManager: tự động gán khoa của mình vào câu hỏi
       const submitData = isDeptManager && myKhoa
-        ? { ...data, khoaPhong: myKhoa }
+        ? { ...data, department: myKhoa }
         : data
 
       if (editingQuestion) {

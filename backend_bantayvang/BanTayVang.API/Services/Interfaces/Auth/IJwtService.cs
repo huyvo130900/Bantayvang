@@ -15,7 +15,7 @@ namespace BanTayVang.API.Services.Interfaces.Auth
         /// <param name="user">User entity</param>
         /// <param name="rememberMe">Whether to extend token lifetime</param>
         /// <returns>JWT token string</returns>
-        string GenerateAccessToken(Taikhoan user, bool rememberMe = false);
+        string GenerateAccessToken(User user, bool rememberMe = false);
 
         /// <summary>
         /// Generate refresh token
@@ -63,7 +63,7 @@ namespace BanTayVang.API.Services.Interfaces.Auth
         /// </summary>
         /// <param name="user">User entity</param>
         /// <returns>Password reset token</returns>
-        string GeneratePasswordResetToken(Taikhoan user);
+        string GeneratePasswordResetToken(User user);
 
         /// <summary>
         /// Validate password reset token

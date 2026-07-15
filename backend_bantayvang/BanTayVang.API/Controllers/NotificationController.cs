@@ -98,7 +98,7 @@ namespace BanTayVang.API.Controllers
         {
             var senderId = GetUserId();
             dto.UserId = null;
-            dto.KhoaPhong = null;
+            dto.Department = null;
             var result = await _notificationService.CreateNotificationAsync(dto, senderId);
             if (!result.Success) return BadRequest(result);
             return Ok(result);

@@ -61,12 +61,12 @@ export function ExamResultPage() {
   }
 
   const percent = result.tongSoCau
-    ? Math.round(((result.soCauDung ?? 0) / result.tongSoCau) * 100)
+    ? Math.round(((result.correctAnswers ?? 0) / result.tongSoCau) * 100)
     : 0
 
   const isTimeout = forcedReason === 'Hết giờ làm bài'
-  const isCheating = (!!forcedReason && forcedReason !== 'Hết giờ làm bài') || result.trangThai === 'BiBHuyGianLan'
-  const congBoKetQua = result.congBoKetQua ?? false
+  const isCheating = (!!forcedReason && forcedReason !== 'Hết giờ làm bài') || result.status === 'BiBHuyGianLan'
+  const isResultPublished = result.isResultPublished ?? false
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-4 sm:py-10 px-4">
@@ -97,23 +97,23 @@ export function ExamResultPage() {
         {/* Result card */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           {/* Header band */}
-          <div className={`p-4 sm:p-6 text-center ${isCheating ? 'bg-red-600' : !congBoKetQua ? 'bg-gray-500' : 'bg-primary'}`}>
+          <div className={`p-4 sm:p-6 text-center ${isCheating ? 'bg-red-600' : !isResultPublished ? 'bg-gray-500' : 'bg-primary'}`}>
             {isCheating ? (
               <XCircle className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-2" />
-            ) : !congBoKetQua ? (
+            ) : !isResultPublished ? (
               <EyeOff className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-2" />
             ) : (
               <Trophy className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-2" />
             )}
             <h1 className="text-xl sm:text-2xl font-bold text-white">
-              {isCheating ? 'Bài thi bị hủy' : !congBoKetQua ? 'Đã nộp bài' : 'Kết quả bài thi'}
+              {isCheating ? 'Bài thi bị hủy' : !isResultPublished ? 'Đã nộp bài' : 'Kết quả bài thi'}
             </h1>
-            <p className="text-white/80 text-xs sm:text-sm mt-1">{result.tenDeThi || 'Bài thi'}</p>
+            <p className="text-white/80 text-xs sm:text-sm mt-1">{result.examPaperName || 'Bài thi'}</p>
           </div>
 
-          {/* Score — chỉ hiển thị nếu congBoKetQua = true */}
+          {/* Score — chỉ hiển thị nếu isResultPublished = true */}
           <div className="p-4 sm:p-6">
-            {!congBoKetQua ? (
+            {!isResultPublished ? (
               <div className="flex flex-col items-center gap-3 py-6 text-gray-400">
                 <EyeOff className="h-12 w-12 opacity-40" />
                 <p className="font-medium">Điểm chưa được công bố</p>
@@ -128,7 +128,7 @@ export function ExamResultPage() {
                       <circle cx="60" cy="60" r="50" fill="none" stroke="#e5e7eb" strokeWidth="12" />
                       <circle
                         cx="60" cy="60" r="50" fill="none"
-                        stroke={isForced ? '#ef4444' : '#3b82f6'}
+                        stroke={!!forcedReason ? '#ef4444' : '#3b82f6'}
                         strokeWidth="12"
                         strokeDasharray={`${2 * Math.PI * 50}`}
                         strokeDashoffset={`${2 * Math.PI * 50 * (1 - percent / 100)}`}
@@ -138,11 +138,11 @@ export function ExamResultPage() {
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-3xl font-bold text-gray-900">
-                        {result.tongDiem != null ? result.tongDiem.toFixed(1) : '0.0'}
+                        {result.totalScore != null ? result.totalScore.toFixed(1) : '0.0'}
                       </span>
                       <span className="text-xs text-gray-500 font-medium">Điểm</span>
                       <span className="text-[11px] text-gray-400 mt-0.5">
-                        {result.soCauDung ?? 0}/{result.tongSoCau ?? 0} câu
+                        {result.correctAnswers ?? 0}/{result.tongSoCau ?? 0} câu
                       </span>
                     </div>
                   </div>
@@ -169,19 +169,19 @@ export function ExamResultPage() {
                     </div>
                     <p className="text-xs font-normal opacity-85">
                       Yêu cầu tối thiểu để đạt: {result.soCauDungToiThieu} câu đúng
-                      (Kết quả của bạn: {result.soCauDung} câu đúng)
+                      (Kết quả của bạn: {result.correctAnswers} câu đúng)
                     </p>
                   </div>
                 )}
 
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="bg-green-50 rounded-xl p-3">
-                    <p className="text-xl font-bold text-green-600">{result.soCauDung ?? 0}</p>
+                    <p className="text-xl font-bold text-green-600">{result.correctAnswers ?? 0}</p>
                     <p className="text-xs text-green-700">Câu đúng</p>
                   </div>
                   <div className="bg-red-50 rounded-xl p-3">
                     <p className="text-xl font-bold text-red-500">
-                      {(result.tongSoCau ?? 0) - (result.soCauDung ?? 0)}
+                      {(result.tongSoCau ?? 0) - (result.correctAnswers ?? 0)}
                     </p>
                     <p className="text-xs text-red-600">Câu sai</p>
                   </div>
@@ -215,8 +215,8 @@ export function ExamResultPage() {
                       </span>
                     </div>
                   )}
-                  {result.thoiGianNop && (
-                    <p>Nộp lúc: <strong className="text-gray-700">{formatDate(result.thoiGianNop)}</strong></p>
+                  {result.submitTime && (
+                    <p>Nộp lúc: <strong className="text-gray-700">{formatDate(result.submitTime)}</strong></p>
                   )}
                 </div>
               </>
@@ -224,8 +224,8 @@ export function ExamResultPage() {
           </div>
         </div>
 
-        {/* Answer review — only when congBoKetQua */}
-        {congBoKetQua && result.answers && result.answers.length > 0 && (
+        {/* Answer review — only when isResultPublished */}
+        {isResultPublished && result.answers && result.answers.length > 0 && (
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <button
               onClick={() => setShowAnswers(!showAnswers)}

@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { statisticsApi, type DashboardDto, type TopPerformerDto } from '@/features/statistics/api'
 import { kyThiApi } from '@/features/ky-thi/api'
 import { examTakingApi } from '@/features/exam-taking/api'
-import type { KyThiDto } from '@/features/ky-thi/types'
-import type { BaithiDto } from '@/features/exam-taking/types'
+import type { ExamCampaignDto } from '@/features/ky-thi/types'
+import type { ExamSubmissionDto } from '@/features/exam-taking/types'
 import {
   Users,
   FileQuestion,
@@ -142,7 +142,7 @@ function AdminDashboard() {
                   }`}>{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">{p.fullName || p.username}</p>
-                    <p className="text-xs text-gray-400">{p.khoaPhong || '—'} · {p.examsTaken} bài</p>
+                    <p className="text-xs text-gray-400">{p.department || '—'} · {p.examsTaken} bài</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-primary">{p.averageScore.toFixed(1)}</p>
@@ -185,9 +185,9 @@ function AdminDashboard() {
 // --- Student Dashboard ---
 function StudentDashboard() {
   const navigate = useNavigate()
-  const [kyThis, setKyThis] = useState<KyThiDto[]>([])
+  const [examCampaigns, setKyThis] = useState<ExamCampaignDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [myResults, setMyResults] = useState<Map<string, BaithiDto>>(new Map())
+  const [myResults, setMyResults] = useState<Map<string, ExamSubmissionDto>>(new Map())
   const { user } = useAppSelector((state) => state.auth)
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -207,9 +207,9 @@ function StudentDashboard() {
 
       const myRes = await examTakingApi.getMyResults()
       if (myRes.data.success && myRes.data.data) {
-        const map = new Map<string, BaithiDto>()
+        const map = new Map<string, ExamSubmissionDto>()
         myRes.data.data.forEach((b) => {
-          if (b.maDeThi) map.set(b.maDeThi, b)
+          if (b.examPaperCode) map.set(b.examPaperCode, b)
         })
         setMyResults(map)
       }
@@ -222,21 +222,21 @@ function StudentDashboard() {
 
   const now = new Date()
 
-  const hasTakenKyThi = (ky: KyThiDto) => {
+  const hasTakenKyThi = (ky: ExamCampaignDto) => {
     const resultsArray = Array.from(myResults.values())
-    const hasByKyThiId = resultsArray.some((r) => r.idKyThi === ky.id)
+    const hasByKyThiId = resultsArray.some((r) => r.examCampaignId === ky.id)
     if (hasByKyThiId) return true
 
     if (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0) {
       return ky.danhSachMaDeThi.some((code) => myResults.has(code))
     }
 
-    return ky.maDeThi ? myResults.has(ky.maDeThi) : false
+    return ky.examPaperCode ? myResults.has(ky.examPaperCode) : false
   }
 
-  const getKyThiResult = (ky: KyThiDto) => {
+  const getKyThiResult = (ky: ExamCampaignDto) => {
     const resultsArray = Array.from(myResults.values())
-    const byKyThiId = resultsArray.find((r) => r.idKyThi === ky.id)
+    const byKyThiId = resultsArray.find((r) => r.examCampaignId === ky.id)
     if (byKyThiId) return byKyThiId
 
     if (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0) {
@@ -246,7 +246,7 @@ function StudentDashboard() {
       }
     }
 
-    return ky.maDeThi ? myResults.get(ky.maDeThi) : undefined
+    return ky.examPaperCode ? myResults.get(ky.examPaperCode) : undefined
   }
 
   const clearFilters = () => {
@@ -255,11 +255,11 @@ function StudentDashboard() {
     setEndDate('')
   }
 
-  const filteredKyThis = kyThis.filter((ky) => {
+  const filteredKyThis = examCampaigns.filter((ky) => {
     if (searchQuery.trim()) {
       const term = searchQuery.toLowerCase().trim()
-      const matchesName = ky.tenKyThi?.toLowerCase().includes(term)
-      const matchesCode = ky.maKyThi?.toLowerCase().includes(term)
+      const matchesName = ky.campaignName?.toLowerCase().includes(term)
+      const matchesCode = ky.campaignCode?.toLowerCase().includes(term)
       if (!matchesName && !matchesCode) return false
     }
 
@@ -282,7 +282,7 @@ function StudentDashboard() {
 
   // Kỳ thi có thể thi: loại bỏ bài đã hết giờ. Cho phép hiển thị cả bài đã thi nếu còn hạn để thi lại.
   const available = filteredKyThis.filter((ky) => {
-    const hasExams = ky.maDeThi || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
+    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
     if (!hasExams) return false
     const start = ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : null
     const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
@@ -292,7 +292,7 @@ function StudentDashboard() {
   })
 
   const upcoming = filteredKyThis.filter((ky) => {
-    const hasExams = ky.maDeThi || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
+    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
     if (!hasExams) return false
     if (hasTakenKyThi(ky)) return false
     const start = ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : null
@@ -308,7 +308,7 @@ function StudentDashboard() {
 
   // Kỳ thi đã hết giờ mà chưa thi → coi như Không đạt, điểm 0
   const missedExams = filteredKyThis.filter((ky) => {
-    const hasExams = ky.maDeThi || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
+    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
     if (!hasExams) return false
     if (hasTakenKyThi(ky)) return false // đã thi rồi
     const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
@@ -322,7 +322,7 @@ function StudentDashboard() {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-primary/10 to-purple-50 rounded-xl p-6 border border-primary/20">
         <h2 className="text-xl font-bold text-gray-800 mb-1">
-          Xin chào, {user?.hoTen || user?.fullName || user?.tenDangNhap || user?.username}! 👋
+          Xin chào, {user?.fullName || user?.fullName || user?.username || user?.username}! 👋
         </h2>
         <p className="text-gray-600 text-sm">Chúc bạn thi tốt hôm nay.</p>
       </div>
@@ -404,14 +404,14 @@ function StudentDashboard() {
               <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-gray-800">{ky.tenKyThi}</p>
+                    <p className="font-medium text-gray-800">{ky.campaignName}</p>
                     {hasTakenKyThi(ky) && (
                       <span className="inline-flex items-center text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">
                         Đã thi (Cho phép thi lại)
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{ky.maKyThi}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{ky.campaignCode}</p>
                   {ky.thoiGianKetThuc && (
                     <p className="text-xs text-orange-500 mt-0.5">
                       Đến: {formatDate(ky.thoiGianKetThuc)}
@@ -446,31 +446,31 @@ function StudentDashboard() {
             {/* Bài đã nộp — có điểm thật */}
             {doneWithResults.map((ky) => {
               const r = getKyThiResult(ky)
-              const diem = r?.tongDiem ?? 0
-              const congBo = r?.congBoKetQua ?? false
+              const diem = r?.totalScore ?? 0
+              const congBo = r?.isResultPublished ?? false
               const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
               const hetHan = end !== null && end <= now
-              const congBoKetQua = hetHan || congBo
+              const isResultPublished = hetHan || congBo
               const baithiId = r?.id
               return (
                 <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 truncate">{ky.tenKyThi}</p>
-                    <p className="text-xs text-gray-500">{ky.maKyThi}</p>
-                    {congBoKetQua ? (
+                    <p className="font-medium text-gray-800 truncate">{ky.campaignName}</p>
+                    <p className="text-xs text-gray-500">{ky.campaignCode}</p>
+                    {isResultPublished ? (
                        <p className="text-xs text-gray-500 mt-0.5">
                         Điểm: <b>{diem.toFixed(1)}</b>
-                        {r?.soCauDung != null && ` · ${r.soCauDung}/${r.tongSoCau} câu`}
+                        {r?.correctAnswers != null && ` · ${r.correctAnswers}/${r.tongSoCau} câu`}
                       </p>
                     ) : (
                       <p className="text-xs text-gray-400 mt-0.5 italic">Đã nộp bài — chờ công bố điểm</p>
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0 justify-start sm:justify-end">
-                    {congBoKetQua && baithiId ? (
+                    {isResultPublished && baithiId ? (
                       <>
-                        {ky.soCauDungToiThieu !== undefined && ky.soCauDungToiThieu !== null && r?.soCauDung != null ? (
-                          r.soCauDung >= ky.soCauDungToiThieu ? (
+                        {ky.soCauDungToiThieu !== undefined && ky.soCauDungToiThieu !== null && r?.correctAnswers != null ? (
+                          r.correctAnswers >= ky.soCauDungToiThieu ? (
                             <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
                               ✓ Đạt
                             </span>
@@ -522,8 +522,8 @@ function StudentDashboard() {
             {missedExams.map((ky) => (
               <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                 <div>
-                  <p className="font-medium text-gray-800">{ky.tenKyThi}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{ky.maKyThi}</p>
+                  <p className="font-medium text-gray-800">{ky.campaignName}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{ky.campaignCode}</p>
                   <p className="text-xs text-gray-500 mt-0.5">Điểm: <b>0.0</b> · Không tham gia</p>
                 </div>
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500 w-full sm:w-auto text-center shrink-0 border">
@@ -547,8 +547,8 @@ function StudentDashboard() {
             {upcoming.map((ky) => (
               <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                 <div>
-                  <p className="font-medium text-gray-800">{ky.tenKyThi}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{ky.maKyThi}</p>
+                  <p className="font-medium text-gray-800">{ky.campaignName}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{ky.campaignCode}</p>
                   <p className="text-xs text-blue-600 mt-0.5">
                     Bắt đầu: {ky.thoiGianBatDau ? formatDate(ky.thoiGianBatDau) : '—'}
                   </p>
@@ -561,7 +561,7 @@ function StudentDashboard() {
       )}
 
       {/* No search results fallback */}
-      {!isLoading && kyThis.length > 0 && filteredKyThis.length === 0 && (
+      {!isLoading && examCampaigns.length > 0 && filteredKyThis.length === 0 && (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm text-center py-12 text-gray-400">
           <Search className="h-12 w-12 mx-auto mb-3 opacity-30 text-gray-400" />
           <p className="text-gray-500 font-medium">Không tìm thấy kỳ thi nào khớp với bộ lọc</p>
@@ -575,7 +575,7 @@ function StudentDashboard() {
       )}
 
       {isLoading && <p className="text-center text-gray-400 py-8">Đang tải...</p>}
-      {!isLoading && kyThis.length === 0 && (
+      {!isLoading && examCampaigns.length === 0 && (
         <div className="text-center py-12 text-gray-400">
           <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p>Chưa có kỳ thi nào</p>

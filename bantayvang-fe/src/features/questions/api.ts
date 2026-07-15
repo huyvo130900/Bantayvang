@@ -1,9 +1,9 @@
 import apiClient from '@/lib/axios'
 import type { ApiResponse, PagedResult } from '@/types'
 import type {
-  CauhoiDto,
-  CreateCauhoiDto,
-  UpdateCauhoiDto,
+  QuestionDto,
+  CreateQuestionDto,
+  UpdateQuestionDto,
   QuestionFilterDto,
   LoaicauhoiDto,
   CreateLoaicauhoiDto,
@@ -13,9 +13,9 @@ const buildQueryString = (filter: QuestionFilterDto): string => {
   const params = new URLSearchParams()
   params.set('pageNumber', String(filter.pageNumber))
   params.set('pageSize', String(filter.pageSize))
-  if (filter.idLoaiCauHoi) params.set('idLoaiCauHoi', String(filter.idLoaiCauHoi))
-  if (filter.doKho) params.set('doKho', filter.doKho)
-  if (filter.khoaPhong) params.set('khoaPhong', filter.khoaPhong)
+  if (filter.questionCategoryId) params.set('questionCategoryId', String(filter.questionCategoryId))
+  if (filter.difficulty) params.set('difficulty', filter.difficulty)
+  if (filter.department) params.set('department', filter.department)
   if (filter.searchKeyword) params.set('searchKeyword', filter.searchKeyword)
   if (filter.showDuplicatesOnly) params.set('showDuplicatesOnly', String(filter.showDuplicatesOnly))
   if (filter.kyThiId) params.set('kyThiId', String(filter.kyThiId))
@@ -26,60 +26,60 @@ const buildQueryString = (filter: QuestionFilterDto): string => {
 export const questionsApi = {
   // Questions
   list: (filter: QuestionFilterDto) =>
-    apiClient.get<ApiResponse<PagedResult<CauhoiDto>>>(`/cauhoi?${buildQueryString(filter)}`),
+    apiClient.get<ApiResponse<PagedResult<QuestionDto>>>(`/question?${buildQueryString(filter)}`),
 
   getById: (id: number) =>
-    apiClient.get<ApiResponse<CauhoiDto>>(`/cauhoi/${id}`),
+    apiClient.get<ApiResponse<QuestionDto>>(`/question/${id}`),
 
-  create: (data: CreateCauhoiDto) =>
-    apiClient.post<ApiResponse<CauhoiDto>>('/cauhoi', data),
+  create: (data: CreateQuestionDto) =>
+    apiClient.post<ApiResponse<QuestionDto>>('/question', data),
 
-  update: (id: number, data: UpdateCauhoiDto) =>
-    apiClient.put<ApiResponse<CauhoiDto>>(`/cauhoi/${id}`, data),
+  update: (id: number, data: UpdateQuestionDto) =>
+    apiClient.put<ApiResponse<QuestionDto>>(`/question/${id}`, data),
 
   delete: (id: number) =>
-    apiClient.delete<ApiResponse>(`/cauhoi/${id}`),
+    apiClient.delete<ApiResponse>(`/question/${id}`),
 
-  checkDuplicate: (noiDung: string, khoaPhong?: string, excludeId?: number) => {
+  checkDuplicate: (content: string, department?: string, excludeId?: number) => {
     const params = new URLSearchParams()
-    params.set('noiDung', noiDung)
-    if (khoaPhong) params.set('khoaPhong', khoaPhong)
+    params.set('content', content)
+    if (department) params.set('department', department)
     if (excludeId) params.set('excludeId', String(excludeId))
-    return apiClient.get<ApiResponse<boolean>>(`/cauhoi/check-duplicate?${params.toString()}`)
+    return apiClient.get<ApiResponse<boolean>>(`/question/check-duplicate?${params.toString()}`)
   },
 
-  importExcel: (file: File, khoaPhong: string, idLoaiCauHoi: number, isExamImport?: boolean, expectedCount?: number) => {
+  importExcel: (file: File, department: string, questionCategoryId: number, isExamImport?: boolean, expectedCount?: number) => {
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('khoaPhong', khoaPhong)
-    formData.append('idLoaiCauHoi', String(idLoaiCauHoi))
+    formData.append('department', department)
+    formData.append('questionCategoryId', String(questionCategoryId))
     if (isExamImport !== undefined) {
       formData.append('isExamImport', String(isExamImport))
     }
     if (expectedCount !== undefined && expectedCount !== null) {
       formData.append('expectedCount', String(expectedCount))
     }
-    return apiClient.post<ApiResponse<CauhoiDto[]>>('/cauhoi/import', formData, {
+    return apiClient.post<ApiResponse<QuestionDto[]>>('/question/import', formData, {
       headers: { 'Content-Type': undefined },
     })
   },
 
-  downloadTemplate: (idLoaiCauHoi: number, isExamImport?: boolean) => {
+  downloadTemplate: (questionCategoryId: number, isExamImport?: boolean) => {
     const params = new URLSearchParams()
-    params.set('idLoaiCauHoi', String(idLoaiCauHoi))
+    params.set('questionCategoryId', String(questionCategoryId))
     if (isExamImport !== undefined) {
       params.set('isExamImport', String(isExamImport))
     }
-    return apiClient.get(`/cauhoi/import-template?${params.toString()}`, { responseType: 'blob' })
+    return apiClient.get(`/question/import-template?${params.toString()}`, { responseType: 'blob' })
   },
 
   // ✨ Template soạn sẵn đề thi (thông tin đề + danh sách câu hỏi)
   downloadDeThiTemplate: () =>
-    apiClient.get('/cauhoi/import-template-dethi', { responseType: 'blob' }),
+    apiClient.get('/question/import-template-examPaper', { responseType: 'blob' }),
 
   getRandom: (count: number) => {
     const params = new URLSearchParams({ count: String(count) })
-    return apiClient.get<ApiResponse<CauhoiDto[]>>(`/cauhoi/random?${params}`)
+    return apiClient.get<ApiResponse<QuestionDto[]>>(`/question/random?${params}`)
   },
 
   // Question types

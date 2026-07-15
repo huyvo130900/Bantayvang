@@ -25,7 +25,7 @@ namespace BanTayVang.API.Services.Interfaces.Exams
         /// <param name="taikhoanId">User ID for security validation</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Exam result</returns>
-        Task<BaseResponseDto<BaithiDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Auto-submits expired exams (background job)

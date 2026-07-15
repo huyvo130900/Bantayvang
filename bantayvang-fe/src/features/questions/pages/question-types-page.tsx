@@ -13,7 +13,7 @@ export function QuestionTypesPage() {
   // Modal Form State
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<LoaicauhoiDto | null>(null)
-  const [form, setForm] = useState({ tenLoai: '', moTa: '' })
+  const [form, setForm] = useState({ categoryName: '', moTa: '' })
 
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -51,7 +51,7 @@ export function QuestionTypesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.tenLoai.trim()) {
+    if (!form.categoryName.trim()) {
       setError('Vui lòng nhập tên loại câu hỏi')
       return
     }
@@ -59,7 +59,7 @@ export function QuestionTypesPage() {
     try {
       if (editing) {
         const res = await questionsApi.updateQuestionType(editing.id, {
-          tenLoai: form.tenLoai.trim(),
+          categoryName: form.categoryName.trim(),
           moTa: form.moTa.trim(),
         })
         if (res.data.success) {
@@ -72,13 +72,13 @@ export function QuestionTypesPage() {
         }
       } else {
         const res = await questionsApi.createQuestionType({
-          tenLoai: form.tenLoai.trim(),
+          categoryName: form.categoryName.trim(),
           moTa: form.moTa.trim(),
         })
         if (res.data.success) {
           setSuccess('Tạo loại câu hỏi thành công')
           setShowForm(false)
-          setForm({ tenLoai: '', moTa: '' })
+          setForm({ categoryName: '', moTa: '' })
           load()
         } else {
           setError(res.data.message || 'Tạo mới thất bại')
@@ -92,17 +92,17 @@ export function QuestionTypesPage() {
 
   const handleEdit = (t: LoaicauhoiDto) => {
     setEditing(t)
-    setForm({ tenLoai: t.tenLoai || '', moTa: t.moTa || '' })
+    setForm({ categoryName: t.categoryName || '', moTa: t.moTa || '' })
     setShowForm(true)
   }
 
   const handleDelete = async (t: LoaicauhoiDto) => {
-    if (t.soCauHoi && t.soCauHoi > 0) {
-      setError(`Không thể xóa loại câu hỏi "${t.tenLoai}" đang có ${t.soCauHoi} câu hỏi`)
+    if (t.totalQuestions && t.totalQuestions > 0) {
+      setError(`Không thể xóa loại câu hỏi "${t.categoryName}" đang có ${t.totalQuestions} câu hỏi`)
       return
     }
 
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa loại câu hỏi "${t.tenLoai}"?`)) return
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa loại câu hỏi "${t.categoryName}"?`)) return
 
     try {
       const res = await questionsApi.deleteQuestionType(t.id)
@@ -121,7 +121,7 @@ export function QuestionTypesPage() {
   // Local client side filtering for search
   const filteredTypes = types.filter(
     (t) =>
-      t.tenLoai?.toLowerCase().includes(search.toLowerCase()) ||
+      t.categoryName?.toLowerCase().includes(search.toLowerCase()) ||
       t.moTa?.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -139,7 +139,7 @@ export function QuestionTypesPage() {
           <Button
             onClick={() => {
               setEditing(null)
-              setForm({ tenLoai: '', moTa: '' })
+              setForm({ categoryName: '', moTa: '' })
               setShowForm(true)
             }}
           >
@@ -201,7 +201,7 @@ export function QuestionTypesPage() {
                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 shrink-0">
                           <Layers className="h-4 w-4" />
                         </div>
-                        <span className="font-semibold text-gray-800">{t.tenLoai}</span>
+                        <span className="font-semibold text-gray-800">{t.categoryName}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-500 max-w-md truncate" title={t.moTa || ''}>
@@ -209,7 +209,7 @@ export function QuestionTypesPage() {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                        {t.soCauHoi ?? 0}
+                        {t.totalQuestions ?? 0}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -241,8 +241,8 @@ export function QuestionTypesPage() {
               <div>
                 <label className="text-sm font-medium text-gray-700">Tên loại câu hỏi *</label>
                 <Input
-                  value={form.tenLoai}
-                  onChange={(e) => setForm((f) => ({ ...f, tenLoai: e.target.value }))}
+                  value={form.categoryName}
+                  onChange={(e) => setForm((f) => ({ ...f, categoryName: e.target.value }))}
                   placeholder="VD: Trắc nghiệm nhiều lựa chọn"
                   className="mt-1"
                   required

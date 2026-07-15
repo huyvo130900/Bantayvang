@@ -23,7 +23,7 @@ namespace BanTayVang.API.DTOs.Notification
     public class CreateNotificationDto
     {
         public int? UserId { get; set; } // null = broadcast/dept
-        public string? KhoaPhong { get; set; } // specific department name
+        public string? Department { get; set; } // specific department name
 
         [Required]
         [StringLength(255)]
@@ -43,13 +43,13 @@ namespace BanTayVang.API.DTOs.Notification
     public class ExamScheduleDto
     {
         public int ExamId { get; set; }
-        public string? MaDeThi { get; set; }
-        public string? TenDeThi { get; set; }
-        public DateTime? ThoiGianBatDau { get; set; }
-        public int? ThoiGianLamBai { get; set; }
-        public DateTime? ThoiGianKetThuc { get; set; }
-        public string? TrangThai { get; set; }
-        public int SoCauHoi { get; set; }
+        public string? ExamPaperCode { get; set; }
+        public string? ExamPaperName { get; set; }
+        public DateTime? StartTime { get; set; }
+        public int? DurationMinutes { get; set; }
+        public DateTime? EndTime { get; set; }
+        public string? Status { get; set; }
+        public int TotalQuestions { get; set; }
         public bool IsAvailable { get; set; }
         public string AvailabilityMessage { get; set; } = string.Empty;
     }

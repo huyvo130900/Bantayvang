@@ -35,7 +35,7 @@ namespace BanTayVang.API.Controllers
         /// <summary>
         /// Thống kê chi tiết của một kỳ thi
         /// </summary>
-        [HttpGet("kythi/{kyThiId}")]
+        [HttpGet("exam-campaign/{kyThiId}")]
         public async Task<ActionResult<BaseResponseDto<ExamStatisticsDto>>> GetExamStatistics(int kyThiId)
         {
             var result = await _statisticsService.GetExamStatisticsAsync(kyThiId);

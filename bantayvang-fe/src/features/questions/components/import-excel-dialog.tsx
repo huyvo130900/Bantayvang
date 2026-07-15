@@ -28,19 +28,19 @@ export function ImportExcelDialog({ open, onClose, onSuccess }: ImportExcelDialo
   const isDeptManager =
     currentUser?.role === ROLES.DEPT_MANAGER ||
     currentUser?.tenVaiTro === 'DeptManager'
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || null
+  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
 
-  // Tìm ID động của loại câu hỏi từ Redux (DB đang lưu tenLoai là TN/TL, moTa chứa tên đầy đủ)
+  // Tìm ID động của loại câu hỏi từ Redux (DB đang lưu categoryName là TN/TL, moTa chứa tên đầy đủ)
   const tracNghiemType = questionTypes.find(
     (t) => {
-      const name = (t.tenLoai || '').toLowerCase();
+      const name = (t.categoryName || '').toLowerCase();
       const desc = (t.moTa || '').toLowerCase();
       return name === 'tn' || name.includes('trắc nghiệm') || name.includes('trac nghiem') || desc.includes('trắc nghiệm') || desc.includes('trac nghiem');
     }
   )
   const tuLuanType = questionTypes.find(
     (t) => {
-      const name = (t.tenLoai || '').toLowerCase();
+      const name = (t.categoryName || '').toLowerCase();
       const desc = (t.moTa || '').toLowerCase();
       return name === 'tl' || name.includes('tự luận') || name.includes('tu luan') || desc.includes('tự luận') || desc.includes('tu luan');
     }
@@ -52,7 +52,7 @@ export function ImportExcelDialog({ open, onClose, onSuccess }: ImportExcelDialo
   useEffect(() => {
     if (open) {
       // Load departments
-      departmentApi.getAll({ trangThai: true, pageSize: 100 })
+      departmentApi.getAll({ status: true, pageSize: 100 })
         .then((res) => setDepartments(res.data?.data || []))
         .catch(() => {})
 
@@ -163,8 +163,8 @@ export function ImportExcelDialog({ open, onClose, onSuccess }: ImportExcelDialo
               >
                 <option value="">-- Click để chọn Khoa / Phòng --</option>
                 {departments.map((dept) => (
-                  <option key={dept.id} value={dept.tenKhoa}>
-                    {dept.tenKhoa} ({dept.maKhoa})
+                  <option key={dept.id} value={dept.departmentName}>
+                    {dept.departmentName} ({dept.maKhoa})
                   </option>
                 ))}
               </select>

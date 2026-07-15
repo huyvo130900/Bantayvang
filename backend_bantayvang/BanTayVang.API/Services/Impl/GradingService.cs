@@ -21,30 +21,30 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var baithi = await _context.Baithis
+                var examSubmission = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
-                    .Include(b => b.Chitietlambais)
+                    .Include(b => b.SubmissionDetails)
                         .ThenInclude(c => c.IdCauHoiNavigation)
-                            .ThenInclude(ch => ch!.Luachons)
-                    .Include(b => b.Chitietlambais)
+                            .ThenInclude(ch => ch!.QuestionOptions)
+                    .Include(b => b.SubmissionDetails)
                         .ThenInclude(c => c.IdCauHoiNavigation)
                             .ThenInclude(ch => ch!.IdLoaiCauHoiNavigation)
-                    .Include(b => b.Chitietlambais)
+                    .Include(b => b.SubmissionDetails)
                         .ThenInclude(c => c.IdLuaChonDaChonNavigation)
                     .FirstOrDefaultAsync(b => b.Id == baiThiId);
 
-                if (baithi == null)
+                if (examSubmission == null)
                     return new BaseResponseDto<ExamResultDetailDto> { Success = false, Message = "Không tìm thấy bài thi" };
 
-                var detail = MapToDetailDto(baithi);
+                var detail = MapToDetailDto(examSubmission);
 
-                if (baithi.IdTaiKhoan != null && baithi.IdDeThi != null)
+                if (examSubmission.UserId != null && examSubmission.ExamPaperId != null)
                 {
-                    var attempts = await _context.Baithis
-                        .Where(b => b.IdTaiKhoan == baithi.IdTaiKhoan && b.IdDeThi == baithi.IdDeThi && (b.TrangThai == "Completed" || b.Id == baithi.Id))
+                    var attempts = await _context.ExamSubmissions
+                        .Where(b => b.UserId == examSubmission.UserId && b.ExamPaperId == examSubmission.ExamPaperId && (b.Status == "Completed" || b.Id == examSubmission.Id))
                         .ToListAsync();
 
                     detail.SoLanThi = attempts.Count;
@@ -76,24 +76,24 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 // Lấy TẤT CẢ bài thi của đề này (kể cả thi lại) để tính số lần thi
-                var allBaithis = await _context.Baithis
+                var allBaithis = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
-                    .Where(b => b.IdDeThi == examId && b.TrangThai == "Completed")
+                    .Where(b => b.ExamPaperId == examId && b.Status == "Completed")
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
-                    .OrderByDescending(b => b.ThoiGianNop)
+                    .OrderByDescending(b => b.SubmitTime)
                     .ToListAsync();
 
                 // Group theo user, lấy bài thi gần nhất (điểm mới nhất)
                 var latestPerUser = allBaithis
-                    .GroupBy(b => b.IdTaiKhoan)
+                    .GroupBy(b => b.UserId)
                     .Select(g => g.First())
                     .ToList();
 
                 // Đếm số lần thi và tổng gian lận mỗi user
                 var countPerUser = allBaithis
-                    .GroupBy(b => b.IdTaiKhoan)
+                    .GroupBy(b => b.UserId)
                     .ToDictionary(
                         g => g.Key ?? 0,
                         g => new {
@@ -102,30 +102,30 @@ namespace BanTayVang.API.Services.Impl
                         });
 
                 var latestPerUserIds = latestPerUser.Select(b => b.Id).ToList();
-                var gradedCounts = await _context.Chitietlambais
-                    .Where(c => c.IdBaiThi != null && latestPerUserIds.Contains(c.IdBaiThi.Value) && c.DiemDatDuoc != null)
-                    .GroupBy(c => c.IdBaiThi!.Value)
+                var gradedCounts = await _context.SubmissionDetails
+                    .Where(c => c.ExamSubmissionId != null && latestPerUserIds.Contains(c.ExamSubmissionId.Value) && c.ScoreObtained != null)
+                    .GroupBy(c => c.ExamSubmissionId!.Value)
                     .Select(g => new { BaiThiId = g.Key, GradedCount = g.Count() })
                     .ToDictionaryAsync(x => x.BaiThiId, x => x.GradedCount);
 
                 var statsDict = new Dictionary<int, (int mcqTotal, int mcqGraded, int essayTotal, int essayGraded)>();
                 if (latestPerUserIds.Any())
                 {
-                    var chitietStats = await _context.Chitietlambais
-                        .Where(c => c.IdBaiThi != null && latestPerUserIds.Contains(c.IdBaiThi.Value))
+                    var chitietStats = await _context.SubmissionDetails
+                        .Where(c => c.ExamSubmissionId != null && latestPerUserIds.Contains(c.ExamSubmissionId.Value))
                         .Select(c => new {
-                            c.IdBaiThi,
-                            IsGraded = c.DiemDatDuoc != null,
+                            c.ExamSubmissionId,
+                            IsGraded = c.ScoreObtained != null,
                             IsEssay = c.IdCauHoiNavigation != null 
                                 && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null 
-                                && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" 
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan"
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL")
+                                && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" 
+                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan"
+                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL")
                         })
                         .ToListAsync();
 
                     statsDict = chitietStats
-                        .GroupBy(c => c.IdBaiThi!.Value)
+                        .GroupBy(c => c.ExamSubmissionId!.Value)
                         .ToDictionary(
                             g => g.Key,
                             g => (
@@ -139,7 +139,7 @@ namespace BanTayVang.API.Services.Impl
                 var results = latestPerUser.Select(b =>
                 {
                     var dto = MapToDetailDtoSummary(b);
-                    if (countPerUser.TryGetValue(b.IdTaiKhoan ?? 0, out var counts))
+                    if (countPerUser.TryGetValue(b.UserId ?? 0, out var counts))
                     {
                         dto.SoLanThi = counts.SoLanThi;
                         dto.SoLanGianLan = counts.SoLanGianLan;
@@ -179,44 +179,44 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var baithi = await _context.Baithis
-                    .Include(b => b.Chitietlambais)
+                var examSubmission = await _context.ExamSubmissions
+                    .Include(b => b.SubmissionDetails)
                         .ThenInclude(c => c.IdCauHoiNavigation)
-                            .ThenInclude(ch => ch!.Luachons)
-                    .Include(b => b.Chitietlambais)
+                            .ThenInclude(ch => ch!.QuestionOptions)
+                    .Include(b => b.SubmissionDetails)
                         .ThenInclude(c => c.IdCauHoiNavigation)
                             .ThenInclude(ch => ch!.IdLoaiCauHoiNavigation)
                     .FirstOrDefaultAsync(b => b.Id == baiThiId);
 
-                if (baithi == null)
+                if (examSubmission == null)
                     return new BaseResponseDto<ExamResultDetailDto> { Success = false, Message = "Không tìm thấy bài thi" };
 
                 int correctCount = 0;
                 double totalScore = 0;
 
                 // Group answers by question to support multiple-choice
-                var answersByQuestion = baithi.Chitietlambais
-                    .Where(c => c.IdCauHoi.HasValue)
-                    .GroupBy(c => c.IdCauHoi!.Value);
+                var answersByQuestion = examSubmission.SubmissionDetails
+                    .Where(c => c.QuestionId.HasValue)
+                    .GroupBy(c => c.QuestionId!.Value);
 
                 foreach (var group in answersByQuestion)
                 {
                     var question = group.First().IdCauHoiNavigation;
                     if (question == null) continue;
 
-                    var correctChoiceIds = question.Luachons
-                        .Where(l => l.LaDapAnDung == true)
+                    var correctChoiceIds = question.QuestionOptions
+                        .Where(l => l.IsCorrect == true)
                         .Select(l => l.Id)
                         .ToHashSet();
 
-                    var tenLoai = question.IdLoaiCauHoiNavigation?.TenLoai;
-                            var moTa = question.IdLoaiCauHoiNavigation?.MoTa;
-                    var isEssay = tenLoai == "Tự luận" || tenLoai == "TuLuan" || tenLoai == "TL" || correctChoiceIds.Count == 0;
+                    var categoryName = question.IdLoaiCauHoiNavigation?.CategoryName;
+                            var moTa = question.IdLoaiCauHoiNavigation?.Description;
+                    var isEssay = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL" || correctChoiceIds.Count == 0;
 
                     if (isEssay)
                     {
-                        // For essay, preserve existing DiemDatDuoc which is manually graded
-                        var score = group.FirstOrDefault()?.DiemDatDuoc ?? 0;
+                        // For essay, preserve existing ScoreObtained which is manually graded
+                        var score = group.FirstOrDefault()?.ScoreObtained ?? 0;
                         if (score >= 1)
                         {
                             correctCount++;
@@ -226,8 +226,8 @@ namespace BanTayVang.API.Services.Impl
                     else
                     {
                         var userChoiceIds = group
-                            .Where(c => c.IdLuaChonDaChon.HasValue)
-                            .Select(c => c.IdLuaChonDaChon!.Value)
+                            .Where(c => c.SelectedOptionId.HasValue)
+                            .Select(c => c.SelectedOptionId!.Value)
                             .ToHashSet();
 
                         bool isFullyCorrect = correctChoiceIds.Count > 0 
@@ -237,11 +237,11 @@ namespace BanTayVang.API.Services.Impl
                         {
                             if (isFullyCorrect)
                             {
-                                ct.DiemDatDuoc = 1.0 / Math.Max(1, group.Count());
+                                ct.ScoreObtained = 1.0 / Math.Max(1, group.Count());
                             }
                             else
                             {
-                                ct.DiemDatDuoc = 0;
+                                ct.ScoreObtained = 0;
                             }
                         }
 
@@ -253,9 +253,9 @@ namespace BanTayVang.API.Services.Impl
                     }
                 }
 
-                baithi.SoCauDung = correctCount;
-                var tongSoCau = baithi.TongSoCau ?? answersByQuestion.Count();
-                baithi.TongDiem = correctCount;
+                examSubmission.CorrectAnswers = correctCount;
+                var tongSoCau = examSubmission.TotalQuestions ?? answersByQuestion.Count();
+                examSubmission.TotalScore = correctCount;
 
                 await _context.SaveChangesAsync();
 
@@ -277,7 +277,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var chitiet = await _context.Chitietlambais
+                var chitiet = await _context.SubmissionDetails
                     .Include(c => c.IdBaiThiNavigation)
                     .Include(c => c.IdCauHoiNavigation)
                     .FirstOrDefaultAsync(c => c.Id == dto.ChiTietLamBaiId);
@@ -285,42 +285,42 @@ namespace BanTayVang.API.Services.Impl
                 if (chitiet == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy chi tiết bài làm" };
 
-                // Đánh dấu Đúng/Sai: DiemDatDuoc = 1 nếu đúng, = 0 nếu sai, = null nếu chấm lại
-                chitiet.DiemDatDuoc = dto.IsCorrect.HasValue ? (dto.IsCorrect.Value ? 1.0 : 0.0) : (double?)null;
+                // Đánh dấu Đúng/Sai: ScoreObtained = 1 nếu đúng, = 0 nếu sai, = null nếu chấm lại
+                chitiet.ScoreObtained = dto.IsCorrect.HasValue ? (dto.IsCorrect.Value ? 1.0 : 0.0) : (double?)null;
                 if (!string.IsNullOrEmpty(dto.NhanXet))
                     chitiet.CauTraLoiTuLuan = chitiet.CauTraLoiTuLuan; // giữ nguyên nội dung
 
                 await _context.SaveChangesAsync();
 
                 // Tính lại tổng số câu đúng cho bài thi
-                if (chitiet.IdBaiThi.HasValue)
+                if (chitiet.ExamSubmissionId.HasValue)
                 {
-                    var baithi = await _context.Baithis
-                        .Include(b => b.Chitietlambais)
+                    var examSubmission = await _context.ExamSubmissions
+                        .Include(b => b.SubmissionDetails)
                             .ThenInclude(c => c.IdCauHoiNavigation)
-                        .FirstOrDefaultAsync(b => b.Id == chitiet.IdBaiThi.Value);
+                        .FirstOrDefaultAsync(b => b.Id == chitiet.ExamSubmissionId.Value);
                     
-                    if (baithi != null)
+                    if (examSubmission != null)
                     {
-                        // Tính số câu đúng: trắc nghiệm (isCorrect = là câu chọn đúng) + tự luận (DiemDatDuoc == 1)
-                        int soCauDung = 0;
-                        foreach (var ct in baithi.Chitietlambais)
+                        // Tính số câu đúng: trắc nghiệm (isCorrect = là câu chọn đúng) + tự luận (ScoreObtained == 1)
+                        int correctAnswers = 0;
+                        foreach (var ct in examSubmission.SubmissionDetails)
                         {
-                            var tenLoai = ct.IdCauHoiNavigation?.IdLoaiCauHoiNavigation?.TenLoai;
-                            var moTa = ct.IdCauHoiNavigation?.IdLoaiCauHoiNavigation?.MoTa;
-                            bool isTuLuan = tenLoai == "Tự luận" || tenLoai == "TuLuan" || tenLoai == "TL";
+                            var categoryName = ct.IdCauHoiNavigation?.IdLoaiCauHoiNavigation?.CategoryName;
+                            var moTa = ct.IdCauHoiNavigation?.IdLoaiCauHoiNavigation?.Description;
+                            bool isTuLuan = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL";
                             if (isTuLuan)
                             {
-                                if (ct.DiemDatDuoc == 1.0) soCauDung++;
+                                if (ct.ScoreObtained == 1.0) correctAnswers++;
                             }
                             else
                             {
-                                // Trắc nghiệm: đã được chấm tự động, DiemDatDuoc > 0 nghĩa là đúng
-                                if ((ct.DiemDatDuoc ?? 0) > 0) soCauDung++;
+                                // Trắc nghiệm: đã được chấm tự động, ScoreObtained > 0 nghĩa là đúng
+                                if ((ct.ScoreObtained ?? 0) > 0) correctAnswers++;
                             }
                         }
-                        baithi.SoCauDung = soCauDung;
-                        baithi.TongDiem = soCauDung;
+                        examSubmission.CorrectAnswers = correctAnswers;
+                        examSubmission.TotalScore = correctAnswers;
                         await _context.SaveChangesAsync();
                     }
                 }
@@ -338,18 +338,18 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var baithis = await _context.Baithis
+                var examSubmissions = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
-                    .Where(b => b.IdDeThi == examId && b.TrangThai == "Completed")
+                    .Where(b => b.ExamPaperId == examId && b.Status == "Completed")
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
-                    .OrderByDescending(b => b.TongDiem)
-                    .ThenBy(b => b.ThoiGianNop) // tie-break by submission time
+                    .OrderByDescending(b => b.TotalScore)
+                    .ThenBy(b => b.SubmitTime) // tie-break by submission time
                     .Take(top)
                     .ToListAsync();
 
-                var results = baithis.Select(b => MapToDetailDtoSummary(b)).ToList();
+                var results = examSubmissions.Select(b => MapToDetailDtoSummary(b)).ToList();
 
                 return new BaseResponseDto<List<ExamResultDetailDto>>
                 {
@@ -374,8 +374,8 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var ungraded = await _context.Baithis
-                    .Where(b => b.TrangThai == "Completed" && (b.TongDiem == null || b.SoCauDung == null))
+                var ungraded = await _context.ExamSubmissions
+                    .Where(b => b.Status == "Completed" && (b.TotalScore == null || b.CorrectAnswers == null))
                     .ToListAsync();
 
                 int count = 0;
@@ -406,47 +406,47 @@ namespace BanTayVang.API.Services.Impl
 
         #region Private Helpers
 
-        private ExamResultDetailDto MapToDetailDto(Baithi baithi)
+        private ExamResultDetailDto MapToDetailDto(ExamSubmission examSubmission)
         {
             int? durationMinutes = null;
             int? durationSeconds = null;
-            if (baithi.ThoiGianBatDau.HasValue && baithi.ThoiGianNop.HasValue)
+            if (examSubmission.StartTime.HasValue && examSubmission.SubmitTime.HasValue)
             {
-                var diff = baithi.ThoiGianNop.Value - baithi.ThoiGianBatDau.Value;
+                var diff = examSubmission.SubmitTime.Value - examSubmission.StartTime.Value;
                 durationMinutes = (int)diff.TotalMinutes;
                 durationSeconds = (int)diff.TotalSeconds;
             }
 
             var detail = new ExamResultDetailDto
             {
-                BaiThiId = baithi.Id,
-                UserId = baithi.IdTaiKhoan,
-                Username = baithi.IdTaiKhoanNavigation?.TenDangNhap,
-                FullName = baithi.IdTaiKhoanNavigation?.HoTen,
-                MaNhanVien = baithi.IdTaiKhoanNavigation?.MaNhanVien,
-                KhoaPhong = baithi.IdTaiKhoanNavigation?.KhoaPhong,
-                ExamId = baithi.IdDeThi ?? 0,
-                IdDeThi = baithi.IdDeThi,
-                MaDeThi = baithi.IdDeThiNavigation?.MaDeThi,
-                TenDeThi = baithi.IdDeThiNavigation?.TenDeThi,
-                ThoiGianBatDau = baithi.ThoiGianBatDau,
-                ThoiGianNop = baithi.ThoiGianNop,
+                BaiThiId = examSubmission.Id,
+                UserId = examSubmission.UserId,
+                Username = examSubmission.IdTaiKhoanNavigation?.Username,
+                FullName = examSubmission.IdTaiKhoanNavigation?.FullName,
+                MaNhanVien = examSubmission.IdTaiKhoanNavigation?.MaNhanVien,
+                Department = examSubmission.IdTaiKhoanNavigation?.Department,
+                ExamId = examSubmission.ExamPaperId ?? 0,
+                ExamPaperId = examSubmission.ExamPaperId,
+                ExamPaperCode = examSubmission.IdDeThiNavigation?.ExamPaperCode,
+                ExamPaperName = examSubmission.IdDeThiNavigation?.ExamPaperName,
+                StartTime = examSubmission.StartTime,
+                SubmitTime = examSubmission.SubmitTime,
                 DurationMinutes = durationMinutes,
                 DurationSeconds = durationSeconds,
-                TongDiem = baithi.TongSoCau.HasValue && baithi.TongSoCau.Value > 0
-                    ? Math.Round((double)(baithi.SoCauDung ?? 0) / baithi.TongSoCau.Value * 10, 2)
+                TotalScore = examSubmission.TotalQuestions.HasValue && examSubmission.TotalQuestions.Value > 0
+                    ? Math.Round((double)(examSubmission.CorrectAnswers ?? 0) / examSubmission.TotalQuestions.Value * 10, 2)
                     : 0,
-                SoCauDung = baithi.SoCauDung,
-                TongSoCau = baithi.TongSoCau,
-                TrangThai = baithi.TrangThai,
-                Pass = baithi.KyThiNavigation?.SoCauDungToiThieu != null 
-                    ? (baithi.SoCauDung ?? 0) >= baithi.KyThiNavigation.SoCauDungToiThieu.Value 
-                    : (baithi.IdDeThiNavigation?.SoCauDungToiThieu != null 
-                        ? (baithi.SoCauDung ?? 0) >= baithi.IdDeThiNavigation.SoCauDungToiThieu.Value 
+                CorrectAnswers = examSubmission.CorrectAnswers,
+                TotalQuestions = examSubmission.TotalQuestions,
+                Status = examSubmission.Status,
+                Pass = examSubmission.KyThiNavigation?.MinPassQuestions != null 
+                    ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.KyThiNavigation.MinPassQuestions.Value 
+                    : (examSubmission.IdDeThiNavigation?.MinPassQuestions != null 
+                        ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.IdDeThiNavigation.MinPassQuestions.Value 
                         : true),
-                SoCauDungToiThieu = baithi.KyThiNavigation?.SoCauDungToiThieu ?? baithi.IdDeThiNavigation?.SoCauDungToiThieu,
-                SoCanhBao = baithi.TongSoCanhBao,
-                CongBoKetQua = baithi.CongBoRieng || (baithi.IdDeThiNavigation?.CongBoKetQua ?? false),
+                MinPassQuestions = examSubmission.KyThiNavigation?.MinPassQuestions ?? examSubmission.IdDeThiNavigation?.MinPassQuestions,
+                SoCanhBao = examSubmission.TongSoCanhBao,
+                IsResultPublished = examSubmission.CongBoRieng || (examSubmission.IdDeThiNavigation?.IsResultPublished ?? false),
                 Answers = new List<AnswerDetailDto>()
             };
 
@@ -455,45 +455,45 @@ namespace BanTayVang.API.Services.Impl
             int essayTotal = 0;
             int essayGraded = 0;
 
-            var answersByQuestion = baithi.Chitietlambais
-                .Where(c => c.IdCauHoi.HasValue)
-                .GroupBy(c => c.IdCauHoi!.Value);
+            var answersByQuestion = examSubmission.SubmissionDetails
+                .Where(c => c.QuestionId.HasValue)
+                .GroupBy(c => c.QuestionId!.Value);
 
             foreach (var group in answersByQuestion)
             {
                 var question = group.First().IdCauHoiNavigation;
                 if (question == null) continue;
 
-                var tenLoai = question.IdLoaiCauHoiNavigation?.TenLoai;
-                            var moTa = question.IdLoaiCauHoiNavigation?.MoTa;
-                bool isEssay = tenLoai == "Tự luận" || tenLoai == "TuLuan" || tenLoai == "TL";
+                var categoryName = question.IdLoaiCauHoiNavigation?.CategoryName;
+                            var moTa = question.IdLoaiCauHoiNavigation?.Description;
+                bool isEssay = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL";
 
                 if (isEssay)
                 {
                     essayTotal++;
-                    if (group.Any(c => c.DiemDatDuoc != null)) essayGraded++;
+                    if (group.Any(c => c.ScoreObtained != null)) essayGraded++;
                 }
                 else
                 {
                     mcqTotal++;
-                    if (group.Any(c => c.DiemDatDuoc != null)) mcqGraded++;
+                    if (group.Any(c => c.ScoreObtained != null)) mcqGraded++;
                 }
 
                 // Check correctness (so khớp tập hợp đáp án đúng và lựa chọn của user)
-                var correctChoiceIds = question.Luachons
-                    .Where(l => l.LaDapAnDung == true)
+                var correctChoiceIds = question.QuestionOptions
+                    .Where(l => l.IsCorrect == true)
                     .Select(l => l.Id)
                     .ToHashSet();
 
                 var userChoiceIds = group
-                    .Where(c => c.IdLuaChonDaChon.HasValue)
-                    .Select(c => c.IdLuaChonDaChon!.Value)
+                    .Where(c => c.SelectedOptionId.HasValue)
+                    .Select(c => c.SelectedOptionId!.Value)
                     .ToHashSet();
 
                 bool isFullyCorrect = false;
                 if (isEssay)
                 {
-                    var score = group.FirstOrDefault()?.DiemDatDuoc ?? 0;
+                    var score = group.FirstOrDefault()?.ScoreObtained ?? 0;
                     isFullyCorrect = score >= 1;
                 }
                 else
@@ -503,40 +503,40 @@ namespace BanTayVang.API.Services.Impl
 
                 // Tạo chuỗi hiển thị cho các lựa chọn của thí sinh
                 var userChoiceTexts = group
-                    .Where(c => c.IdLuaChonDaChon.HasValue && c.IdLuaChonDaChonNavigation != null)
-                    .OrderBy(c => c.IdLuaChonDaChonNavigation!.ThuTu)
-                    .Select(c => c.IdLuaChonDaChonNavigation!.NoiDung)
+                    .Where(c => c.SelectedOptionId.HasValue && c.IdLuaChonDaChonNavigation != null)
+                    .OrderBy(c => c.IdLuaChonDaChonNavigation!.OrderIndex)
+                    .Select(c => c.IdLuaChonDaChonNavigation!.Content)
                     .ToList();
                 var userChoiceText = userChoiceTexts.Any() ? string.Join(", ", userChoiceTexts) : "";
 
                 // Tạo chuỗi hiển thị cho các đáp án đúng thực tế
-                var correctChoiceTexts = question.Luachons
-                    .Where(l => l.LaDapAnDung == true)
-                    .OrderBy(l => l.ThuTu)
-                    .Select(l => l.NoiDung)
+                var correctChoiceTexts = question.QuestionOptions
+                    .Where(l => l.IsCorrect == true)
+                    .OrderBy(l => l.OrderIndex)
+                    .Select(l => l.Content)
                     .ToList();
                 var correctChoiceText = correctChoiceTexts.Any() ? string.Join(", ", correctChoiceTexts) : "";
 
                 var firstCt = group.First();
-                var firstCorrectChoice = question.Luachons.FirstOrDefault(l => l.LaDapAnDung == true);
+                var firstCorrectChoice = question.QuestionOptions.FirstOrDefault(l => l.IsCorrect == true);
 
                 detail.Answers.Add(new AnswerDetailDto
                 {
                     CauHoiId = question.Id,
-                    NoiDungCauHoi = question.NoiDung,
-                    LoaiCauHoi = question.IdLoaiCauHoiNavigation?.TenLoai,
-                    IdLuaChonDaChon = firstCt.IdLuaChonDaChon, // Fallback
+                    NoiDungCauHoi = question.Content,
+                    QuestionCategory = question.IdLoaiCauHoiNavigation?.CategoryName,
+                    SelectedOptionId = firstCt.SelectedOptionId, // Fallback
                     NoiDungDapAn = isEssay ? firstCt.CauTraLoiTuLuan : userChoiceText,
                     CauTraLoiTuLuan = firstCt.CauTraLoiTuLuan,
                     IsCorrect = isFullyCorrect,
-                    DiemDatDuoc = group.All(c => c.DiemDatDuoc == null) ? (double?)null : group.Sum(c => c.DiemDatDuoc ?? 0),
+                    ScoreObtained = group.All(c => c.ScoreObtained == null) ? (double?)null : group.Sum(c => c.ScoreObtained ?? 0),
                     IdLuaChonDung = firstCorrectChoice?.Id, // Fallback
                     NoiDungDapAnDung = correctChoiceText,
                     ChiTietLamBaiId = firstCt.Id
                 });
             }
 
-            detail.SoCauDaCham = answersByQuestion.Count(g => g.Any(c => c.DiemDatDuoc != null));
+            detail.SoCauDaCham = answersByQuestion.Count(g => g.Any(c => c.ScoreObtained != null));
             detail.TongSoCauTracNghiem = mcqTotal;
             detail.SoCauTracNghiemDaCham = mcqGraded;
             detail.TongSoCauTuLuan = essayTotal;
@@ -545,43 +545,43 @@ namespace BanTayVang.API.Services.Impl
             return detail;
         }
 
-        private ExamResultDetailDto MapToDetailDtoSummary(Baithi baithi)
+        private ExamResultDetailDto MapToDetailDtoSummary(ExamSubmission examSubmission)
         {
             int? duration = null;
-            if (baithi.ThoiGianBatDau.HasValue && baithi.ThoiGianNop.HasValue)
+            if (examSubmission.StartTime.HasValue && examSubmission.SubmitTime.HasValue)
             {
-                duration = (int)(baithi.ThoiGianNop.Value - baithi.ThoiGianBatDau.Value).TotalMinutes;
+                duration = (int)(examSubmission.SubmitTime.Value - examSubmission.StartTime.Value).TotalMinutes;
             }
 
             return new ExamResultDetailDto
             {
-                BaiThiId = baithi.Id,
-                UserId = baithi.IdTaiKhoan,
-                Username = baithi.IdTaiKhoanNavigation?.TenDangNhap,
-                FullName = baithi.IdTaiKhoanNavigation?.HoTen,
-                MaNhanVien = baithi.IdTaiKhoanNavigation?.MaNhanVien,
-                KhoaPhong = baithi.IdTaiKhoanNavigation?.KhoaPhong,
-                ExamId = baithi.IdDeThi ?? 0,
-                MaDeThi = baithi.MaDeThi ?? baithi.IdDeThiNavigation?.MaDeThi,
-                TenDeThi = baithi.IdDeThiNavigation?.TenDeThi,
-                ThoiGianBatDau = baithi.ThoiGianBatDau,
-                ThoiGianNop = baithi.ThoiGianNop,
+                BaiThiId = examSubmission.Id,
+                UserId = examSubmission.UserId,
+                Username = examSubmission.IdTaiKhoanNavigation?.Username,
+                FullName = examSubmission.IdTaiKhoanNavigation?.FullName,
+                MaNhanVien = examSubmission.IdTaiKhoanNavigation?.MaNhanVien,
+                Department = examSubmission.IdTaiKhoanNavigation?.Department,
+                ExamId = examSubmission.ExamPaperId ?? 0,
+                ExamPaperCode = examSubmission.ExamPaperCode ?? examSubmission.IdDeThiNavigation?.ExamPaperCode,
+                ExamPaperName = examSubmission.IdDeThiNavigation?.ExamPaperName,
+                StartTime = examSubmission.StartTime,
+                SubmitTime = examSubmission.SubmitTime,
                 DurationMinutes = duration,
-                TongDiem = baithi.TongSoCau.HasValue && baithi.TongSoCau.Value > 0
-                    ? Math.Round((double)(baithi.SoCauDung ?? 0) / baithi.TongSoCau.Value * 10, 2)
+                TotalScore = examSubmission.TotalQuestions.HasValue && examSubmission.TotalQuestions.Value > 0
+                    ? Math.Round((double)(examSubmission.CorrectAnswers ?? 0) / examSubmission.TotalQuestions.Value * 10, 2)
                     : 0,
-                SoCauDung = baithi.SoCauDung,
-                TongSoCau = baithi.TongSoCau,
-                TrangThai = baithi.TrangThai,
-                Pass = baithi.KyThiNavigation?.SoCauDungToiThieu != null 
-                    ? (baithi.SoCauDung ?? 0) >= baithi.KyThiNavigation.SoCauDungToiThieu.Value 
-                    : (baithi.IdDeThiNavigation?.SoCauDungToiThieu != null 
-                        ? (baithi.SoCauDung ?? 0) >= baithi.IdDeThiNavigation.SoCauDungToiThieu.Value 
+                CorrectAnswers = examSubmission.CorrectAnswers,
+                TotalQuestions = examSubmission.TotalQuestions,
+                Status = examSubmission.Status,
+                Pass = examSubmission.KyThiNavigation?.MinPassQuestions != null 
+                    ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.KyThiNavigation.MinPassQuestions.Value 
+                    : (examSubmission.IdDeThiNavigation?.MinPassQuestions != null 
+                        ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.IdDeThiNavigation.MinPassQuestions.Value 
                         : true),
-                SoCauDungToiThieu = baithi.KyThiNavigation?.SoCauDungToiThieu ?? baithi.IdDeThiNavigation?.SoCauDungToiThieu,
-                SoCanhBao = baithi.TongSoCanhBao,
-                CongBoKetQua = baithi.CongBoRieng || (baithi.IdDeThiNavigation?.CongBoKetQua ?? false),
-                DanhGiaKhoa = baithi.DanhGiaKhoa,
+                MinPassQuestions = examSubmission.KyThiNavigation?.MinPassQuestions ?? examSubmission.IdDeThiNavigation?.MinPassQuestions,
+                SoCanhBao = examSubmission.TongSoCanhBao,
+                IsResultPublished = examSubmission.CongBoRieng || (examSubmission.IdDeThiNavigation?.IsResultPublished ?? false),
+                DanhGiaKhoa = examSubmission.DanhGiaKhoa,
             };
         }
 
@@ -593,18 +593,18 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var baithi = await _context.Baithis.FindAsync(baiThiId);
-                if (baithi == null)
+                var examSubmission = await _context.ExamSubmissions.FindAsync(baiThiId);
+                if (examSubmission == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy bài thi" };
 
-                baithi.DanhGiaKhoa = danhGia;
+                examSubmission.DanhGiaKhoa = danhGia;
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseDto { Success = true, Message = "Đã lưu đánh giá" };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving DanhGiaKhoa for baithi {BaiThiId}", baiThiId);
+                _logger.LogError(ex, "Error saving DanhGiaKhoa for examSubmission {BaiThiId}", baiThiId);
                 return new BaseResponseDto { Success = false, Message = "Lỗi khi lưu đánh giá" };
             }
         }
@@ -618,42 +618,42 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var baithis = await _context.Baithis
+                var examSubmissions = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
-                    .Where(b => b.IdKyThi == kyThiId)
-                    .OrderByDescending(b => b.TongDiem)
+                    .Where(b => b.ExamCampaignId == kyThiId)
+                    .OrderByDescending(b => b.TotalScore)
                     .ToListAsync();
 
-                var userIds = baithis.Select(b => b.IdTaiKhoan).Distinct().ToList();
-                var examIds = baithis.Select(b => b.IdDeThi).Distinct().ToList();
-                var baithiIds = baithis.Select(b => b.Id).ToList();
+                var userIds = examSubmissions.Select(b => b.UserId).Distinct().ToList();
+                var examIds = examSubmissions.Select(b => b.ExamPaperId).Distinct().ToList();
+                var baithiIds = examSubmissions.Select(b => b.Id).ToList();
 
                 var attemptsDict = new Dictionary<string, (int SoLanThi, int SoLanGianLan)>();
                 var gradedCounts = new Dictionary<int, int>();
                 if (userIds.Any() && examIds.Any())
                 {
-                    var allUserExamAttempts = await _context.Baithis
-                        .Where(b => b.IdTaiKhoan != null && userIds.Contains(b.IdTaiKhoan) 
-                                 && b.IdDeThi != null && examIds.Contains(b.IdDeThi.Value)
-                                 && (b.TrangThai == "Completed" || baithiIds.Contains(b.Id)))
+                    var allUserExamAttempts = await _context.ExamSubmissions
+                        .Where(b => b.UserId != null && userIds.Contains(b.UserId) 
+                                 && b.ExamPaperId != null && examIds.Contains(b.ExamPaperId.Value)
+                                 && (b.Status == "Completed" || baithiIds.Contains(b.Id)))
                         .ToListAsync();
 
                     attemptsDict = allUserExamAttempts
-                        .GroupBy(b => new { IdTaiKhoan = b.IdTaiKhoan ?? 0, IdDeThi = b.IdDeThi ?? 0 })
+                        .GroupBy(b => new { UserId = b.UserId ?? 0, ExamPaperId = b.ExamPaperId ?? 0 })
                         .ToDictionary(
-                            g => $"{g.Key.IdTaiKhoan}_{g.Key.IdDeThi}",
+                            g => $"{g.Key.UserId}_{g.Key.ExamPaperId}",
                             g => (SoLanThi: g.Count(), SoLanGianLan: g.Sum(b => b.TongSoCanhBao ?? 0))
                         );
                 }
 
                 if (baithiIds.Any())
                 {
-                    gradedCounts = await _context.Chitietlambais
-                        .Where(c => c.IdBaiThi != null && baithiIds.Contains(c.IdBaiThi.Value) && c.DiemDatDuoc != null)
-                        .GroupBy(c => c.IdBaiThi!.Value)
+                    gradedCounts = await _context.SubmissionDetails
+                        .Where(c => c.ExamSubmissionId != null && baithiIds.Contains(c.ExamSubmissionId.Value) && c.ScoreObtained != null)
+                        .GroupBy(c => c.ExamSubmissionId!.Value)
                         .Select(g => new { BaiThiId = g.Key, GradedCount = g.Count() })
                         .ToDictionaryAsync(x => x.BaiThiId, x => x.GradedCount);
                 }
@@ -661,21 +661,21 @@ namespace BanTayVang.API.Services.Impl
                 var statsDict = new Dictionary<int, (int mcqTotal, int mcqGraded, int essayTotal, int essayGraded)>();
                 if (baithiIds.Any())
                 {
-                    var chitietStats = await _context.Chitietlambais
-                        .Where(c => c.IdBaiThi != null && baithiIds.Contains(c.IdBaiThi.Value))
+                    var chitietStats = await _context.SubmissionDetails
+                        .Where(c => c.ExamSubmissionId != null && baithiIds.Contains(c.ExamSubmissionId.Value))
                         .Select(c => new {
-                            c.IdBaiThi,
-                            IsGraded = c.DiemDatDuoc != null,
+                            c.ExamSubmissionId,
+                            IsGraded = c.ScoreObtained != null,
                             IsEssay = c.IdCauHoiNavigation != null 
                                 && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null 
-                                && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "Tự luận" 
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TuLuan"
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.TenLoai == "TL")
+                                && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" 
+                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan"
+                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL")
                         })
                         .ToListAsync();
 
                     statsDict = chitietStats
-                        .GroupBy(c => c.IdBaiThi!.Value)
+                        .GroupBy(c => c.ExamSubmissionId!.Value)
                         .ToDictionary(
                             g => g.Key,
                             g => (
@@ -686,16 +686,16 @@ namespace BanTayVang.API.Services.Impl
                             ));
                 }
 
-                var results = baithis.Select(b =>
+                var results = examSubmissions.Select(b =>
                 {
-                    var duration = (b.ThoiGianNop.HasValue && b.ThoiGianBatDau.HasValue)
-                        ? (int)(b.ThoiGianNop.Value - b.ThoiGianBatDau.Value).TotalMinutes : 0;
+                    var duration = (b.SubmitTime.HasValue && b.StartTime.HasValue)
+                        ? (int)(b.SubmitTime.Value - b.StartTime.Value).TotalMinutes : 0;
 
                     int soLanThi = 1;
                     int soLanGianLan = 0;
                     int soLanThiLai = 0;
 
-                    var key = $"{b.IdTaiKhoan ?? 0}_{b.IdDeThi ?? 0}";
+                    var key = $"{b.UserId ?? 0}_{b.ExamPaperId ?? 0}";
                     if (attemptsDict.TryGetValue(key, out var counts))
                     {
                         soLanThi = counts.SoLanThi;
@@ -715,31 +715,31 @@ namespace BanTayVang.API.Services.Impl
                     return new ExamResultDetailDto
                     {
                         BaiThiId = b.Id,
-                        IdDeThi = b.IdDeThi,
-                        Username = b.IdTaiKhoanNavigation?.TenDangNhap,
-                        FullName = b.IdTaiKhoanNavigation?.HoTen,
+                        ExamPaperId = b.ExamPaperId,
+                        Username = b.IdTaiKhoanNavigation?.Username,
+                        FullName = b.IdTaiKhoanNavigation?.FullName,
                         MaNhanVien = b.IdTaiKhoanNavigation?.MaNhanVien,
-                        KhoaPhong = b.IdTaiKhoanNavigation?.KhoaPhong,
-                        ExamId = b.IdDeThi ?? 0,
-                        MaDeThi = b.MaDeThi,
-                        TenDeThi = b.IdDeThiNavigation?.TenDeThi,
-                        ThoiGianBatDau = b.ThoiGianBatDau,
-                        ThoiGianNop = b.ThoiGianNop,
+                        Department = b.IdTaiKhoanNavigation?.Department,
+                        ExamId = b.ExamPaperId ?? 0,
+                        ExamPaperCode = b.ExamPaperCode,
+                        ExamPaperName = b.IdDeThiNavigation?.ExamPaperName,
+                        StartTime = b.StartTime,
+                        SubmitTime = b.SubmitTime,
                         DurationMinutes = duration,
-                        TongDiem = b.TongSoCau.HasValue && b.TongSoCau.Value > 0
-                            ? Math.Round((double)(b.SoCauDung ?? 0) / b.TongSoCau.Value * 10, 2)
+                        TotalScore = b.TotalQuestions.HasValue && b.TotalQuestions.Value > 0
+                            ? Math.Round((double)(b.CorrectAnswers ?? 0) / b.TotalQuestions.Value * 10, 2)
                             : 0,
-                        SoCauDung = b.SoCauDung,
-                        TongSoCau = b.TongSoCau,
-                        TrangThai = b.TrangThai,
-                        Pass = b.KyThiNavigation?.SoCauDungToiThieu != null 
-                            ? (b.SoCauDung ?? 0) >= b.KyThiNavigation.SoCauDungToiThieu.Value 
-                            : (b.IdDeThiNavigation?.SoCauDungToiThieu != null 
-                                ? (b.SoCauDung ?? 0) >= b.IdDeThiNavigation.SoCauDungToiThieu.Value 
+                        CorrectAnswers = b.CorrectAnswers,
+                        TotalQuestions = b.TotalQuestions,
+                        Status = b.Status,
+                        Pass = b.KyThiNavigation?.MinPassQuestions != null 
+                            ? (b.CorrectAnswers ?? 0) >= b.KyThiNavigation.MinPassQuestions.Value 
+                            : (b.IdDeThiNavigation?.MinPassQuestions != null 
+                                ? (b.CorrectAnswers ?? 0) >= b.IdDeThiNavigation.MinPassQuestions.Value 
                                 : true),
-                        SoCauDungToiThieu = b.KyThiNavigation?.SoCauDungToiThieu ?? b.IdDeThiNavigation?.SoCauDungToiThieu,
+                        MinPassQuestions = b.KyThiNavigation?.MinPassQuestions ?? b.IdDeThiNavigation?.MinPassQuestions,
                         SoCanhBao = b.TongSoCanhBao,
-                        CongBoKetQua = b.CongBoRieng || (b.IdDeThiNavigation?.CongBoKetQua ?? false),
+                        IsResultPublished = b.CongBoRieng || (b.IdDeThiNavigation?.IsResultPublished ?? false),
                         SoLanThi = soLanThi,
                         SoLanGianLan = soLanGianLan,
                         SoLanThiLai = soLanThiLai,
@@ -760,7 +760,7 @@ namespace BanTayVang.API.Services.Impl
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting results by KyThi {KyThiId}", kyThiId);
+                _logger.LogError(ex, "Error getting results by ExamCampaign {KyThiId}", kyThiId);
                 return BaseResponseDto<List<ExamResultDetailDto>>.FailureResult("Lỗi khi lấy kết quả");
             }
         }

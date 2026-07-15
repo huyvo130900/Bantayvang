@@ -10,14 +10,14 @@ import { Button } from '@/components/ui/button'
 import { AlertTriangle, ChevronLeft, ChevronRight, Send, XCircle, ClipboardList } from 'lucide-react'
 import { MAX_CHEATING_WARNINGS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import type { BaithiDto, ExamQuestionDto } from '../types'
+import type { ExamSubmissionDto, ExamQuestionDto } from '../types'
 
 export function ExamTakingPage() {
   const { baithiId } = useParams<{ baithiId: string }>()
   const navigate = useNavigate()
   const id = Number(baithiId)
 
-  const [examInfo, setExamInfo] = useState<BaithiDto | null>(null)
+  const [examInfo, setExamInfo] = useState<ExamSubmissionDto | null>(null)
   const [questions, setQuestions] = useState<ExamQuestionDto[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, { choiceId: number | null; choiceIds: number[]; essay: string }>>({})
@@ -40,7 +40,7 @@ export function ExamTakingPage() {
   const unansweredQuestions = questions.filter((q) => {
     const userAns = answers[q.id]
     if (!userAns) return true
-    const hasChoices = q.danhSachLuaChon && q.danhSachLuaChon.length > 0
+    const hasChoices = q.options && q.options.length > 0
     if (hasChoices) {
       const noChoiceId = userAns.choiceId === null || userAns.choiceId === undefined || userAns.choiceId === 0
       const noChoiceIds = !userAns.choiceIds || userAns.choiceIds.length === 0 || userAns.choiceIds.every(id => id === 0)
@@ -62,30 +62,30 @@ export function ExamTakingPage() {
 
       currentQuestions.forEach((q) => {
         const userAns = currentAnswers[q.id]
-        const hasChoices = q.danhSachLuaChon && q.danhSachLuaChon.length > 0
+        const hasChoices = q.options && q.options.length > 0
         if (hasChoices) {
           const selectedIds = userAns?.choiceIds || []
           if (selectedIds.length > 0) {
             selectedIds.forEach((choiceId) => {
               danhSachCauTraLoi.push({
-                idBaiThi: id,
-                idCauHoi: q.id,
+                examSubmissionId: id,
+                questionId: q.id,
                 idLuaChonDaChon: choiceId,
                 daLuu: true,
               })
             })
           } else {
             danhSachCauTraLoi.push({
-              idBaiThi: id,
-              idCauHoi: q.id,
+              examSubmissionId: id,
+              questionId: q.id,
               idLuaChonDaChon: null,
               daLuu: true,
             })
           }
         } else {
           danhSachCauTraLoi.push({
-            idBaiThi: id,
-            idCauHoi: q.id,
+            examSubmissionId: id,
+            questionId: q.id,
             idLuaChonDaChon: null,
             cauTraLoiTuLuan: userAns?.essay || undefined,
             daLuu: true,
@@ -93,7 +93,7 @@ export function ExamTakingPage() {
         }
       })
 
-      const response = await examTakingApi.submit({ idBaiThi: id, danhSachCauTraLoi })
+      const response = await examTakingApi.submit({ examSubmissionId: id, danhSachCauTraLoi })
       if (response.data.success) {
         if (document.fullscreenElement) {
           await document.exitFullscreen().catch(() => {})

@@ -6,7 +6,6 @@ namespace BanTayVang.API.Models
     /// <summary>
     /// Notification entity
     /// </summary>
-    [Table("THONGBAO")]
     public class Notification
     {
         [Key]
@@ -36,6 +35,6 @@ namespace BanTayVang.API.Models
         public string? RelatedUrl { get; set; }
 
         [ForeignKey("UserId")]
-        public virtual Taikhoan? User { get; set; }
+        public virtual User? User { get; set; }
     }
 }

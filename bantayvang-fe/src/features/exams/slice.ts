@@ -1,9 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { examsApi, examsApiExtended } from './api'
-import type { DethiDto, ExamAssignmentDto } from './types'
+import type { ExamPaperDto, ExamAssignmentDto } from './types'
 
 interface ExamsState {
-  exams: DethiDto[]
+  exams: ExamPaperDto[]
   assignments: ExamAssignmentDto[]
   isLoading: boolean
   error: string | null
@@ -16,7 +16,7 @@ const initialState: ExamsState = {
   error: null,
 }
 
-// Dùng cho trang admin: lấy TẤT CẢ đề thi (không lọc trangThai)
+// Dùng cho trang admin: lấy TẤT CẢ đề thi (không lọc status)
 export const fetchAllExams = createAsyncThunk(
   'exams/fetchAll',
   async (_, { rejectWithValue }) => {

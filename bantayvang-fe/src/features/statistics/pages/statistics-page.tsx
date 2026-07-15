@@ -3,7 +3,7 @@ import { statisticsApi, type DashboardDto, type ExamStatisticsDto } from '../api
 import { Users, FileQuestion, ClipboardList, Award, AlertTriangle, RefreshCw, BarChart2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { kyThiApi } from '@/features/ky-thi/api'
-import type { KyThiDto } from '@/features/ky-thi/types'
+import type { ExamCampaignDto } from '@/features/ky-thi/types'
 
 function StatCard({
   icon: Icon,
@@ -36,7 +36,7 @@ function StatCard({
 
 export function StatisticsPage() {
   const [dashboard, setDashboard] = useState<DashboardDto | null>(null)
-  const [kyThis, setKyThis] = useState<KyThiDto[]>([])
+  const [examCampaigns, setKyThis] = useState<ExamCampaignDto[]>([])
   const [kyThiStats, setKyThiStats] = useState<ExamStatisticsDto | null>(null)
   const [selectedKyThiId, setSelectedKyThiId] = useState<number | ''>('')
   const [isLoading, setIsLoading] = useState(true)
@@ -187,8 +187,8 @@ export function StatisticsPage() {
             className="h-9 rounded-lg border border-gray-200 px-3 text-sm min-w-[240px] focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="">— Chọn kỳ thi —</option>
-            {kyThis.map((k) => (
-              <option key={k.id} value={k.id}>{k.maKyThi} — {k.tenKyThi}</option>
+            {examCampaigns.map((k) => (
+              <option key={k.id} value={k.id}>{k.campaignCode} — {k.campaignName}</option>
             ))}
           </select>
         </div>

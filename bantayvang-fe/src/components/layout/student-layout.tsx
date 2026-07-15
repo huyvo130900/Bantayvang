@@ -236,9 +236,9 @@ export function StudentLayout() {
           <StudentNotificationBell />
 
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-white">{user?.hoTen || user?.tenDangNhap}</p>
-            {user?.khoaPhong && (
-              <p className="text-xs text-white/75">{user.khoaPhong}</p>
+            <p className="text-sm font-medium text-white">{user?.fullName || user?.username}</p>
+            {user?.department && (
+              <p className="text-xs text-white/75">{user.department}</p>
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-white/85 hover:text-red-200 hover:bg-white/15 px-2 sm:px-3 h-8 sm:h-9">

@@ -1,19 +1,19 @@
 import { Button } from '@/components/ui/button'
 import { Pencil, Trash2, ToggleLeft, ToggleRight, BarChart2, Eye, EyeOff, ScanSearch, Building2 } from 'lucide-react'
-import type { DethiDto } from '../types'
+import type { ExamPaperDto } from '../types'
 import { formatDate } from '@/lib/utils'
 
 interface ExamTableProps {
-  exams: DethiDto[]
+  exams: ExamPaperDto[]
   isLoading: boolean
   showKhoa?: boolean   // Admin bật lên để thấy cột Khoa
-  onViewAssignments?: (exam: DethiDto) => void
-  onEdit?: (exam: DethiDto) => void
-  onDelete?: (exam: DethiDto) => void
-  onToggleStatus?: (exam: DethiDto) => void
-  onToggleCongBo?: (exam: DethiDto) => void
-  onViewStats?: (exam: DethiDto) => void
-  onPreview?: (exam: DethiDto) => void
+  onViewAssignments?: (exam: ExamPaperDto) => void
+  onEdit?: (exam: ExamPaperDto) => void
+  onDelete?: (exam: ExamPaperDto) => void
+  onToggleStatus?: (exam: ExamPaperDto) => void
+  onToggleCongBo?: (exam: ExamPaperDto) => void
+  onViewStats?: (exam: ExamPaperDto) => void
+  onPreview?: (exam: ExamPaperDto) => void
 }
 
 export function ExamTable({
@@ -71,48 +71,48 @@ export function ExamTable({
         <tbody className="divide-y">
           {exams.map((exam) => (
             <tr key={exam.id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-4 py-3 font-mono text-xs text-gray-600">{exam.maDeThi}</td>
-              <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">{exam.tenDeThi}</td>
+              <td className="px-4 py-3 font-mono text-xs text-gray-600">{exam.examPaperCode}</td>
+              <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">{exam.examPaperName}</td>
               {showKhoa && (
                 <td className="px-4 py-3">
-                  {exam.khoaPhong ? (
+                  {exam.department ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                       <Building2 className="h-3 w-3" />
-                      {exam.khoaPhong}
+                      {exam.department}
                     </span>
                   ) : (
                     <span className="text-gray-400 text-xs">—</span>
                   )}
                 </td>
               )}
-              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{exam.thoiGianLamBai} phút</td>
+              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{exam.durationMinutes} phút</td>
               <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
                 {formatDate(exam.thoiGianBatDau)}
               </td>
-              <td className="px-4 py-3 text-center text-gray-600">{exam.soCauHoi}</td>
+              <td className="px-4 py-3 text-center text-gray-600">{exam.totalQuestions}</td>
 
               <td className="px-4 py-3 text-center">
-                <StatusBadge status={exam.trangThai} />
+                <StatusBadge status={exam.status} />
               </td>
               <td className="px-4 py-3 text-center">
                 {onToggleCongBo ? (
                   <button
                     onClick={() => onToggleCongBo(exam)}
-                    title={exam.congBoKetQua ? 'Tắt công bố điểm' : 'Bật công bố điểm'}
+                    title={exam.isResultPublished ? 'Tắt công bố điểm' : 'Bật công bố điểm'}
                     className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors ${
-                      exam.congBoKetQua
+                      exam.isResultPublished
                         ? 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100'
                         : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                     }`}
                   >
-                    {exam.congBoKetQua
+                    {exam.isResultPublished
                       ? <><Eye className="h-3 w-3" /> Đã bật</>
                       : <><EyeOff className="h-3 w-3" /> Chưa bật</>
                     }
                   </button>
                 ) : (
-                  <span className={`text-xs ${exam.congBoKetQua ? 'text-green-600' : 'text-gray-400'}`}>
-                    {exam.congBoKetQua ? '✓ Đã bật' : '— Chưa bật'}
+                  <span className={`text-xs ${exam.isResultPublished ? 'text-green-600' : 'text-gray-400'}`}>
+                    {exam.isResultPublished ? '✓ Đã bật' : '— Chưa bật'}
                   </span>
                 )}
               </td>
@@ -145,11 +145,11 @@ export function ExamTable({
                     <Button
                       variant="ghost"
                       size="icon"
-                      title={exam.trangThai === 'Active' ? 'Đóng đề thi' : 'Mở đề thi'}
+                      title={exam.status === 'Active' ? 'Đóng đề thi' : 'Mở đề thi'}
                       onClick={() => onToggleStatus(exam)}
-                      className={`h-8 w-8 ${exam.trangThai === 'Active' ? 'text-green-600 hover:text-gray-500' : 'text-gray-400 hover:text-green-600'}`}
+                      className={`h-8 w-8 ${exam.status === 'Active' ? 'text-green-600 hover:text-gray-500' : 'text-gray-400 hover:text-green-600'}`}
                     >
-                      {exam.trangThai === 'Active' ? (
+                      {exam.status === 'Active' ? (
                         <ToggleRight className="h-4 w-4" />
                       ) : (
                         <ToggleLeft className="h-4 w-4" />

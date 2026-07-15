@@ -2,16 +2,14 @@ export interface User {
   id: number
   // Backend may return either English or Vietnamese field names
   username?: string
-  tenDangNhap?: string
   email?: string
   fullName?: string
-  hoTen?: string
   role?: string
   tenVaiTro?: string
   isActive?: boolean
-  trangThai?: boolean
+  status?: boolean
   lastLoginAt?: string
-  khoaPhong?: string
+  department?: string
   maNhanVien?: string
   chucDanh?: string
   idKhoaQuanLy?: number

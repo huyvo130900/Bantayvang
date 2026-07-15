@@ -61,7 +61,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
 
   // Kiểm tra xem bài thi có câu tự luận chưa chấm không
   const hasUngradedEssay = detail?.answers?.some(
-    a => (a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL') && a.diemDatDuoc == null
+    a => (a.questionCategory === 'Tự luận' || a.questionCategory === 'TuLuan' || a.questionCategory === 'TL') && a.scoreObtained == null
   ) ?? false
 
   return (
@@ -82,7 +82,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="p-3 bg-green-50 rounded-lg">
                 <p className="text-2xl font-bold text-green-700">
-                  {detail.soCauDung ?? '—'}/{detail.tongSoCau ?? '—'}
+                  {detail.correctAnswers ?? '—'}/{detail.tongSoCau ?? '—'}
                 </p>
                 <p className="text-xs text-green-600">Số câu đúng / Tổng câu</p>
               </div>
@@ -150,7 +150,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
               const indexed = detail.answers.map((a, idx) => ({ a, origIdx: idx }))
 
               const filtered = indexed.filter(({ a }) => {
-                const isTuLuan = a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL'
+                const isTuLuan = a.questionCategory === 'Tự luận' || a.questionCategory === 'TuLuan' || a.questionCategory === 'TL'
                 if (filter === 'tracnghiem') return !isTuLuan
                 if (filter === 'tuLuan') return isTuLuan
                 return true
@@ -158,18 +158,18 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
 
               // Sắp xếp: tự luận chưa chấm lên trên, giữ nguyên thứ tự gốc trong từng nhóm
               const sorted = [...filtered].sort((x, y) => {
-                const xTuLuan = x.a.loaiCauHoi === 'Tự luận' || x.a.loaiCauHoi === 'TuLuan' || x.a.loaiCauHoi === 'TL'
-                const yTuLuan = y.a.loaiCauHoi === 'Tự luận' || y.a.loaiCauHoi === 'TuLuan' || y.a.loaiCauHoi === 'TL'
-                const xUngraded = xTuLuan && x.a.diemDatDuoc == null
-                const yUngraded = yTuLuan && y.a.diemDatDuoc == null
+                const xTuLuan = x.a.questionCategory === 'Tự luận' || x.a.questionCategory === 'TuLuan' || x.a.questionCategory === 'TL'
+                const yTuLuan = y.a.questionCategory === 'Tự luận' || y.a.questionCategory === 'TuLuan' || y.a.questionCategory === 'TL'
+                const xUngraded = xTuLuan && x.a.scoreObtained == null
+                const yUngraded = yTuLuan && y.a.scoreObtained == null
                 if (xUngraded && !yUngraded) return -1
                 if (!xUngraded && yUngraded) return 1
                 return x.origIdx - y.origIdx
               })
 
-              const tracNghiemCount = indexed.filter(({ a }) => !(a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL')).length
-              const tuLuanCount = indexed.filter(({ a }) => a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL').length
-              const ungradedEssayCount = indexed.filter(({ a }) => (a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL') && a.diemDatDuoc == null).length
+              const tracNghiemCount = indexed.filter(({ a }) => !(a.questionCategory === 'Tự luận' || a.questionCategory === 'TuLuan' || a.questionCategory === 'TL')).length
+              const tuLuanCount = indexed.filter(({ a }) => a.questionCategory === 'Tự luận' || a.questionCategory === 'TuLuan' || a.questionCategory === 'TL').length
+              const ungradedEssayCount = indexed.filter(({ a }) => (a.questionCategory === 'Tự luận' || a.questionCategory === 'TuLuan' || a.questionCategory === 'TL') && a.scoreObtained == null).length
 
               return (
                 <div className="space-y-3">
@@ -219,9 +219,9 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
                     <div className="text-center text-sm text-gray-400 py-6">Không có câu hỏi nào</div>
                   ) : (
                     sorted.map(({ a, origIdx }) => {
-                      const isTuLuan = a.loaiCauHoi === 'Tự luận' || a.loaiCauHoi === 'TuLuan' || a.loaiCauHoi === 'TL'
-                      const isGraded = a.diemDatDuoc != null
-                      const isEssayCorrect = isTuLuan && a.diemDatDuoc === 1
+                      const isTuLuan = a.questionCategory === 'Tự luận' || a.questionCategory === 'TuLuan' || a.questionCategory === 'TL'
+                      const isGraded = a.scoreObtained != null
+                      const isEssayCorrect = isTuLuan && a.scoreObtained === 1
                       const isGrading = gradingId === a.chiTietLamBaiId
                       const isUngradedEssay = isTuLuan && !isGraded
 

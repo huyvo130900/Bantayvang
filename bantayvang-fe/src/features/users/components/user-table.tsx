@@ -72,17 +72,17 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
                 />
               </td>
               <td className="px-4 py-3">
-                <p className="font-medium text-gray-900">{user.hoTen || '—'}</p>
+                <p className="font-medium text-gray-900">{user.fullName || '—'}</p>
                 {user.maNhanVien && (
                   <p className="text-xs text-gray-400">{user.maNhanVien}</p>
                 )}
               </td>
-              <td className="px-4 py-3 text-gray-600">{user.tenDangNhap}</td>
+              <td className="px-4 py-3 text-gray-600">{user.username}</td>
               <td className="px-4 py-3 text-xs">
-                {user.idVaiTro === 5 && user.tenKhoaQuanLy ? (
+                {user.roleId === 5 && user.tenKhoaQuanLy ? (
                   <span className="text-blue-700 font-medium">{user.tenKhoaQuanLy}</span>
                 ) : (
-                  <span className="text-gray-600">{user.khoaPhong || '—'}</span>
+                  <span className="text-gray-600">{user.department || '—'}</span>
                 )}
               </td>
               <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.soDienThoai || '—'}</td>
@@ -94,7 +94,7 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
                 {user.isDeleted ? (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Đã xóa</span>
                 ) : (
-                  <StatusBadge active={user.trangThai} />
+                  <StatusBadge active={user.status} />
                 )}
               </td>
               <td className="px-4 py-3">
@@ -138,11 +138,11 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
                       <Button
                         variant="ghost"
                         size="icon"
-                        title={user.trangThai ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                        title={user.status ? 'Vô hiệu hóa' : 'Kích hoạt'}
                         onClick={() => onToggleStatus(user)}
                         className="h-8 w-8 text-gray-400 hover:text-blue-600"
                       >
-                        {user.trangThai ? (
+                        {user.status ? (
                           <ShieldOff className="h-4 w-4 text-orange-500" />
                         ) : (
                           <ShieldCheck className="h-4 w-4 text-green-500" />

@@ -23,7 +23,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
   const isEdit = !!user
   const currentUser = useAppSelector((state) => state.auth.user)
   const isUserDeptManager = currentUser?.role === 'DeptManager' || currentUser?.tenVaiTro === 'DeptManager'
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || null
+  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
 
   const [departments, setDepartments] = useState<DepartmentDto[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -33,16 +33,16 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
   const form = useForm<CreateUserFormData>({
     resolver: zodResolver(isEdit ? updateUserSchema : createUserSchema) as never,
     defaultValues: {
-      tenDangNhap: '', matKhau: '', hoTen: '',
-      maNhanVien: '', chucDanh: '', khoaPhong: '',
-      idVaiTro: 3, idKhoaQuanLy: null as any, trangThai: true,
+      username: '', password: '', fullName: '',
+      maNhanVien: '', chucDanh: '', department: '',
+      roleId: 3, idKhoaQuanLy: null as any, status: true,
       email: '', soDienThoai: '',
     },
   })
 
   useEffect(() => {
     // Load departments for DeptManager assignment
-    departmentApi.getAll({ trangThai: true, pageSize: 100 })
+    departmentApi.getAll({ status: true, pageSize: 100 })
       .then(res => setDepartments(res.data?.data || []))
       .catch(() => {})
   }, [])
@@ -53,9 +53,9 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false)
         if (searchTerm === '') {
-          form.setValue('khoaPhong', '')
+          form.setValue('department', '')
         } else {
-          const currentKhoaPhong = form.getValues('khoaPhong')
+          const currentKhoaPhong = form.getValues('department')
           setSearchTerm(currentKhoaPhong || '')
         }
       }
@@ -68,22 +68,22 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
     if (open) {
       if (user) {
         form.reset({
-          tenDangNhap: user.tenDangNhap || '', matKhau: '',
-          hoTen: user.hoTen || '',
+          username: user.username || '', password: '',
+          fullName: user.fullName || '',
           maNhanVien: user.maNhanVien || '', chucDanh: user.chucDanh || '',
-          khoaPhong: user.khoaPhong || '', idVaiTro: user.idVaiTro || 3,
+          department: user.department || '', roleId: user.roleId || 3,
           idKhoaQuanLy: user.idKhoaQuanLy || null as any,
-          trangThai: user.trangThai ?? true,
+          status: user.status ?? true,
           email: user.email || '',
           soDienThoai: user.soDienThoai || '',
         })
-        setSearchTerm(user.khoaPhong || '')
+        setSearchTerm(user.department || '')
       } else {
         form.reset({
-          tenDangNhap: '', matKhau: '', hoTen: '',
-          maNhanVien: '', chucDanh: '', khoaPhong: isUserDeptManager && myKhoa ? myKhoa : '', idVaiTro: 3,
+          username: '', password: '', fullName: '',
+          maNhanVien: '', chucDanh: '', department: isUserDeptManager && myKhoa ? myKhoa : '', roleId: 3,
           idKhoaQuanLy: null as any,
-          trangThai: true,
+          status: true,
           email: '',
           soDienThoai: '',
         })
@@ -97,23 +97,23 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
 
   const handleFormSubmit = (data: CreateUserFormData) => {
     if (isEdit) {
-      const { tenDangNhap: _u, matKhau: _p, ...updateData } = data
+      const { username: _u, password: _p, ...updateData } = data
       void _u; void _p
       onSubmit(updateData as UpdateUserFormData)
     } else {
       onSubmit({
         ...data,
-        maNhanVien: data.tenDangNhap,
+        maNhanVien: data.username,
       })
     }
   }
 
-  const watchedRole = form.watch('idVaiTro')
+  const watchedRole = form.watch('roleId')
   const isDeptManager = Number(watchedRole) === ROLE_IDS.DEPT_MANAGER
-  const selectedKhoaPhong = form.watch('khoaPhong')
+  const selectedKhoaPhong = form.watch('department')
   const filteredDepts = departments.filter(d => {
     if (searchTerm === selectedKhoaPhong) return true
-    return d.tenKhoa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    return d.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
            d.maKhoa.toLowerCase().includes(searchTerm.toLowerCase())
   })
 
@@ -127,18 +127,18 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
 
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="p-4 space-y-4">
           {!isEdit && (
-            <Field label="Mã nhân viên *" error={form.formState.errors.tenDangNhap?.message}>
-              <Input {...form.register('tenDangNhap')} placeholder="NV001" autoComplete="off" />
+            <Field label="Mã nhân viên *" error={form.formState.errors.username?.message}>
+              <Input {...form.register('username')} placeholder="NV001" autoComplete="off" />
             </Field>
           )}
           {!isEdit && (
-            <Field label="Mật khẩu *" error={form.formState.errors.matKhau?.message}>
-              <Input {...form.register('matKhau')} type="password" placeholder="••••••" autoComplete="new-password" />
+            <Field label="Mật khẩu *" error={form.formState.errors.password?.message}>
+              <Input {...form.register('password')} type="password" placeholder="••••••" autoComplete="new-password" />
             </Field>
           )}
 
-          <Field label="Họ tên *" error={form.formState.errors.hoTen?.message}>
-            <Input {...form.register('hoTen')} placeholder="Nguyễn Văn A" />
+          <Field label="Họ tên *" error={form.formState.errors.fullName?.message}>
+            <Input {...form.register('fullName')} placeholder="Nguyễn Văn A" />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
@@ -160,7 +160,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
             )}
           </div>
 
-          <Field label="Khoa/Phòng (hiển thị)" error={form.formState.errors.khoaPhong?.message}>
+          <Field label="Khoa/Phòng (hiển thị)" error={form.formState.errors.department?.message}>
             <div className="relative" ref={dropdownRef}>
               <div className="relative">
                 <Input
@@ -187,7 +187,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
                   </button>
                 )}
               </div>
-              <input type="hidden" {...form.register('khoaPhong')} />
+              <input type="hidden" {...form.register('department')} />
 
               {isDropdownOpen && (
                 <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-md border bg-white shadow-lg">
@@ -198,16 +198,16 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
                       <div
                         key={d.id}
                         className={`flex items-center justify-between px-3 py-2 cursor-pointer text-sm hover:bg-gray-100 transition-colors ${
-                          selectedKhoaPhong === d.tenKhoa ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-gray-900'
+                          selectedKhoaPhong === d.departmentName ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-gray-900'
                         }`}
                         onClick={() => {
-                          form.setValue('khoaPhong', d.tenKhoa)
-                          setSearchTerm(d.tenKhoa)
+                          form.setValue('department', d.departmentName)
+                          setSearchTerm(d.departmentName)
                           setIsDropdownOpen(false)
                         }}
                       >
-                        <span>{d.tenKhoa} ({d.maKhoa})</span>
-                        {selectedKhoaPhong === d.tenKhoa && <Check className="h-4 w-4 text-blue-600" />}
+                        <span>{d.departmentName} ({d.maKhoa})</span>
+                        {selectedKhoaPhong === d.departmentName && <Check className="h-4 w-4 text-blue-600" />}
                       </div>
                     ))
                   )}
@@ -228,10 +228,10 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
           <div className="grid grid-cols-2 gap-4">
             <Field label="Vai trò *">
               <select
-                {...form.register('idVaiTro', { valueAsNumber: true })}
-                value={form.watch('idVaiTro')}
+                {...form.register('roleId', { valueAsNumber: true })}
+                value={form.watch('roleId')}
                 onChange={e => {
-                  form.setValue('idVaiTro', parseInt(e.target.value))
+                  form.setValue('roleId', parseInt(e.target.value))
                 }}
                 disabled={isUserDeptManager}
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
@@ -244,8 +244,8 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
             </Field>
             <Field label="Trạng thái">
               <div className="flex items-center h-10 gap-2">
-                <input type="checkbox" {...form.register('trangThai')} id="trangThai" className="h-4 w-4 rounded border-gray-300" />
-                <label htmlFor="trangThai" className="text-sm">Hoạt động</label>
+                <input type="checkbox" {...form.register('status')} id="status" className="h-4 w-4 rounded border-gray-300" />
+                <label htmlFor="status" className="text-sm">Hoạt động</label>
               </div>
             </Field>
           </div>
@@ -260,7 +260,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
               >
                 <option value="">— Chọn khoa —</option>
                 {departments.map(d => (
-                  <option key={d.id} value={d.id}>{d.tenKhoa} ({d.maKhoa})</option>
+                  <option key={d.id} value={d.id}>{d.departmentName} ({d.maKhoa})</option>
                 ))}
               </select>
               <p className="text-xs text-blue-600 mt-1">Quản lý Khoa chỉ thấy dữ liệu của khoa được gán</p>

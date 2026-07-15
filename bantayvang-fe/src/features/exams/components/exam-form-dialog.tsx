@@ -4,13 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { createExamSchema, type CreateExamFormData } from '../schemas'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { X, BookOpen, Search, ChevronDown, ChevronUp, Download, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { BookOpen, Search, ChevronDown, ChevronUp, Download, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { questionsApi } from '@/features/questions/api'
-import type { CauhoiDto } from '@/features/questions/types'
+import type { QuestionDto } from '@/features/questions/types'
 import { useAppSelector } from '@/app/hooks'
 import { ROLES } from '@/lib/constants'
 import { kyThiApi } from '@/features/ky-thi/api'
-import type { KyThiDto } from '@/features/ky-thi/types'
+import type { ExamCampaignDto } from '@/features/ky-thi/types'
 import { examsApi } from '../api'
 import { departmentApi } from '@/features/departments/api'
 import type { DepartmentDto } from '@/features/departments/types'
@@ -57,12 +57,12 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
   }
 
   // Manual selection state
-  const [questionPool, setQuestionPool] = useState<CauhoiDto[]>([])
+  const [questionPool, setQuestionPool] = useState<QuestionDto[]>([])
   const [loadingPool, setLoadingPool] = useState(false)
   const [poolSearch, setPoolSearch] = useState('')
   const [poolKhoa, setPoolKhoa] = useState(lockedKhoa || '')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [selectedKyThiDetails, setSelectedKyThiDetails] = useState<KyThiDto | null>(null)
+  const [selectedKyThiDetails, setSelectedKyThiDetails] = useState<ExamCampaignDto | null>(null)
   const [poolPage, setPoolPage] = useState(1)
   const POOL_PAGE_SIZE = 20
 
@@ -78,12 +78,12 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
   const form = useForm<CreateExamFormData>({
     resolver: zodResolver(createExamSchema) as any,
     defaultValues: {
-      maDeThi: '',
-      tenDeThi: '',
-      thoiGianLamBai: 60,
+      examPaperCode: '',
+      examPaperName: '',
+      durationMinutes: 60,
       thoiGianBatDau: '',
-      trangThai: 'Active',
-      khoaPhong: lockedKhoa || '',
+      status: 'Active',
+      department: lockedKhoa || '',
       soCauRandom: 30,
       danhSachIdCauHoi: [],
       kyThiId: defaultKyThiId || '' as any,
@@ -96,12 +96,12 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       const isAll = isAllDeptName(lockedKhoa)
       const finalKhoa = isAll ? '' : (lockedKhoa || '')
       form.reset({
-        maDeThi: generateDeThiCode(),
-        tenDeThi: '',
-        thoiGianLamBai: 60,
+        examPaperCode: generateDeThiCode(),
+        examPaperName: '',
+        durationMinutes: 60,
         thoiGianBatDau: '',
-        trangThai: 'Active',
-        khoaPhong: finalKhoa,
+        status: 'Active',
+        department: finalKhoa,
         soCauRandom: 30,
         danhSachIdCauHoi: [],
         kyThiId: defaultKyThiId || '' as any,
@@ -109,7 +109,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       })
       setSelectedKhoa(finalKhoa)
       setPoolKhoa(finalKhoa)
-      form.setValue('khoaPhong', finalKhoa)
+      form.setValue('department', finalKhoa)
       setQuestionMode('manual')
       setSelectedIds([])
       setPoolSearch('')
@@ -123,10 +123,10 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       setSelectedKyThiDetails(null)
 
       // Fetch dynamic departments
-      departmentApi.getAll({ trangThai: true, pageSize: 100 })
+      departmentApi.getAll({ status: true, pageSize: 100 })
         .then((res) => {
           const list = (res.data?.data as DepartmentDto[] | undefined)
-            ?.map((d) => d.tenKhoa)
+            ?.map((d) => d.departmentName)
             .filter(Boolean) as string[]
           setDepartments(Array.from(new Set(list)).sort())
         })
@@ -163,7 +163,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       const finalKhoa = isAll ? '' : lockedKhoa
       setSelectedKhoa(finalKhoa)
       setPoolKhoa(finalKhoa)
-      form.setValue('khoaPhong', finalKhoa)
+      form.setValue('department', finalKhoa)
       setBankKhoa(finalKhoa || 'Tất cả các khoa')
     }
   }, [lockedKhoa, form])
@@ -173,14 +173,14 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
     if (open && selectedKyThiId) {
       kyThiApi.getById(selectedKyThiId).then((res) => {
         if (res.data.success && res.data.data) {
-          const kyThi = res.data.data
-          setSelectedKyThiDetails(kyThi)
-          const tenKhoa = kyThi.tenKhoa || ''
-          const isAll = isAllDeptName(tenKhoa)
-          const finalKhoa = isAll ? '' : tenKhoa
+          const examCampaign = res.data.data
+          setSelectedKyThiDetails(examCampaign)
+          const departmentName = examCampaign.departmentName || ''
+          const isAll = isAllDeptName(departmentName)
+          const finalKhoa = isAll ? '' : departmentName
           setSelectedKhoa(finalKhoa)
           setPoolKhoa(finalKhoa)
-          form.setValue('khoaPhong', finalKhoa)
+          form.setValue('department', finalKhoa)
           setBankKhoa(finalKhoa || 'Tất cả các khoa')
         }
       }).catch(() => {})
@@ -190,7 +190,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       const finalKhoa = isAll ? '' : (lockedKhoa || '')
       setSelectedKhoa(finalKhoa)
       setPoolKhoa(finalKhoa)
-      form.setValue('khoaPhong', finalKhoa)
+      form.setValue('department', finalKhoa)
       setBankKhoa(finalKhoa || 'Tất cả các khoa')
     }
   }, [selectedKyThiId, open, lockedKhoa, form])
@@ -210,12 +210,12 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
     try {
       let khoaFilter = poolKhoa || selectedKhoa
       if (!isAdmin) {
-        khoaFilter = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || ''
+        khoaFilter = currentUser?.tenKhoaQuanLy || currentUser?.department || ''
       }
       const response = await questionsApi.list({
         pageNumber: poolPage,
         pageSize: POOL_PAGE_SIZE,
-        khoaPhong: khoaFilter || undefined,
+        department: khoaFilter || undefined,
         searchKeyword: poolSearch || undefined,
       })
       if (response.data.success && response.data.data) {
@@ -246,9 +246,9 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
 
       // 1. Pre-validate exam code duplication (before calling Excel import)
       try {
-        const checkRes = await examsApi.getByCode(data.maDeThi)
+        const checkRes = await examsApi.getByCode(data.examPaperCode)
         if (checkRes.data.success) {
-          form.setError('maDeThi', {
+          form.setError('examPaperCode', {
             type: 'manual',
             message: 'Mã đề thi đã tồn tại trong hệ thống',
           })
@@ -278,7 +278,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
           : 'Không thuộc ngân hàng'
 
         if (!isAdmin && themVaoNganHang) {
-          targetKhoa = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || ''
+          targetKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || ''
         }
 
         // 1 = Trắc nghiệm, isExamImport = true, expectedCount
@@ -309,7 +309,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       }
     }
 
-    // Client-side validation: check if selected questions match the required count for KyThi
+    // Client-side validation: check if selected questions match the required count for ExamCampaign
     if (selectedKyThiDetails?.tongSoCauHoi) {
       const requiredCount = selectedKyThiDetails.tongSoCauHoi
       if (finalIds.length < requiredCount) {
@@ -352,8 +352,8 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
 
   const filteredPool = poolSearch
     ? questionPool.filter(q =>
-        q.noiDung?.toLowerCase().includes(poolSearch.toLowerCase()) ||
-        q.khoaPhong?.toLowerCase().includes(poolSearch.toLowerCase())
+        q.content?.toLowerCase().includes(poolSearch.toLowerCase()) ||
+        q.department?.toLowerCase().includes(poolSearch.toLowerCase())
       )
     : questionPool
 
@@ -412,9 +412,9 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
           {/* Basic info */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Mã đề thi *</label>
-            <Input {...form.register('maDeThi')} placeholder="DETHI_001" readOnly className="bg-gray-100 cursor-not-allowed" />
-            {form.formState.errors.maDeThi && (
-              <p className="text-xs text-red-500">{form.formState.errors.maDeThi.message}</p>
+            <Input {...form.register('examPaperCode')} placeholder="DETHI_001" readOnly className="bg-gray-100 cursor-not-allowed" />
+            {form.formState.errors.examPaperCode && (
+              <p className="text-xs text-red-500">{form.formState.errors.examPaperCode.message}</p>
             )}
           </div>
 
@@ -466,7 +466,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                     {!isAdmin ? (
                       <input
                         type="text"
-                        value={currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || ''}
+                        value={currentUser?.tenKhoaQuanLy || currentUser?.department || ''}
                         readOnly
                         disabled
                         className="h-8 w-40 rounded border border-gray-200 bg-gray-50 text-gray-500 px-2 text-xs cursor-not-allowed"
@@ -545,16 +545,16 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                               className="mt-0.5 shrink-0 accent-purple-600"
                             />
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs text-gray-800 line-clamp-2">{q.noiDung}</p>
+                              <p className="text-xs text-gray-800 line-clamp-2">{q.content}</p>
                               <div className="flex gap-2 mt-0.5">
-                                {q.khoaPhong && (
-                                  <span className="text-xs text-purple-500">{q.khoaPhong}</span>
+                                {q.department && (
+                                  <span className="text-xs text-purple-500">{q.department}</span>
                                 )}
-                                {q.doKho && (
+                                {q.difficulty && (
                                   <span className={`text-xs px-1 rounded ${
-                                    q.doKho === 'De' ? 'text-green-500' :
-                                    q.doKho === 'Kho' ? 'text-red-500' : 'text-yellow-600'
-                                  }`}>{q.doKho}</span>
+                                    q.difficulty === 'De' ? 'text-green-500' :
+                                    q.difficulty === 'Kho' ? 'text-red-500' : 'text-yellow-600'
+                                  }`}>{q.difficulty}</span>
                                 )}
                               </div>
                             </div>
@@ -653,7 +653,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                         {!isAdmin ? (
                           <input
                             type="text"
-                            value={currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || ''}
+                            value={currentUser?.tenKhoaQuanLy || currentUser?.department || ''}
                             disabled
                             className="h-8 w-full rounded border border-gray-200 bg-gray-50 px-2 text-xs text-gray-500 cursor-not-allowed"
                           />

@@ -99,28 +99,28 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var sender = await _context.Taikhoans.FindAsync(senderId);
+                var sender = await _context.Users.FindAsync(senderId);
                 if (sender == null)
                     return new BaseResponseDto<NotificationDto> { Success = false, Message = "Không tìm thấy người gửi" };
 
-                var isSenderAdmin = sender.IdVaiTro == 1;
-                var isSenderDeptManager = sender.IdVaiTro == 5;
+                var isSenderAdmin = sender.RoleId == 1;
+                var isSenderDeptManager = sender.RoleId == 5;
 
                 if (!isSenderAdmin && !isSenderDeptManager)
                 {
                     return new BaseResponseDto<NotificationDto> { Success = false, Message = "Bạn không có quyền gửi thông báo" };
                 }
 
-                var targetUsers = new List<Taikhoan>();
+                var targetUsers = new List<User>();
 
                 // Case 1: Send to specific user
                 if (createDto.UserId.HasValue)
                 {
-                    var targetUser = await _context.Taikhoans.FindAsync(createDto.UserId.Value);
+                    var targetUser = await _context.Users.FindAsync(createDto.UserId.Value);
                     if (targetUser == null)
                         return new BaseResponseDto<NotificationDto> { Success = false, Message = "Không tìm thấy người nhận" };
 
-                    if (isSenderDeptManager && targetUser.KhoaPhong != sender.KhoaPhong)
+                    if (isSenderDeptManager && targetUser.Department != sender.Department)
                     {
                         return new BaseResponseDto<NotificationDto> { Success = false, Message = "Bạn chỉ có thể gửi thông báo cho nhân viên thuộc khoa của mình" };
                     }
@@ -128,24 +128,24 @@ namespace BanTayVang.API.Services.Impl
                     targetUsers.Add(targetUser);
                 }
                 // Case 2: Send to specific department
-                else if (!string.IsNullOrEmpty(createDto.KhoaPhong))
+                else if (!string.IsNullOrEmpty(createDto.Department))
                 {
-                    if (isSenderDeptManager && createDto.KhoaPhong != sender.KhoaPhong)
+                    if (isSenderDeptManager && createDto.Department != sender.Department)
                     {
                         return new BaseResponseDto<NotificationDto> { Success = false, Message = "Bạn chỉ có thể gửi thông báo cho khoa của mình" };
                     }
 
-                    var query = _context.Taikhoans.Where(u => u.KhoaPhong == createDto.KhoaPhong && u.TrangThai == true);
+                    var query = _context.Users.Where(u => u.Department == createDto.Department && u.Status == true);
 
                     if (isSenderDeptManager)
                     {
                         // Quản lý khoa gửi -> Chỉ thí sinh trong khoa nhận (role 3), admin không nhận.
-                        query = query.Where(u => u.IdVaiTro == 3);
+                        query = query.Where(u => u.RoleId == 3);
                     }
                     else if (isSenderAdmin)
                     {
                         // Admin gửi -> Cả quản lý khoa (role 5) và thí sinh (role 3) đều nhận
-                        query = query.Where(u => u.IdVaiTro == 3 || u.IdVaiTro == 5);
+                        query = query.Where(u => u.RoleId == 3 || u.RoleId == 5);
                     }
 
                     targetUsers = await query.ToListAsync();
@@ -158,7 +158,7 @@ namespace BanTayVang.API.Services.Impl
                         return new BaseResponseDto<NotificationDto> { Success = false, Message = "Chỉ Admin mới có quyền gửi thông báo cho tất cả người dùng" };
                     }
 
-                    targetUsers = await _context.Taikhoans.Where(u => u.TrangThai == true).ToListAsync();
+                    targetUsers = await _context.Users.Where(u => u.Status == true).ToListAsync();
                 }
 
                 if (!targetUsers.Any())
@@ -240,7 +240,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var admin = await _context.Taikhoans.FirstOrDefaultAsync(u => u.IdVaiTro == 1) ?? new Taikhoan { Id = 1 };
+                var admin = await _context.Users.FirstOrDefaultAsync(u => u.RoleId == 1) ?? new User { Id = 1 };
                 var dto = new CreateNotificationDto
                 {
                     Title = title,
@@ -332,21 +332,21 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var now = DateTime.Now;
-                var exams = await _context.Dethis
-                    .Where(d => d.TrangThai == "Active" && d.ThoiGianBatDau != null && d.ThoiGianBatDau > now)
-                    .Include(d => d.DethiCauhois)
-                    .OrderBy(d => d.ThoiGianBatDau)
+                var exams = await _context.ExamPapers
+                    .Where(d => d.Status == "Active" && d.StartTime != null && d.StartTime > now)
+                    .Include(d => d.ExamPaperQuestions)
+                    .OrderBy(d => d.StartTime)
                     .Take(20)
                     .Select(d => new ExamScheduleDto
                     {
                         ExamId = d.Id,
-                        MaDeThi = d.MaDeThi,
-                        TenDeThi = d.TenDeThi,
-                        ThoiGianBatDau = d.ThoiGianBatDau,
-                        ThoiGianLamBai = d.ThoiGianLamBai,
-                        ThoiGianKetThuc = d.ThoiGianBatDau!.Value.AddMinutes(d.ThoiGianLamBai ?? 60),
-                        TrangThai = d.TrangThai,
-                        SoCauHoi = d.DethiCauhois.Count,
+                        ExamPaperCode = d.ExamPaperCode,
+                        ExamPaperName = d.ExamPaperName,
+                        StartTime = d.StartTime,
+                        DurationMinutes = d.DurationMinutes,
+                        EndTime = d.StartTime!.Value.AddMinutes(d.DurationMinutes ?? 60),
+                        Status = d.Status,
+                        TotalQuestions = d.ExamPaperQuestions.Count,
                         IsAvailable = false,
                         AvailabilityMessage = "Chưa đến giờ thi"
                     })
@@ -376,27 +376,27 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var now = DateTime.Now;
-                var allExams = await _context.Dethis
-                    .Where(d => d.TrangThai == "Active" && d.ThoiGianBatDau != null && d.ThoiGianBatDau <= now)
-                    .Include(d => d.DethiCauhois)
-                    .OrderByDescending(d => d.ThoiGianBatDau)
+                var allExams = await _context.ExamPapers
+                    .Where(d => d.Status == "Active" && d.StartTime != null && d.StartTime <= now)
+                    .Include(d => d.ExamPaperQuestions)
+                    .OrderByDescending(d => d.StartTime)
                     .Take(50)
                     .ToListAsync();
 
                 var result = allExams.Select(d =>
                 {
-                    var endTime = d.ThoiGianBatDau!.Value.AddMinutes(d.ThoiGianLamBai ?? 60);
+                    var endTime = d.StartTime!.Value.AddMinutes(d.DurationMinutes ?? 60);
                     var isAvailable = now <= endTime;
                     return new ExamScheduleDto
                     {
                         ExamId = d.Id,
-                        MaDeThi = d.MaDeThi,
-                        TenDeThi = d.TenDeThi,
-                        ThoiGianBatDau = d.ThoiGianBatDau,
-                        ThoiGianLamBai = d.ThoiGianLamBai,
-                        ThoiGianKetThuc = endTime,
-                        TrangThai = d.TrangThai,
-                        SoCauHoi = d.DethiCauhois.Count,
+                        ExamPaperCode = d.ExamPaperCode,
+                        ExamPaperName = d.ExamPaperName,
+                        StartTime = d.StartTime,
+                        DurationMinutes = d.DurationMinutes,
+                        EndTime = endTime,
+                        Status = d.Status,
+                        TotalQuestions = d.ExamPaperQuestions.Count,
                         IsAvailable = isAvailable,
                         AvailabilityMessage = isAvailable ? "Đang diễn ra" : "Đã kết thúc"
                     };

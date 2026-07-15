@@ -5,7 +5,7 @@ import type { ExamResultDetailDto } from '../types'
 import { formatDate } from '@/lib/utils'
 import { MAX_CHEATING_WARNINGS } from '@/lib/constants'
 
-type SortField = 'soCauDung' | 'durationMinutes' | 'soCanhBao'
+type SortField = 'correctAnswers' | 'durationMinutes' | 'soCanhBao'
 type SortDir = 'asc' | 'desc'
 
 interface ExamResultsTableProps {
@@ -21,7 +21,7 @@ export function ExamResultsTable({
   onViewDetail,
   onRegrade,
 }: ExamResultsTableProps) {
-  const [sortField, setSortField] = useState<SortField>('soCauDung')
+  const [sortField, setSortField] = useState<SortField>('correctAnswers')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [search, setSearch] = useState('')
   const [selectedBaiThiIdByUser, setSelectedBaiThiIdByUser] = useState<Record<string, number>>({})
@@ -81,7 +81,7 @@ export function ExamResultsTable({
           c.selectedAttempt.fullName?.toLowerCase().includes(s) ||
           c.selectedAttempt.username?.toLowerCase().includes(s) ||
           c.selectedAttempt.maNhanVien?.toLowerCase().includes(s) ||
-          c.selectedAttempt.khoaPhong?.toLowerCase().includes(s)
+          c.selectedAttempt.department?.toLowerCase().includes(s)
       )
     }
     data.sort((a, b) => {
@@ -138,9 +138,9 @@ export function ExamResultsTable({
               <th className="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell whitespace-nowrap">Khoa/Phòng</th>
               <th
                 className="px-4 py-3 text-center font-medium text-gray-600 cursor-pointer hover:text-primary whitespace-nowrap select-none"
-                onClick={() => handleSort('soCauDung')}
+                onClick={() => handleSort('correctAnswers')}
               >
-                Số câu đúng <SortIcon field="soCauDung" />
+                Số câu đúng <SortIcon field="correctAnswers" />
               </th>
               <th
                 className="px-4 py-3 text-center font-medium text-gray-600 cursor-pointer hover:text-primary hidden lg:table-cell whitespace-nowrap select-none"
@@ -176,9 +176,9 @@ export function ExamResultsTable({
                   <td className="px-4 py-3 text-gray-600 text-sm">
                     {r.maNhanVien || '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs hidden md:table-cell">{r.khoaPhong || '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs hidden md:table-cell">{r.department || '—'}</td>
                   <td className="px-4 py-3 text-center">
-                    <span className="text-lg font-bold text-primary">{r.soCauDung ?? 0}</span>
+                    <span className="text-lg font-bold text-primary">{r.correctAnswers ?? 0}</span>
                     <span className="text-gray-400 text-sm">/{r.tongSoCau ?? 0}</span>
                   </td>
                   <td className="px-4 py-3 text-center text-gray-500 text-xs hidden lg:table-cell whitespace-nowrap">
@@ -260,14 +260,14 @@ export function ExamResultsTable({
                     {(() => {
                       const fraudFail = (r.soCanhBao ?? 0) >= MAX_CHEATING_WARNINGS
                       const minCorrect = r.soCauDungToiThieu ?? null
-                      const scoreFail = minCorrect !== null && (r.soCauDung ?? 0) < minCorrect
+                      const scoreFail = minCorrect !== null && (r.correctAnswers ?? 0) < minCorrect
                       const passed = !fraudFail && !scoreFail
                       return passed ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
                           ✓ Đạt
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600 border border-red-200" title={fraudFail ? `Gian lận ${r.soCanhBao}/${MAX_CHEATING_WARNINGS} lần` : `Câu đúng ${r.soCauDung ?? 0}/${minCorrect} (tối thiểu)`}>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600 border border-red-200" title={fraudFail ? `Gian lận ${r.soCanhBao}/${MAX_CHEATING_WARNINGS} lần` : `Câu đúng ${r.correctAnswers ?? 0}/${minCorrect} (tối thiểu)`}>
                           ✗ Không đạt
                         </span>
                       )
@@ -275,7 +275,7 @@ export function ExamResultsTable({
                   </td>
 
                   <td className="px-4 py-3 text-right text-xs text-gray-400 hidden xl:table-cell whitespace-nowrap">
-                    {r.thoiGianNop ? formatDate(r.thoiGianNop) : '—'}
+                    {r.submitTime ? formatDate(r.submitTime) : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-0.5">

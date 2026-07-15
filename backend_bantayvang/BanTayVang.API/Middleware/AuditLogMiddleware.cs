@@ -38,7 +38,7 @@ namespace BanTayVang.API.Middleware
                 // Extract user info from JWT claims
                 var userId = GetUserId(context);
                 var username = GetUsername(context);
-                var khoaPhong = context.User?.FindFirst("khoa_phong")?.Value;
+                var department = context.User?.FindFirst("khoa_phong")?.Value;
 
                 var ipAddress = GetClientIp(context);
                 var userAgent = context.Request.Headers.UserAgent.ToString();
@@ -46,7 +46,7 @@ namespace BanTayVang.API.Middleware
                 var method = context.Request.Method;
                 var statusCode = context.Response.StatusCode;
 
-                // ActionType: short label e.g. "POST /api/Cauhoi"
+                // ActionType: short label e.g. "POST /api/Question"
                 var actionType = $"{method} {path}";
                 if (actionType.Length > 100) actionType = actionType.Substring(0, 100);
 
@@ -63,7 +63,7 @@ namespace BanTayVang.API.Middleware
                     method: method,
                     path: path,
                     statusCode: statusCode,
-                    khoaPhong: khoaPhong);
+                    department: department);
             }
             catch (Exception ex)
             {

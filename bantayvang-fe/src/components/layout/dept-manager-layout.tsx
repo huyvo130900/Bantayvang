@@ -25,8 +25,8 @@ export function DeptManagerLayout() {
   const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
 
-  const displayName = user?.hoTen || user?.fullName || user?.tenDangNhap || user?.username || ''
-  const khoaPhong = user?.khoaPhong || ''
+  const displayName = user?.fullName || user?.fullName || user?.username || user?.username || ''
+  const department = user?.department || ''
 
   const handleLogout = async () => {
     await dispatch(logout())
@@ -78,11 +78,11 @@ export function DeptManagerLayout() {
         </div>
 
         {/* Khoa info */}
-        {!collapsed && khoaPhong && (
+        {!collapsed && department && (
           <div className="px-4 py-3 border-b border-white/10 bg-white/5">
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4 text-white/90 shrink-0" />
-              <span className="text-sm text-white font-medium truncate">{khoaPhong}</span>
+              <span className="text-sm text-white font-medium truncate">{department}</span>
             </div>
           </div>
         )}
@@ -149,7 +149,7 @@ export function DeptManagerLayout() {
               alt="Logo"
               className="h-8 w-8 object-contain shrink-0"
             />
-            <span className="text-xs font-bold text-gray-800 truncate">{khoaPhong || 'Quản lý Khoa'}</span>
+            <span className="text-xs font-bold text-gray-800 truncate">{department || 'Quản lý Khoa'}</span>
           </div>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-600 hover:text-red-600 gap-1 h-8 px-2">
             <LogOut className="h-4 w-4" />

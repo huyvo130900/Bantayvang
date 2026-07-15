@@ -1,8 +1,8 @@
 import apiClient from '@/lib/axios'
 import type { ApiResponse } from '@/types'
 import type {
-  DethiDto,
-  CreateDethiDto,
+  ExamPaperDto,
+  CreateExamPaperDto,
   ExamAssignmentDto,
   CreateExamAssignmentDto,
   ExtendExamTimeDto,
@@ -12,13 +12,13 @@ import type {
 export const examsApi = {
   // Lấy đề thi Active (dùng cho trang học sinh)
   getActive: () =>
-    apiClient.get<ApiResponse<DethiDto[]>>('/exam/active'),
+    apiClient.get<ApiResponse<ExamPaperDto[]>>('/exam/active'),
 
-  getByCode: (maDeThi: string) =>
-    apiClient.get<ApiResponse<DethiDto>>(`/exam/code/${maDeThi}`),
+  getByCode: (examPaperCode: string) =>
+    apiClient.get<ApiResponse<ExamPaperDto>>(`/exam/code/${examPaperCode}`),
 
-  create: (data: CreateDethiDto) =>
-    apiClient.post<ApiResponse<DethiDto>>('/exam', data),
+  create: (data: CreateExamPaperDto) =>
+    apiClient.post<ApiResponse<ExamPaperDto>>('/exam', data),
 
   // Assignments
   getAssignmentsByExam: (examId: number) =>
@@ -46,14 +46,14 @@ export const examsApi = {
 
 export const examsApiExtended = {
   // Lấy TẤT CẢ đề thi (dùng cho trang admin)
-  getAll: (trangThai?: string) => {
-    const q = trangThai ? `?trangThai=${trangThai}` : ''
-    return apiClient.get<ApiResponse<DethiDto[]>>(`/exam${q}`)
+  getAll: (status?: string) => {
+    const q = status ? `?status=${status}` : ''
+    return apiClient.get<ApiResponse<ExamPaperDto[]>>(`/exam${q}`)
   },
   delete: (id: number) =>
     apiClient.delete<ApiResponse>(`/exam/${id}`),
-  updateStatus: (id: number, trangThai: string) =>
-    apiClient.put<ApiResponse>(`/exam/${id}/status`, { trangThai }),
+  updateStatus: (id: number, status: string) =>
+    apiClient.put<ApiResponse>(`/exam/${id}/status`, { status }),
   // Preview exam with all questions and answers
   preview: (id: number) =>
     apiClient.get<ApiResponse<ExamPreviewDtoFE>>(`/Exam/${id}/preview`),

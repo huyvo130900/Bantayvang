@@ -9,9 +9,9 @@ namespace BanTayVang.API.DTOs.Category
     public class LoaicauhoiDto
     {
         public int Id { get; set; }
-        public string? TenLoai { get; set; }
-        public string? MoTa { get; set; }
-        public int SoCauHoi { get; set; }
+        public string? CategoryName { get; set; }
+        public string? Description { get; set; }
+        public int TotalQuestions { get; set; }
     }
 
     /// <summary>
@@ -21,9 +21,9 @@ namespace BanTayVang.API.DTOs.Category
     {
         [Required(ErrorMessage = "Tên loại câu hỏi không được để trống")]
         [StringLength(100, ErrorMessage = "Tên loại tối đa 100 ký tự")]
-        public string TenLoai { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
 
         [StringLength(255, ErrorMessage = "Mô tả tối đa 255 ký tự")]
-        public string? MoTa { get; set; }
+        public string? Description { get; set; }
     }
 }

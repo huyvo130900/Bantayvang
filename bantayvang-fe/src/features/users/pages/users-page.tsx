@@ -18,7 +18,7 @@ export function UsersPage() {
   const currentUser = useAppSelector((state) => state.auth.user)
 
   const isDeptManager = currentUser?.role === 'DeptManager' || currentUser?.tenVaiTro === 'DeptManager'
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || null
+  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
 
   const [formOpen, setFormOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -31,7 +31,7 @@ export function UsersPage() {
 
   useEffect(() => {
     if (isDeptManager && myKhoa) {
-      dispatch(setFilter({ khoaPhong: myKhoa, idVaiTro: 3, pageNumber: 1 }))
+      dispatch(setFilter({ department: myKhoa, roleId: 3, pageNumber: 1 }))
     }
   }, [isDeptManager, myKhoa, dispatch])
 
@@ -45,7 +45,7 @@ export function UsersPage() {
   const handleFilterChange = useCallback(
     (changes: Partial<UserFilterDto>) => {
       if (isDeptManager && myKhoa) {
-        changes = { ...changes, khoaPhong: myKhoa, idVaiTro: 3 }
+        changes = { ...changes, department: myKhoa, roleId: 3 }
       }
       dispatch(setFilter({ ...changes, pageNumber: 1 }))
     },
@@ -74,8 +74,8 @@ export function UsersPage() {
       } as any
 
       if (isDeptManager && myKhoa) {
-        sanitizedData.idVaiTro = 3
-        sanitizedData.khoaPhong = myKhoa
+        sanitizedData.roleId = 3
+        sanitizedData.department = myKhoa
       }
 
       if (editingUser) {
@@ -96,7 +96,7 @@ export function UsersPage() {
   }
 
   const handleDelete = async (user: UserDto) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa tài khoản "${user.hoTen || user.tenDangNhap}" không?\nTài khoản sẽ được đưa vào Thùng rác và có thể khôi phục lại sau.`)) {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa tài khoản "${user.fullName || user.username}" không?\nTài khoản sẽ được đưa vào Thùng rác và có thể khôi phục lại sau.`)) {
       return
     }
     
@@ -114,7 +114,7 @@ export function UsersPage() {
   }
 
   const handleRestore = async (user: UserDto) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn khôi phục tài khoản "${user.hoTen || user.tenDangNhap}" không?`)) {
+    if (!window.confirm(`Bạn có chắc chắn muốn khôi phục tài khoản "${user.fullName || user.username}" không?`)) {
       return
     }
     
@@ -132,7 +132,7 @@ export function UsersPage() {
   }
 
   const handleHardDelete = async (user: UserDto) => {
-    if (!window.confirm(`XÓA VĨNH VIỄN: Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản "${user.hoTen || user.tenDangNhap}" không?\nToàn bộ bài thi, điểm số và dữ liệu liên quan sẽ bị xóa sạch và KHÔNG THỂ HOÀN TÁC.`)) {
+    if (!window.confirm(`XÓA VĨNH VIỄN: Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản "${user.fullName || user.username}" không?\nToàn bộ bài thi, điểm số và dữ liệu liên quan sẽ bị xóa sạch và KHÔNG THỂ HOÀN TÁC.`)) {
       return
     }
     
@@ -177,11 +177,11 @@ export function UsersPage() {
   }
 
   const handleToggleStatus = async (user: UserDto) => {
-    const activate = !user.trangThai
+    const activate = !user.status
     if (!window.confirm(
       activate
-        ? `Kích hoạt tài khoản "${user.hoTen || user.tenDangNhap}"?`
-        : `Vô hiệu hóa tài khoản "${user.hoTen || user.tenDangNhap}"?`
+        ? `Kích hoạt tài khoản "${user.fullName || user.username}"?`
+        : `Vô hiệu hóa tài khoản "${user.fullName || user.username}"?`
     )) return
     try {
       await dispatch(toggleUserStatus({ id: user.id, activate })).unwrap()

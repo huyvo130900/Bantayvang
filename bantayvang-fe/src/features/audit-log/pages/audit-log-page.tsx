@@ -83,7 +83,7 @@ export function AuditLogPage() {
       l.method || l.action || '',
       l.path || '',
       l.statusCode || '',
-      l.khoaPhong || '',
+      l.department || '',
       l.ipAddress || '',
       l.description || '',
     ])
@@ -212,7 +212,7 @@ export function AuditLogPage() {
                       <td colSpan={8} className="px-6 py-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                           <div><span className="text-gray-500">Action Type:</span> <span className="font-medium">{log.actionType || log.action || '—'}</span></div>
-                          <div><span className="text-gray-500">Khoa/Phòng:</span> <span className="font-medium">{log.khoaPhong || '—'}</span></div>
+                          <div><span className="text-gray-500">Khoa/Phòng:</span> <span className="font-medium">{log.department || '—'}</span></div>
                           <div><span className="text-gray-500">User ID:</span> <span className="font-medium">{log.userId || '—'}</span></div>
                           <div className="col-span-2 md:col-span-3">
                             <span className="text-gray-500">Chi tiết:</span>

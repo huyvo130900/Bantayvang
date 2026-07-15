@@ -89,15 +89,15 @@ namespace BanTayVang.API.Tests
             Assert.True(data.GetProperty("success").GetBoolean());
             Assert.Equal(3, data.GetProperty("created").GetInt32());
 
-            var dbDepts = await _context.KhoaPhongs.ToListAsync();
+            var dbDepts = await _context.Departments.ToListAsync();
             Assert.Equal(3, dbDepts.Count);
 
             // Verify generated MaKhoa (clean, uppercase, underscore, max 50 chars)
-            var bgd = dbDepts.FirstOrDefault(d => d.TenKhoa == "BAN GIÁM ĐỐC");
+            var bgd = dbDepts.FirstOrDefault(d => d.DepartmentName == "BAN GIÁM ĐỐC");
             Assert.NotNull(bgd);
             Assert.Equal("BAN_GIAM_DOC", bgd.MaKhoa);
 
-            var tccb = dbDepts.FirstOrDefault(d => d.TenKhoa == "Phòng Tổ chức cán bộ");
+            var tccb = dbDepts.FirstOrDefault(d => d.DepartmentName == "Phòng Tổ chức cán bộ");
             Assert.NotNull(tccb);
             Assert.Equal("PHONG_TO_CHUC_CAN_BO", tccb.MaKhoa);
         }
@@ -124,10 +124,10 @@ namespace BanTayVang.API.Tests
             Assert.True(data.GetProperty("success").GetBoolean());
             Assert.Equal(2, data.GetProperty("created").GetInt32());
 
-            var dbDepts = await _context.KhoaPhongs.ToListAsync();
+            var dbDepts = await _context.Departments.ToListAsync();
             Assert.Equal(2, dbDepts.Count);
 
-            var cc = dbDepts.FirstOrDefault(d => d.TenKhoa == "Khoa Cấp cứu");
+            var cc = dbDepts.FirstOrDefault(d => d.DepartmentName == "Khoa Cấp cứu");
             Assert.NotNull(cc);
             Assert.Equal("KHOA_CAP_CUU", cc.MaKhoa);
         }
@@ -154,14 +154,14 @@ namespace BanTayVang.API.Tests
             Assert.True(data.GetProperty("success").GetBoolean());
             Assert.Equal(2, data.GetProperty("created").GetInt32());
 
-            var dbDepts = await _context.KhoaPhongs.ToListAsync();
+            var dbDepts = await _context.Departments.ToListAsync();
             Assert.Equal(2, dbDepts.Count);
 
             var kn = dbDepts.FirstOrDefault(d => d.MaKhoa == "KHOA_NOI");
             Assert.NotNull(kn);
-            Assert.Equal("Khoa Nội", kn.TenKhoa);
-            Assert.True(kn.TrangThai);
-            Assert.Equal("Khoa nội tổng quát", kn.MoTa);
+            Assert.Equal("Khoa Nội", kn.DepartmentName);
+            Assert.True(kn.Status);
+            Assert.Equal("Khoa nội tổng quát", kn.Description);
         }
 
         [Fact]
@@ -169,7 +169,7 @@ namespace BanTayVang.API.Tests
         {
             // Arrange
             // Seed a department first
-            _context.KhoaPhongs.Add(new KhoaPhong { MaKhoa = "BAN_GIAM_DOC", TenKhoa = "BAN GIÁM ĐỐC", NgayTao = DateTime.Now });
+            _context.Departments.Add(new Department { MaKhoa = "BAN_GIAM_DOC", DepartmentName = "BAN GIÁM ĐỐC", CreatedAt = DateTime.Now });
             await _context.SaveChangesAsync();
 
             var headers = new[] { "Khoa/ phòng" };
@@ -191,7 +191,7 @@ namespace BanTayVang.API.Tests
             Assert.Equal(1, data.GetProperty("created").GetInt32()); // Only Khoa Cấp cứu created
             Assert.Equal(1, data.GetProperty("skipped").GetInt32()); // BAN GIÁM ĐỐC skipped
 
-            var dbDepts = await _context.KhoaPhongs.ToListAsync();
+            var dbDepts = await _context.Departments.ToListAsync();
             Assert.Equal(2, dbDepts.Count); // 1 pre-existing + 1 imported
         }
 
@@ -238,18 +238,18 @@ namespace BanTayVang.API.Tests
             Assert.True(data.GetProperty("success").GetBoolean());
             Assert.Equal(2, data.GetProperty("created").GetInt32());
 
-            var dbDepts = await _context.KhoaPhongs.ToListAsync();
+            var dbDepts = await _context.Departments.ToListAsync();
             Assert.Equal(2, dbDepts.Count);
 
             var tm = dbDepts.FirstOrDefault(d => d.MaKhoa == "KHOA_TIM_MACH");
             Assert.NotNull(tm);
-            Assert.Equal("Khoa Tim Mạch", tm.TenKhoa);
-            Assert.True(tm.TrangThai);
+            Assert.Equal("Khoa Tim Mạch", tm.DepartmentName);
+            Assert.True(tm.Status);
 
             var tk = dbDepts.FirstOrDefault(d => d.MaKhoa == "KHOA_THAN_KINH");
             Assert.NotNull(tk);
-            Assert.Equal("Khoa Thần Kinh", tk.TenKhoa);
-            Assert.False(tk.TrangThai);
+            Assert.Equal("Khoa Thần Kinh", tk.DepartmentName);
+            Assert.False(tk.Status);
         }
 
         public void Dispose()

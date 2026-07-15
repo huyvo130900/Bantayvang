@@ -5,7 +5,7 @@ import { examsApi, examsApiExtended } from '../api'
 import { ExamTable } from '../components/exam-table'
 import { ExamFormDialog } from '../components/exam-form-dialog'
 import { AssignUsersDialog } from '../components/assign-users-dialog'
-import type { DethiDto } from '../types'
+import type { ExamPaperDto } from '../types'
 import type { CreateExamFormData } from '../schemas'
 import { Button } from '@/components/ui/button'
 import { Plus, Search, RefreshCw, Building2 } from 'lucide-react'
@@ -22,14 +22,14 @@ export function ExamsPage() {
 
   const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.tenVaiTro === 'DeptManager'
   const isAdmin = !isDeptManager
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || null
+  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
 
   const [formOpen, setFormOpen] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
-  const [statsExam, setStatsExam] = useState<DethiDto | null>(null)
-  const [selectedExam, setSelectedExam] = useState<DethiDto | null>(null)
+  const [statsExam, setStatsExam] = useState<ExamPaperDto | null>(null)
+  const [selectedExam, setSelectedExam] = useState<ExamPaperDto | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [previewExam, setPreviewExam] = useState<DethiDto | null>(null)
+  const [previewExam, setPreviewExam] = useState<ExamPaperDto | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   // Admin: filter theo khoa (null = tất cả)
@@ -54,7 +54,7 @@ export function ExamsPage() {
         if (res.data.success && res.data.data) {
           const list = res.data.data.map(k => ({
             id: k.id,
-            tenKyThiText: k.tenKyThi || ''
+            tenKyThiText: k.campaignName || ''
           }))
           setKyThiList(list)
         }
@@ -69,12 +69,12 @@ export function ExamsPage() {
     setSubmitting(true)
     try {
       const createDto = {
-        maDeThi: data.maDeThi,
-        tenDeThi: data.tenDeThi,
-        thoiGianLamBai: data.thoiGianLamBai ?? 60,
+        examPaperCode: data.examPaperCode,
+        examPaperName: data.examPaperName,
+        durationMinutes: data.durationMinutes ?? 60,
         thoiGianBatDau: data.thoiGianBatDau ? data.thoiGianBatDau : undefined,
-        trangThai: data.trangThai,
-        khoaPhong: isDeptManager && myKhoa ? myKhoa : data.khoaPhong,
+        status: data.status,
+        department: isDeptManager && myKhoa ? myKhoa : data.department,
         soCauRandom: data.soCauRandom,
         danhSachIdCauHoi: data.danhSachIdCauHoi ?? [],
         kyThiId: data.kyThiId,
@@ -100,33 +100,33 @@ export function ExamsPage() {
     }
   }
 
-  const handleToggleStatus = async (exam: DethiDto) => {
-    const isActive = exam.trangThai === 'Active'
+  const handleToggleStatus = async (exam: ExamPaperDto) => {
+    const isActive = exam.status === 'Active'
     const newStatus = isActive ? 'Inactive' : 'Active'
     const label = isActive ? 'Tắt' : 'Bật'
-    if (!window.confirm(`${label} đề thi "${exam.tenDeThi}"?`)) return
+    if (!window.confirm(`${label} đề thi "${exam.examPaperName}"?`)) return
     try {
       await examsApiExtended.updateStatus(exam.id, newStatus)
       dispatch(fetchAllExams())
-      showToast(`Đã ${label.toLowerCase()} đề thi "${exam.tenDeThi}"`)
+      showToast(`Đã ${label.toLowerCase()} đề thi "${exam.examPaperName}"`)
     } catch {
       showToast('Không thể thay đổi trạng thái đề thi', false)
     }
   }
 
-  const handleToggleCongBo = async (exam: DethiDto) => {
-    const newVal = !exam.congBoKetQua
+  const handleToggleCongBo = async (exam: ExamPaperDto) => {
+    const newVal = !exam.isResultPublished
     try {
-      await departmentApi.toggleExamVisibility(exam.id, { congBoKetQua: newVal })
+      await departmentApi.toggleExamVisibility(exam.id, { isResultPublished: newVal })
       dispatch(fetchAllExams())
-      showToast(newVal ? `Đã bật công bố điểm cho "${exam.tenDeThi}"` : `Đã tắt công bố điểm cho "${exam.tenDeThi}"`)
+      showToast(newVal ? `Đã bật công bố điểm cho "${exam.examPaperName}"` : `Đã tắt công bố điểm cho "${exam.examPaperName}"`)
     } catch {
       showToast('Không thể cập nhật trạng thái công bố', false)
     }
   }
 
-  const handleDelete = async (exam: DethiDto) => {
-    if (!window.confirm(`Xóa đề thi "${exam.tenDeThi}"? Hành động này không thể hoàn tác.`)) return
+  const handleDelete = async (exam: ExamPaperDto) => {
+    if (!window.confirm(`Xóa đề thi "${exam.examPaperName}"? Hành động này không thể hoàn tác.`)) return
     try {
       await examsApiExtended.delete(exam.id)
       dispatch(fetchAllExams())
@@ -136,7 +136,7 @@ export function ExamsPage() {
     }
   }
 
-  const handleViewAssignments = (exam: DethiDto) => {
+  const handleViewAssignments = (exam: ExamPaperDto) => {
     setSelectedExam(exam)
     setAssignOpen(true)
   }
@@ -160,34 +160,34 @@ export function ExamsPage() {
 
   // Lấy danh sách khoa duy nhất từ dữ liệu thực tế
   const khoaList = Array.from(
-    new Set(exams.map((e) => e.khoaPhong).filter(Boolean) as string[])
+    new Set(exams.map((e) => e.department).filter(Boolean) as string[])
   ).sort()
   // Có đề thi chưa gán khoa không?
-  const hasUnassigned = exams.some(e => !e.khoaPhong)
+  const hasUnassigned = exams.some(e => !e.department)
 
   // Scope đề thi theo role
   const scopedExams = isDeptManager && myKhoa
-    ? exams.filter((e) => e.khoaPhong === myKhoa)
+    ? exams.filter((e) => e.department === myKhoa)
     : exams
 
   // Filter theo khoa (chỉ admin dùng)
   const khoaFilteredExams = isAdmin && khoaFilter
     ? khoaFilter === '__unassigned__'
-      ? scopedExams.filter((e) => !e.khoaPhong)
-      : scopedExams.filter((e) => e.khoaPhong === khoaFilter)
+      ? scopedExams.filter((e) => !e.department)
+      : scopedExams.filter((e) => e.department === khoaFilter)
     : scopedExams
 
   // Filter theo tên/mã + trạng thái
   const filtered = khoaFilteredExams.filter((e) => {
     const matchSearch =
       !search ||
-      e.tenDeThi?.toLowerCase().includes(search.toLowerCase()) ||
-      e.maDeThi?.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = statusFilter === 'all' || e.trangThai === statusFilter
+      e.examPaperName?.toLowerCase().includes(search.toLowerCase()) ||
+      e.examPaperCode?.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = statusFilter === 'all' || e.status === statusFilter
     return matchSearch && matchStatus
   })
 
-  const countByStatus = (s: string) => khoaFilteredExams.filter((e) => e.trangThai === s).length
+  const countByStatus = (s: string) => khoaFilteredExams.filter((e) => e.status === s).length
 
   if (statsExam) {
     return (
@@ -200,7 +200,7 @@ export function ExamsPage() {
             ← Quay lại danh sách
           </button>
           <span className="text-gray-300">|</span>
-          <h1 className="text-xl font-bold text-gray-900">Kết quả: {statsExam.tenDeThi}</h1>
+          <h1 className="text-xl font-bold text-gray-900">Kết quả: {statsExam.examPaperName}</h1>
         </div>
         <GradingPage preselectedExamId={statsExam.id} />
       </div>
@@ -258,7 +258,7 @@ export function ExamsPage() {
             Tất cả ({scopedExams.length})
           </button>
           {khoaList.map((khoa) => {
-            const count = scopedExams.filter((e) => e.khoaPhong === khoa).length
+            const count = scopedExams.filter((e) => e.department === khoa).length
             return (
               <button
                 key={khoa}
@@ -282,7 +282,7 @@ export function ExamsPage() {
                   : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400 hover:text-gray-600'
               }`}
             >
-              Chưa gán khoa ({scopedExams.filter(e => !e.khoaPhong).length})
+              Chưa gán khoa ({scopedExams.filter(e => !e.department).length})
             </button>
           )}
         </div>

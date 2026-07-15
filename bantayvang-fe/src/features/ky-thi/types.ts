@@ -1,21 +1,22 @@
-export interface KyThiDto {
+export interface ExamCampaignDto {
   id: number
-  maKyThi: string | null
-  tenKyThi: string | null
+  campaignCode: string | null
+  campaignName: string | null
   moTa: string | null
   khoaPhongId: number | null
-  tenKhoa: string | null
-  trangThai: string | null
+  departmentName: string | null
+  status: string | null
   thoiGianBatDau: string | null
   thoiGianKetThuc: string | null
   donViToChuc: string | null
-  ngayTao: string
+  createdAt: string
   soLuongDeThi: number
   tongThiSinh: number
   danhSachMaDeThi: string[]
-  maDeThi: string | null
+  examPaperCode: string | null
   soCauDungToiThieu?: number | null
   tongSoCauHoi?: number | null
+  durationMinutes?: number | null
 }
 
 export interface ExamGenerationConfig {
@@ -26,7 +27,7 @@ export interface ExamGenerationConfig {
   soCauEasy: number
   soCauMedium: number
   soCauHard: number
-  khoaPhong?: string
+  department?: string
 }
 
 export interface ExamCheckResult {
@@ -35,8 +36,8 @@ export interface ExamCheckResult {
 }
 
 export interface CreateKyThiDto {
-  maKyThi: string
-  tenKyThi: string
+  campaignCode: string
+  campaignName: string
   moTa?: string
   khoaPhongId?: number | null
   thoiGianBatDau?: string | null
@@ -44,8 +45,9 @@ export interface CreateKyThiDto {
   donViToChuc?: string
   soCauDungToiThieu?: number | null
   tongSoCauHoi?: number | null
+  durationMinutes?: number | null
 }
 
 export interface UpdateKyThiDto extends CreateKyThiDto {
-  trangThai: string
+  status: string
 }

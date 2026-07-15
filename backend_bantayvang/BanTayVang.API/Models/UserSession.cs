@@ -7,7 +7,6 @@ namespace BanTayVang.API.Models
     /// User session tracking for security monitoring
     /// OWASP A09: Security Logging and Monitoring
     /// </summary>
-    [Table("PHIEN_NGUOIDUNG")]
     public class UserSession
     {
         [Key]
@@ -70,7 +69,7 @@ namespace BanTayVang.API.Models
         /// Navigation property to user
         /// </summary>
         [ForeignKey("UserId")]
-        public virtual Taikhoan? User { get; set; }
+        public virtual User? User { get; set; }
 
         /// <summary>
         /// Check if session is valid and not expired

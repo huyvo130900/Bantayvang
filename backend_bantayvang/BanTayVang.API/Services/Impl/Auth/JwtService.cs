@@ -40,7 +40,7 @@ namespace BanTayVang.API.Services.Impl.Auth
             };
         }
 
-        public string GenerateAccessToken(Taikhoan user, bool rememberMe = false)
+        public string GenerateAccessToken(User user, bool rememberMe = false)
         {
             try
             {
@@ -58,18 +58,18 @@ namespace BanTayVang.API.Services.Impl.Auth
                 var claims = new List<Claim>
                 {
                     new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new(ClaimTypes.Name, user.TenDangNhap ?? string.Empty),
+                    new(ClaimTypes.Name, user.Username ?? string.Empty),
                     new(ClaimTypes.Email, string.Empty),
-                    new(ClaimTypes.GivenName, user.HoTen ?? string.Empty),
-                    new(ClaimTypes.Role, GetUserRole(user.IdVaiTro).ToString()),
+                    new(ClaimTypes.GivenName, user.FullName ?? string.Empty),
+                    new(ClaimTypes.Role, GetUserRole(user.RoleId).ToString()),
                     new("user_id", user.Id.ToString()),
-                    new("username", user.TenDangNhap ?? string.Empty),
-                    new("full_name", user.HoTen ?? string.Empty),
-                    new("role_id", user.IdVaiTro?.ToString() ?? "0"),
-                    new("is_active", user.TrangThai?.ToString() ?? "false"),
+                    new("username", user.Username ?? string.Empty),
+                    new("full_name", user.FullName ?? string.Empty),
+                    new("role_id", user.RoleId?.ToString() ?? "0"),
+                    new("is_active", user.Status?.ToString() ?? "false"),
                     new("remember_me", rememberMe.ToString().ToLower()),
-                    new("khoa_phong", user.KhoaPhong ?? string.Empty),
-                    new("id_khoa_quan_ly", user.IdKhoaQuanLy?.ToString() ?? ""),
+                    new("khoa_phong", user.Department ?? string.Empty),
+                    new("id_khoa_quan_ly", user.DeptManagerDeptId?.ToString() ?? ""),
                     new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                     new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
                 };
@@ -207,7 +207,7 @@ namespace BanTayVang.API.Services.Impl.Auth
             }
         }
 
-        public string GeneratePasswordResetToken(Taikhoan user)
+        public string GeneratePasswordResetToken(User user)
         {
             try
             {
@@ -276,20 +276,20 @@ namespace BanTayVang.API.Services.Impl.Auth
 
         #region Private Helper Methods
 
-        private static UserRole GetUserRole(int? roleId)
+        private static BanTayVang.API.Models.Enums.UserRole GetUserRole(int? roleId)
         {
             return roleId switch
             {
-                1 => UserRole.Admin,
+                1 => BanTayVang.API.Models.Enums.UserRole.Admin,
 #pragma warning disable CS0618
-                2 => UserRole.Teacher,    // Obsolete
+                2 => BanTayVang.API.Models.Enums.UserRole.Teacher,    // Obsolete
 #pragma warning restore CS0618
-                3 => UserRole.Student,
+                3 => BanTayVang.API.Models.Enums.UserRole.Student,
 #pragma warning disable CS0618
-                4 => UserRole.Supervisor, // Obsolete
+                4 => BanTayVang.API.Models.Enums.UserRole.Supervisor, // Obsolete
 #pragma warning restore CS0618
-                5 => UserRole.DeptManager,
-                _ => UserRole.Student
+                5 => BanTayVang.API.Models.Enums.UserRole.DeptManager,
+                _ => BanTayVang.API.Models.Enums.UserRole.Student
             };
         }
 

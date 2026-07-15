@@ -20,7 +20,7 @@ export function QuestionDisplay({
   onToggleChoiceMultiple,
   onEssayChange,
 }: QuestionDisplayProps) {
-  const hasChoices = question.danhSachLuaChon.length > 0
+  const hasChoices = question.options.length > 0
 
   return (
     <div className="bg-white rounded-lg border p-6">
@@ -31,16 +31,16 @@ export function QuestionDisplay({
         </span>
         <div className="flex-1">
           <p className="text-base font-medium text-gray-900 whitespace-pre-wrap">
-            {question.noiDung}
+            {question.content}
           </p>
         </div>
       </div>
 
       {/* Image if exists */}
-      {question.hinhAnh && (
+      {question.imageUrl && (
         <div className="mb-4">
           <img
-            src={question.hinhAnh}
+            src={question.imageUrl}
             alt="Hình ảnh câu hỏi"
             className="max-w-full max-h-64 rounded-lg border"
           />
@@ -50,7 +50,7 @@ export function QuestionDisplay({
       {/* Choices */}
       {hasChoices && (
         <div className="space-y-2">
-          {question.danhSachLuaChon.map((choice) => {
+          {question.options.map((choice) => {
             const isSelected = question.choPhepChonNhieu
               ? selectedChoiceIds.includes(choice.id)
               : selectedChoiceId === choice.id
@@ -81,7 +81,7 @@ export function QuestionDisplay({
                     question.choPhepChonNhieu ? 'rounded border-gray-300' : ''
                   )}
                 />
-                <span className="text-sm text-gray-700">{choice.noiDung}</span>
+                <span className="text-sm text-gray-700">{choice.content}</span>
               </label>
             )
           })}

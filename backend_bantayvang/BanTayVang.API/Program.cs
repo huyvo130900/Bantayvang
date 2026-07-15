@@ -190,27 +190,27 @@ builder.Services.AddDbContext<BanTayVangDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // JWT Authentication Repositories
-builder.Services.AddScoped<ITaikhoanRepository, TaikhoanRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IUserSessionRepository, UserSessionRepository>();
 
 // Core Repositories
-builder.Services.AddScoped<ICauhoiRepository, CauhoiRepository>();
-builder.Services.AddScoped<ILuachonRepository, LuachonRepository>();
-builder.Services.AddScoped<IDethiRepository, DethiRepository>();
-builder.Services.AddScoped<IBaithiRepository, BaithiRepository>();
-builder.Services.AddScoped<IChitietlambaiRepository, ChitietlambaiRepository>();
-builder.Services.AddScoped<ICanhbaogianlanRepository, CanhbaogianlanRepository>();
-builder.Services.AddScoped<ILoaicauhoiRepository, LoaicauhoiRepository>();
+builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
+builder.Services.AddScoped<IQuestionOptionRepository, QuestionOptionRepository>();
+builder.Services.AddScoped<IExamPaperRepository, ExamPaperRepository>();
+builder.Services.AddScoped<IExamSubmissionRepository, ExamSubmissionRepository>();
+builder.Services.AddScoped<ISubmissionDetailRepository, SubmissionDetailRepository>();
+builder.Services.AddScoped<ICheatWarningRepository, CheatWarningRepository>();
+builder.Services.AddScoped<IQuestionCategoryRepository, QuestionCategoryRepository>();
 
 // JWT Authentication Services
 builder.Services.AddScoped<IPasswordService, PasswordService>();
-builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.IDangKyThiService, BanTayVang.API.Services.Impl.DangKyThiService>();
+builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.IExamRegistrationService, BanTayVang.API.Services.Impl.ExamRegistrationService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Question Service
-builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.ICauhoiService, BanTayVang.API.Services.Impl.CauhoiService>();
+builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.IQuestionService, BanTayVang.API.Services.Impl.QuestionService>();
 
 // Question Import Strategies
 builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.Import.IQuestionImportStrategy, BanTayVang.API.Services.Impl.Import.MultipleChoiceImportStrategy>();
@@ -239,7 +239,7 @@ builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.IEmailService, Ban
 builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.IExamAssignmentService, BanTayVang.API.Services.Impl.ExamAssignmentService>();
 
 // Ky Thi Service
-builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.IKyThiService, BanTayVang.API.Services.Impl.KyThiService>();
+builder.Services.AddScoped<BanTayVang.API.Services.Interfaces.IExamCampaignService, BanTayVang.API.Services.Impl.ExamCampaignService>();
 
 // File Upload Service
 builder.Services.AddHttpContextAccessor();
@@ -274,34 +274,34 @@ using (var scope = app.Services.CreateScope())
 
         // 1. Ensure Email and SoDienThoai columns exist in the database
         await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'TAIKHOAN' AND COLUMN_NAME = 'Email')
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'USER' AND COLUMN_NAME = 'Email')
             BEGIN
-                ALTER TABLE TAIKHOAN ADD Email nvarchar(255) NULL;
+                ALTER TABLE USER ADD Email nvarchar(255) NULL;
             END
         ");
 
         await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'TAIKHOAN' AND COLUMN_NAME = 'SoDienThoai')
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'USER' AND COLUMN_NAME = 'SoDienThoai')
             BEGIN
-                ALTER TABLE TAIKHOAN ADD SoDienThoai nvarchar(50) NULL;
+                ALTER TABLE USER ADD SoDienThoai nvarchar(50) NULL;
             END
         ");
 
         // 2. Ensure an Admin user exists in the system
-        var adminExists = await context.Taikhoans.AnyAsync(u => u.IdVaiTro == 1);
+        var adminExists = await context.Users.AnyAsync(u => u.RoleId == 1);
         if (!adminExists)
         {
-            var adminUser = new Taikhoan
+            var adminUser = new User
             {
-                TenDangNhap = "admin",
+                Username = "admin",
                 MaNhanVien = "admin",
-                MatKhau = passwordService.HashPassword("admin123"),
-                HoTen = "Quản trị viên hệ thống",
-                IdVaiTro = 1,
-                TrangThai = true,
-                NgayTao = DateTime.Now
+                Password = passwordService.HashPassword("admin123"),
+                FullName = "Quản trị viên hệ thống",
+                RoleId = 1,
+                Status = true,
+                CreatedAt = DateTime.Now
             };
-            context.Taikhoans.Add(adminUser);
+            context.Users.Add(adminUser);
             await context.SaveChangesAsync();
         }
     }

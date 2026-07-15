@@ -8,19 +8,19 @@ namespace BanTayVang.API.Services.Impl.Security
 {
     public class ExamSecurityService : IExamSecurityService
     {
-        private readonly ICanhbaogianlanRepository _canhbaoRepository;
-        private readonly IBaithiRepository _baithiRepository;
+        private readonly ICheatWarningRepository _canhbaoRepository;
+        private readonly IExamSubmissionRepository _examSubmissionRepository;
         private readonly ILogger<ExamSecurityService> _logger;
         private readonly IConfiguration _configuration;
 
         public ExamSecurityService(
-            ICanhbaogianlanRepository canhbaoRepository,
-            IBaithiRepository baithiRepository,
+            ICheatWarningRepository canhbaoRepository,
+            IExamSubmissionRepository baithiRepository,
             ILogger<ExamSecurityService> logger,
             IConfiguration configuration)
         {
             _canhbaoRepository = canhbaoRepository;
-            _baithiRepository = baithiRepository;
+            _examSubmissionRepository = baithiRepository;
             _logger = logger;
             _configuration = configuration;
         }
@@ -71,26 +71,26 @@ namespace BanTayVang.API.Services.Impl.Security
             {
                 var correlationId = Guid.NewGuid().ToString();
                 
-                var baithi = await _baithiRepository.GetByIdAsync(baithiId);
-                if (baithi != null)
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(baithiId);
+                if (examSubmission != null)
                 {
                     if (loaiCanhBao == "FULLSCREEN_EXIT")
                     {
-                        baithi.TongSoCanhBao = Math.Max(baithi.TongSoCanhBao ?? 0, 6);
+                        examSubmission.TongSoCanhBao = Math.Max(examSubmission.TongSoCanhBao ?? 0, 6);
                     }
                     else
                     {
-                        baithi.TongSoCanhBao = (baithi.TongSoCanhBao ?? 0) + 1;
+                        examSubmission.TongSoCanhBao = (examSubmission.TongSoCanhBao ?? 0) + 1;
                     }
-                    await _baithiRepository.UpdateAsync(baithi);
+                    await _examSubmissionRepository.UpdateAsync(examSubmission);
                 }
 
-                var canhbao = new Canhbaogianlan
+                var canhbao = new CheatWarning
                 {
-                    IdBaiThi = baithiId,
+                    ExamSubmissionId = baithiId,
                     LoaiCanhBao = loaiCanhBao,
-                    MoTa = moTa,
-                    ThoiGian = DateTime.Now,
+                    Description = moTa,
+                    ActionTime = DateTime.Now,
                     SoLanViPham = 1,
                     MucDoNghiemTrong = "Medium",
                     CorrelationId = correlationId
@@ -169,7 +169,7 @@ namespace BanTayVang.API.Services.Impl.Security
                     ExamSessionId = baithiId,
                     TotalWarnings = warnings.Count,
                     CriticalWarnings = warnings.Count(w => w.MucDoNghiemTrong == "High"),
-                    LastWarningTime = warnings.LastOrDefault()?.ThoiGian,
+                    LastWarningTime = warnings.LastOrDefault()?.ActionTime,
                     SecurityStatus = warnings.Count >= 5 ? "Critical" : warnings.Count >= 3 ? "Warning" : "Normal"
                 };
 

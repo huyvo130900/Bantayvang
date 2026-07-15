@@ -2,7 +2,7 @@ import apiClient from '@/lib/axios'
 import type { DepartmentDto, CreateDepartmentDto, UpdateDepartmentDto, AssignManagerDto, ExamVisibilityDto, DepartmentDashboardDto } from './types'
 
 export const departmentApi = {
-  getAll: (params?: { trangThai?: boolean; search?: string; page?: number; pageSize?: number }) =>
+  getAll: (params?: { status?: boolean; search?: string; page?: number; pageSize?: number }) =>
     apiClient.get('/Department', { params }),
 
   getById: (id: number) =>

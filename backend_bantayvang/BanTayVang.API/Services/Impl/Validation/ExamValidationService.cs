@@ -13,9 +13,9 @@ namespace BanTayVang.API.Services.Impl.Validation
     /// </summary>
     public class ExamValidationService : IExamValidationService
     {
-        private readonly IDethiRepository _dethiRepository;
-        private readonly IBaithiRepository _baithiRepository;
-        private readonly ICauhoiRepository _cauhoiRepository;
+        private readonly IExamPaperRepository _examPaperRepository;
+        private readonly IExamSubmissionRepository _examSubmissionRepository;
+        private readonly IQuestionRepository _questionRepository;
         private readonly BanTayVangDbContext _context;
         private readonly ILogger<ExamValidationService> _logger;
 
@@ -25,20 +25,20 @@ namespace BanTayVang.API.Services.Impl.Validation
         private static readonly Regex SqlInjectionPattern = new(@"(\b(ALTER|CREATE|DELETE|DROP|EXEC(UTE){0,1}|INSERT( +INTO){0,1}|MERGE|SELECT|UPDATE|UNION( +ALL){0,1})\b)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public ExamValidationService(
-            IDethiRepository dethiRepository,
-            IBaithiRepository baithiRepository,
-            ICauhoiRepository cauhoiRepository,
+            IExamPaperRepository dethiRepository,
+            IExamSubmissionRepository baithiRepository,
+            IQuestionRepository cauhoiRepository,
             BanTayVangDbContext context,
             ILogger<ExamValidationService> logger)
         {
-            _dethiRepository = dethiRepository;
-            _baithiRepository = baithiRepository;
-            _cauhoiRepository = cauhoiRepository;
+            _examPaperRepository = dethiRepository;
+            _examSubmissionRepository = baithiRepository;
+            _questionRepository = cauhoiRepository;
             _context = context;
             _logger = logger;
         }
 
-        public async Task<ValidationResultDto> ValidateCreateExamAsync(CreateDethiDto createDto, CancellationToken cancellationToken = default)
+        public async Task<ValidationResultDto> ValidateCreateExamAsync(CreateExamPaperDto createDto, CancellationToken cancellationToken = default)
         {
             var errors = new List<string>();
             var warnings = new List<string>();
@@ -46,33 +46,33 @@ namespace BanTayVang.API.Services.Impl.Validation
             try
             {
                 // OWASP A03: Injection Prevention
-                if (ContainsSqlInjection(createDto.MaDeThi) || ContainsSqlInjection(createDto.TenDeThi))
+                if (ContainsSqlInjection(createDto.ExamPaperCode) || ContainsSqlInjection(createDto.ExamPaperName))
                 {
                     errors.Add("Input contains potentially malicious content");
-                    _logger.LogWarning("SQL injection attempt detected in exam creation: {ExamCode}", createDto.MaDeThi);
+                    _logger.LogWarning("SQL injection attempt detected in exam creation: {ExamCode}", createDto.ExamPaperCode);
                     return ValidationResultDto.Failure(errors, "SECURITY_VIOLATION");
                 }
 
                 // OWASP A03: XSS Prevention
-                if (!string.IsNullOrEmpty(createDto.TenDeThi) && !SafeTextPattern.IsMatch(createDto.TenDeThi))
+                if (!string.IsNullOrEmpty(createDto.ExamPaperName) && !SafeTextPattern.IsMatch(createDto.ExamPaperName))
                 {
                     errors.Add("Exam name contains invalid characters that could pose security risks");
                 }
 
-                if (!ExamCodePattern.IsMatch(createDto.MaDeThi))
+                if (!ExamCodePattern.IsMatch(createDto.ExamPaperCode))
                 {
                     errors.Add("Exam code format is invalid");
                 }
 
                 // Business validation
-                var existingExam = await _dethiRepository.GetByMaDeThiAsync(createDto.MaDeThi);
+                var existingExam = await _examPaperRepository.GetByMaDeThiAsync(createDto.ExamPaperCode);
                 if (existingExam != null)
                 {
                     errors.Add("Exam code already exists");
                 }
 
                 // OWASP A04: Insecure Design - Validate reasonable limits
-                if (createDto.ThoiGianLamBai.HasValue && createDto.ThoiGianLamBai.Value > 1008000)
+                if (createDto.DurationMinutes.HasValue && createDto.DurationMinutes.Value > 1008000)
                 {
                     errors.Add("Exam duration exceeds maximum allowed time");
                 }
@@ -85,7 +85,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                 // Validate question IDs exist and are accessible
                 if (createDto.DanhSachIdCauHoi.Any())
                 {
-                    var validQuestionIds = await _cauhoiRepository.GetValidQuestionIdsAsync(createDto.DanhSachIdCauHoi);
+                    var validQuestionIds = await _questionRepository.GetValidQuestionIdsAsync(createDto.DanhSachIdCauHoi);
                     var invalidIds = createDto.DanhSachIdCauHoi.Except(validQuestionIds).ToList();
 
                     if (invalidIds.Any())
@@ -95,7 +95,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
 
                 // Time validation
-                if (createDto.ThoiGianBatDau < DateTime.Now.AddMinutes(-10))
+                if (createDto.StartTime < DateTime.Now.AddMinutes(-10))
                 {
                     warnings.Add("Start time is in the past");
                 }
@@ -124,24 +124,24 @@ namespace BanTayVang.API.Services.Impl.Validation
                     return ValidationResultDto.Failure(errors, "INVALID_USER");
                 }
 
-                // Resolve exam paper (Dethi)
-                Dethi? exam = null;
+                // Resolve exam paper (ExamPaper)
+                ExamPaper? exam = null;
                 if (startDto.KyThiId.HasValue)
                 {
-                    exam = await _dethiRepository.ResolveExamForCandidateAsync(startDto.KyThiId.Value, taikhoanId, cancellationToken);
+                    exam = await _examPaperRepository.ResolveExamForCandidateAsync(startDto.KyThiId.Value, taikhoanId, cancellationToken);
                 }
                 else
                 {
                     // OWASP A03: Injection Prevention
-                    if (ContainsSqlInjection(startDto.MaDeThi))
+                    if (ContainsSqlInjection(startDto.ExamPaperCode))
                     {
                         errors.Add("Exam code contains invalid characters");
-                        _logger.LogWarning("SQL injection attempt in exam start: {ExamCode} by user {UserId}", startDto.MaDeThi, taikhoanId);
+                        _logger.LogWarning("SQL injection attempt in exam start: {ExamCode} by user {UserId}", startDto.ExamPaperCode, taikhoanId);
                         return ValidationResultDto.Failure(errors, "SECURITY_VIOLATION");
                     }
 
                     // Validate exam exists
-                    exam = await _dethiRepository.GetByMaDeThiAsync(startDto.MaDeThi);
+                    exam = await _examPaperRepository.GetByMaDeThiAsync(startDto.ExamPaperCode);
                 }
 
                 if (exam == null)
@@ -150,34 +150,34 @@ namespace BanTayVang.API.Services.Impl.Validation
                     return ValidationResultDto.Failure(errors, "EXAM_NOT_FOUND");
                 }
 
-                // FIX 1: Bỏ check cứng TrangThai == "Active"
+                // FIX 1: Bỏ check cứng Status == "Active"
                 // Chỉ block nếu đề bị đóng/hủy rõ ràng
                 var closedStatuses = new[] { "Closed", "DaDong", "Inactive", "Cancelled" };
-                if (closedStatuses.Contains(exam.TrangThai, StringComparer.OrdinalIgnoreCase))
+                if (closedStatuses.Contains(exam.Status, StringComparer.OrdinalIgnoreCase))
                 {
                     errors.Add("Đề thi đã đóng, không thể thi");
                     return ValidationResultDto.Failure(errors, "EXAM_CLOSED");
                 }
 
                 // FIX 2: Dùng DateTime.Now thay vì DateTime.UtcNow (tránh lệch 7 tiếng)
-                if (exam.ThoiGianBatDau.HasValue && exam.ThoiGianBatDau > DateTime.Now)
+                if (exam.StartTime.HasValue && exam.StartTime > DateTime.Now)
                 {
                     errors.Add("Chưa đến thời gian thi");
                     return ValidationResultDto.Failure(errors, "EXAM_NOT_STARTED");
                 }
 
-                // Check if user already completed this exam / KyThi
-                // Allow retakes if still within duration of KyThi (or Dethi if standalone)
-                var studentSessions = await _baithiRepository.GetByTaiKhoanAsync(taikhoanId);
+                // Check if user already completed this exam / ExamCampaign
+                // Allow retakes if still within duration of ExamCampaign (or ExamPaper if standalone)
+                var studentSessions = await _examSubmissionRepository.GetByTaiKhoanAsync(taikhoanId);
                 bool withinDuration = false;
 
                 if (startDto.KyThiId.HasValue)
                 {
-                    var kyThi = await _context.KyThis.FindAsync(startDto.KyThiId.Value, cancellationToken);
-                    if (kyThi != null)
+                    var examCampaign = await _context.ExamCampaigns.FindAsync(startDto.KyThiId.Value, cancellationToken);
+                    if (examCampaign != null)
                     {
-                        var start = kyThi.ThoiGianBatDau;
-                        var end = kyThi.ThoiGianKetThuc;
+                        var start = examCampaign.StartTime;
+                        var end = examCampaign.EndTime;
                         var now = DateTime.Now;
                         if ((!start.HasValue || now >= start.Value) && (!end.HasValue || now <= end.Value))
                         {
@@ -187,8 +187,8 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
                 else
                 {
-                    var start = exam.ThoiGianBatDau;
-                    var duration = exam.ThoiGianLamBai ?? 60;
+                    var start = exam.StartTime;
+                    var duration = exam.DurationMinutes ?? 60;
                     var now = DateTime.Now;
                     if (start.HasValue && now >= start.Value && now <= start.Value.AddMinutes(duration))
                     {
@@ -200,8 +200,8 @@ namespace BanTayVang.API.Services.Impl.Validation
                 {
                     if (startDto.KyThiId.HasValue)
                     {
-                        var completedSessionInKyThi = studentSessions.Any(b => b.IdKyThi == startDto.KyThiId.Value 
-                            && b.TrangThai != "InProgress" && b.TrangThai != "Paused");
+                        var completedSessionInKyThi = studentSessions.Any(b => b.ExamCampaignId == startDto.KyThiId.Value 
+                            && b.Status != "InProgress" && b.Status != "Paused");
                         if (completedSessionInKyThi)
                         {
                             errors.Add("Kỳ thi đã hết hạn hoặc bạn đã nộp bài thi cho kỳ thi này và không được phép thi lại.");
@@ -209,8 +209,8 @@ namespace BanTayVang.API.Services.Impl.Validation
                         }
                     }
 
-                    var completedSessionForDeThi = studentSessions.Any(b => b.IdDeThi == exam.Id 
-                        && b.TrangThai != "InProgress" && b.TrangThai != "Paused");
+                    var completedSessionForDeThi = studentSessions.Any(b => b.ExamPaperId == exam.Id 
+                        && b.Status != "InProgress" && b.Status != "Paused");
                     if (completedSessionForDeThi)
                     {
                         errors.Add("Đề thi đã hết hạn hoặc bạn đã nộp đề thi này và không được phép thi lại.");
@@ -219,10 +219,10 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
 
                 // Check if user has an active session for this exam (concurrency check)
-                var existingSession = await _baithiRepository.GetActiveExamSessionAsync(taikhoanId, exam.Id);
+                var existingSession = await _examSubmissionRepository.GetActiveExamSessionAsync(taikhoanId, exam.Id);
 
                 // OWASP A04: Validate concurrent session limits
-                var activeSessions = await _baithiRepository.GetActiveSessionsCountAsync(taikhoanId);
+                var activeSessions = await _examSubmissionRepository.GetActiveSessionsCountAsync(taikhoanId);
                 if (activeSessions >= 3) // Max 3 concurrent exams
                 {
                     errors.Add("Too many active exam sessions");
@@ -245,21 +245,21 @@ namespace BanTayVang.API.Services.Impl.Validation
             try
             {
                 // OWASP A01: Broken Access Control
-                var examSession = await _baithiRepository.GetByIdAsync(answerDto.IdBaiThi);
+                var examSession = await _examSubmissionRepository.GetByIdAsync(answerDto.ExamSubmissionId);
                 if (examSession == null)
                 {
                     errors.Add("Exam session not found");
                     return ValidationResultDto.Failure(errors, "SESSION_NOT_FOUND");
                 }
 
-                if (examSession.IdTaiKhoan != taikhoanId)
+                if (examSession.UserId != taikhoanId)
                 {
                     errors.Add("Access denied to this exam session");
-                    _logger.LogWarning("Unauthorized access attempt to exam session {SessionId} by user {UserId}", answerDto.IdBaiThi, taikhoanId);
+                    _logger.LogWarning("Unauthorized access attempt to exam session {SessionId} by user {UserId}", answerDto.ExamSubmissionId, taikhoanId);
                     return ValidationResultDto.Failure(errors, "ACCESS_DENIED");
                 }
 
-                if (examSession.TrangThai != "InProgress")
+                if (examSession.Status != "InProgress")
                 {
                     errors.Add("Exam session is not active");
                     return ValidationResultDto.Failure(errors, "SESSION_INACTIVE");
@@ -283,14 +283,14 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
 
                 // Validate question belongs to this exam
-                var examWithQuestions = await _dethiRepository.GetWithQuestionsAsync(examSession.IdDeThi!.Value);
-                var questionExists = examWithQuestions?.DethiCauhois.Any(dc => dc.IdCauHoi == answerDto.IdCauHoi) ?? false;
+                var examWithQuestions = await _examPaperRepository.GetWithQuestionsAsync(examSession.ExamPaperId!.Value);
+                var questionExists = examWithQuestions?.ExamPaperQuestions.Any(dc => dc.QuestionId == answerDto.QuestionId) ?? false;
 
                 if (!questionExists)
                 {
                     errors.Add("Question does not belong to this exam");
                     _logger.LogWarning("Invalid question access attempt: Question {QuestionId} in session {SessionId} by user {UserId}",
-                        answerDto.IdCauHoi, answerDto.IdBaiThi, taikhoanId);
+                        answerDto.QuestionId, answerDto.ExamSubmissionId, taikhoanId);
                     return ValidationResultDto.Failure(errors, "INVALID_QUESTION");
                 }
 
@@ -319,13 +319,13 @@ namespace BanTayVang.API.Services.Impl.Validation
                     return ValidationResultDto.Success();
                 }
 
-                var exam = await _dethiRepository.GetByIdAsync(examId);
+                var exam = await _examPaperRepository.GetByIdAsync(examId);
                 if (exam == null)
                 {
                     return ValidationResultDto.Failure("Exam not found", "EXAM_NOT_FOUND");
                 }
 
-                var user = await _context.Taikhoans.FindAsync(new object[] { userId }, cancellationToken);
+                var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken);
                 if (user == null)
                 {
                     return ValidationResultDto.Failure("User not found", "USER_NOT_FOUND");
@@ -337,19 +337,19 @@ namespace BanTayVang.API.Services.Impl.Validation
                     case "UPDATE":
                     case "DELETE":
                         // Admin can modify any exam
-                        if (user.IdVaiTro == 1)
+                        if (user.RoleId == 1)
                         {
                             break;
                         }
 
-                        // DeptManager (IdVaiTro == 5) can modify exams of their department
-                        if (user.IdVaiTro == 5 && !string.IsNullOrEmpty(user.KhoaPhong) && exam.KhoaPhong == user.KhoaPhong)
+                        // DeptManager (RoleId == 5) can modify exams of their department
+                        if (user.RoleId == 5 && !string.IsNullOrEmpty(user.Department) && exam.Department == user.Department)
                         {
                             break;
                         }
 
                         // Creator can modify their own exam
-                        if (exam.NguoiTao == userId)
+                        if (exam.CreatedBy == userId)
                         {
                             break;
                         }
@@ -360,7 +360,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                     case "VIEW":
                     case "TAKE":
                         // All authenticated users can view/take active exams
-                        if (exam.TrangThai != "Active" && operation == "TAKE")
+                        if (exam.Status != "Active" && operation == "TAKE")
                         {
                             return ValidationResultDto.Failure("Exam is not available for taking", "EXAM_INACTIVE");
                         }
@@ -379,21 +379,21 @@ namespace BanTayVang.API.Services.Impl.Validation
             }
         }
 
-        public async Task<ValidationResultDto> ValidateUpdateExamAsync(UpdateDethiDto updateDto, CancellationToken cancellationToken = default)
+        public async Task<ValidationResultDto> ValidateUpdateExamAsync(UpdateExamPaperDto updateDto, CancellationToken cancellationToken = default)
         {
             var errors = new List<string>();
 
             try
             {
                 // OWASP A03: Injection Prevention
-                if (ContainsSqlInjection(updateDto.MaDeThi) || ContainsSqlInjection(updateDto.TenDeThi))
+                if (ContainsSqlInjection(updateDto.ExamPaperCode) || ContainsSqlInjection(updateDto.ExamPaperName))
                 {
                     errors.Add("Input contains potentially malicious content");
                     return ValidationResultDto.Failure(errors, "SECURITY_VIOLATION");
                 }
 
                 // Validate exam exists
-                var existingExam = await _dethiRepository.GetByIdAsync(updateDto.Id);
+                var existingExam = await _examPaperRepository.GetByIdAsync(updateDto.Id);
                 if (existingExam == null)
                 {
                     errors.Add("Exam not found");
@@ -401,9 +401,9 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
 
                 // Check if exam code is being changed and if new code exists
-                if (existingExam.MaDeThi != updateDto.MaDeThi)
+                if (existingExam.ExamPaperCode != updateDto.ExamPaperCode)
                 {
-                    var duplicateExam = await _dethiRepository.GetByMaDeThiAsync(updateDto.MaDeThi);
+                    var duplicateExam = await _examPaperRepository.GetByMaDeThiAsync(updateDto.ExamPaperCode);
                     if (duplicateExam != null)
                     {
                         errors.Add("Exam code already exists");
@@ -411,10 +411,10 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
 
                 // Validate business rules
-                if (existingExam.TrangThai == "Active" && updateDto.TrangThai == "Inactive")
+                if (existingExam.Status == "Active" && updateDto.Status == "Inactive")
                 {
                     // Check if there are active sessions
-                    var activeSessions = await _baithiRepository.GetActiveSessionsByExamAsync(updateDto.Id);
+                    var activeSessions = await _examSubmissionRepository.GetActiveSessionsByExamAsync(updateDto.Id);
                     if (activeSessions.Any())
                     {
                         errors.Add("Cannot deactivate exam with active sessions");
@@ -440,7 +440,7 @@ namespace BanTayVang.API.Services.Impl.Validation
             {
                 // Validate session access
                 var sessionValidation = await ValidateAnswerSubmissionAsync(
-                    new SubmitAnswerDto { IdBaiThi = submitDto.IdBaiThi },
+                    new SubmitAnswerDto { ExamSubmissionId = submitDto.ExamSubmissionId },
                     taikhoanId,
                     cancellationToken);
 

@@ -24,8 +24,8 @@ export interface RecentActivityDto {
 
 export interface ExamStatisticsDto {
   kyThiId: number
-  maKyThi: string | null
-  tenKyThi: string | null
+  campaignCode: string | null
+  campaignName: string | null
   totalParticipants: number
   completedCount: number
   inProgressCount: number
@@ -48,7 +48,7 @@ export interface TopPerformerDto {
   userId: number
   username: string | null
   fullName: string | null
-  khoaPhong: string | null
+  department: string | null
   examsTaken: number
   averageScore: number
   highestScore: number
@@ -59,7 +59,7 @@ export const statisticsApi = {
     apiClient.get<ApiResponse<DashboardDto>>('/statistics/dashboard'),
 
   getKyThiStatistics: (kyThiId: number) =>
-    apiClient.get<ApiResponse<ExamStatisticsDto>>(`/statistics/kythi/${kyThiId}`),
+    apiClient.get<ApiResponse<ExamStatisticsDto>>(`/statistics/ExamCampaign/${kyThiId}`),
 
   getTopPerformers: (top = 10) =>
     apiClient.get<ApiResponse<TopPerformerDto[]>>(`/statistics/top-performers?top=${top}`),

@@ -32,7 +32,7 @@ namespace BanTayVang.API.Controllers
             [FromQuery] int pageSize = 50)
         {
             // DeptManager: chỉ thấy log của khoa mình — filter bằng username scope
-            // (full isolation requires IdKhoaPhong on log which we now have)
+            // (full isolation requires DepartmentId on log which we now have)
             var logs = await _auditLogService.SearchLogsAsync(actionType, username, from, to, page, pageSize);
             var total = await _auditLogService.GetTotalCountAsync(actionType, username, from, to);
 

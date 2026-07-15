@@ -11,14 +11,14 @@ namespace BanTayVang.API.Services.Impl
     /// </summary>
     public class CategoryService : ICategoryService
     {
-        private readonly ILoaicauhoiRepository _loaiRepository;
+        private readonly IQuestionCategoryRepository _categoryRepository;
         private readonly ILogger<CategoryService> _logger;
 
         public CategoryService(
-            ILoaicauhoiRepository loaiRepository,
+            IQuestionCategoryRepository loaiRepository,
             ILogger<CategoryService> logger)
         {
-            _loaiRepository = loaiRepository;
+            _categoryRepository = loaiRepository;
             _logger = logger;
         }
 
@@ -28,7 +28,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var types = await _loaiRepository.GetAllAsync();
+                var types = await _categoryRepository.GetAllAsync();
                 var result = new List<LoaicauhoiDto>();
                 
                 foreach (var t in types)
@@ -36,9 +36,9 @@ namespace BanTayVang.API.Services.Impl
                     result.Add(new LoaicauhoiDto
                     {
                         Id = t.Id,
-                        TenLoai = t.TenLoai,
-                        MoTa = t.MoTa,
-                        SoCauHoi = await _loaiRepository.GetQuestionCountAsync(t.Id)
+                        CategoryName = t.CategoryName,
+                        Description = t.Description,
+                        TotalQuestions = await _categoryRepository.GetQuestionCountAsync(t.Id)
                     });
                 }
 
@@ -65,7 +65,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var type = await _loaiRepository.GetByIdAsync(id);
+                var type = await _categoryRepository.GetByIdAsync(id);
                 if (type == null)
                 {
                     return new BaseResponseDto<LoaicauhoiDto>
@@ -82,9 +82,9 @@ namespace BanTayVang.API.Services.Impl
                     Data = new LoaicauhoiDto
                     {
                         Id = type.Id,
-                        TenLoai = type.TenLoai,
-                        MoTa = type.MoTa,
-                        SoCauHoi = await _loaiRepository.GetQuestionCountAsync(type.Id)
+                        CategoryName = type.CategoryName,
+                        Description = type.Description,
+                        TotalQuestions = await _categoryRepository.GetQuestionCountAsync(type.Id)
                     }
                 };
             }
@@ -104,7 +104,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                if (await _loaiRepository.ExistsByNameAsync(createDto.TenLoai))
+                if (await _categoryRepository.ExistsByNameAsync(createDto.CategoryName))
                 {
                     return new BaseResponseDto<LoaicauhoiDto>
                     {
@@ -113,13 +113,13 @@ namespace BanTayVang.API.Services.Impl
                     };
                 }
 
-                var type = new Loaicauhoi
+                var type = new QuestionCategory
                 {
-                    TenLoai = createDto.TenLoai,
-                    MoTa = createDto.MoTa
+                    CategoryName = createDto.CategoryName,
+                    Description = createDto.Description
                 };
 
-                var saved = await _loaiRepository.AddAsync(type);
+                var saved = await _categoryRepository.AddAsync(type);
 
                 return new BaseResponseDto<LoaicauhoiDto>
                 {
@@ -128,9 +128,9 @@ namespace BanTayVang.API.Services.Impl
                     Data = new LoaicauhoiDto
                     {
                         Id = saved.Id,
-                        TenLoai = saved.TenLoai,
-                        MoTa = saved.MoTa,
-                        SoCauHoi = 0
+                        CategoryName = saved.CategoryName,
+                        Description = saved.Description,
+                        TotalQuestions = 0
                     }
                 };
             }
@@ -150,7 +150,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var type = await _loaiRepository.GetByIdAsync(id);
+                var type = await _categoryRepository.GetByIdAsync(id);
                 if (type == null)
                 {
                     return new BaseResponseDto<LoaicauhoiDto>
@@ -160,7 +160,7 @@ namespace BanTayVang.API.Services.Impl
                     };
                 }
 
-                if (await _loaiRepository.ExistsByNameAsync(updateDto.TenLoai, id))
+                if (await _categoryRepository.ExistsByNameAsync(updateDto.CategoryName, id))
                 {
                     return new BaseResponseDto<LoaicauhoiDto>
                     {
@@ -169,9 +169,9 @@ namespace BanTayVang.API.Services.Impl
                     };
                 }
 
-                type.TenLoai = updateDto.TenLoai;
-                type.MoTa = updateDto.MoTa;
-                await _loaiRepository.UpdateAsync(type);
+                type.CategoryName = updateDto.CategoryName;
+                type.Description = updateDto.Description;
+                await _categoryRepository.UpdateAsync(type);
 
                 return new BaseResponseDto<LoaicauhoiDto>
                 {
@@ -180,9 +180,9 @@ namespace BanTayVang.API.Services.Impl
                     Data = new LoaicauhoiDto
                     {
                         Id = type.Id,
-                        TenLoai = type.TenLoai,
-                        MoTa = type.MoTa,
-                        SoCauHoi = await _loaiRepository.GetQuestionCountAsync(type.Id)
+                        CategoryName = type.CategoryName,
+                        Description = type.Description,
+                        TotalQuestions = await _categoryRepository.GetQuestionCountAsync(type.Id)
                     }
                 };
             }
@@ -202,13 +202,13 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var type = await _loaiRepository.GetByIdAsync(id);
+                var type = await _categoryRepository.GetByIdAsync(id);
                 if (type == null)
                 {
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy loại câu hỏi" };
                 }
 
-                var questionCount = await _loaiRepository.GetQuestionCountAsync(id);
+                var questionCount = await _categoryRepository.GetQuestionCountAsync(id);
                 if (questionCount > 0)
                 {
                     return new BaseResponseDto
@@ -218,7 +218,7 @@ namespace BanTayVang.API.Services.Impl
                     };
                 }
 
-                await _loaiRepository.DeleteAsync(id);
+                await _categoryRepository.DeleteAsync(id);
 
                 return new BaseResponseDto { Success = true, Message = "Xóa loại câu hỏi thành công" };
             }

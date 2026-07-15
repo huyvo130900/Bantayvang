@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Download, RefreshCw, Eye, EyeOff, Building2, CalendarDays, PenLine } from 'lucide-react'
 import { departmentApi } from '@/features/departments/api'
 import { kyThiApi } from '@/features/ky-thi/api'
-import type { KyThiDto } from '@/features/ky-thi/types'
+import type { ExamCampaignDto } from '@/features/ky-thi/types'
 import { ROLES } from '@/lib/constants'
 
 export function GradingPage({ preselectedExamId }: { preselectedExamId?: number }) {
@@ -18,10 +18,10 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   const { exams } = useAppSelector((state) => state.exams)
   const currentUser = useAppSelector((state) => state.auth.user)
   const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.tenVaiTro === 'DeptManager'
-  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || null
+  const myKhoa = currentUser?.tenKhoaQuanLy || currentUser?.department || null
 
   const [selectedKhoa, setSelectedKhoa] = useState<string | null>(isDeptManager && myKhoa ? myKhoa : null)
-  const [kyThiList, setKyThiList] = useState<KyThiDto[]>([])
+  const [kyThiList, setKyThiList] = useState<ExamCampaignDto[]>([])
   const [selectedKyThiId, setSelectedKyThiId] = useState<number | null>(null)
   
   const [results, setResults] = useState<ExamResultDetailDto[]>([])
@@ -53,7 +53,7 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
     }
   }
 
-  // Load KyThi list
+  // Load ExamCampaign list
   const loadKyThiList = async () => {
     try {
       const response = await kyThiApi.getAll()
@@ -100,20 +100,20 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
     }
   }
 
-  // Departments list from KyThi
-  const khoaList = Array.from(new Set(kyThiList.map(k => k.tenKhoa || k.donViToChuc).filter(Boolean) as string[])).sort()
-  const hasUnassigned = kyThiList.some(k => !k.tenKhoa && !k.donViToChuc)
+  // Departments list from ExamCampaign
+  const khoaList = Array.from(new Set(kyThiList.map(k => k.departmentName || k.donViToChuc).filter(Boolean) as string[])).sort()
+  const hasUnassigned = kyThiList.some(k => !k.departmentName && !k.donViToChuc)
 
-  // Filter KyThi list by department
+  // Filter ExamCampaign list by department
   const scopedKyThis = isDeptManager && myKhoa
-    ? kyThiList.filter(k => k.tenKhoa === myKhoa || k.donViToChuc === myKhoa)
+    ? kyThiList.filter(k => k.departmentName === myKhoa || k.donViToChuc === myKhoa)
     : selectedKhoa === '__unassigned__'
-      ? kyThiList.filter(k => !k.tenKhoa && !k.donViToChuc)
+      ? kyThiList.filter(k => !k.departmentName && !k.donViToChuc)
       : selectedKhoa
-        ? kyThiList.filter(k => k.tenKhoa === selectedKhoa || k.donViToChuc === selectedKhoa)
+        ? kyThiList.filter(k => k.departmentName === selectedKhoa || k.donViToChuc === selectedKhoa)
         : kyThiList
 
-  // All exams associated with the selected KyThi
+  // All exams associated with the selected ExamCampaign
   const examsInSelectedKyThi = useMemo(() => {
     if (!selectedKyThiId) return []
     return exams.filter(e => e.kyThiId === selectedKyThiId)
@@ -134,21 +134,21 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   // Determine if the entire Kỳ thi is published (all associated exams are published)
   const isAllPublished = useMemo(() => {
     if (examsInSelectedKyThi.length === 0) return false
-    return examsInSelectedKyThi.every(e => e.congBoKetQua)
+    return examsInSelectedKyThi.every(e => e.isResultPublished)
   }, [examsInSelectedKyThi])
 
-  // Toggle publishing grades for the entire KyThi
+  // Toggle publishing grades for the entire ExamCampaign
   const handleToggleKyThiVisibility = async () => {
     if (!selectedKyThiId || examsInSelectedKyThi.length === 0) return
     setTogglingVisibility(true)
     setErrorMsg(null)
     const nextState = !isAllPublished
     try {
-      // Toggle visibility for each exam paper belonging to this KyThi
+      // Toggle visibility for each exam paper belonging to this ExamCampaign
       await Promise.all(
         examsInSelectedKyThi.map(async (exam) => {
-          if (exam.congBoKetQua !== nextState) {
-            await departmentApi.toggleExamVisibility(exam.id, { congBoKetQua: nextState })
+          if (exam.isResultPublished !== nextState) {
+            await departmentApi.toggleExamVisibility(exam.id, { isResultPublished: nextState })
           }
         })
       )
@@ -178,13 +178,13 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   }
 
 
-  const handleExportResults = async (examId: number, tenDeThi: string) => {
+  const handleExportResults = async (examId: number, examPaperName: string) => {
     try {
       const response = await gradingApi.exportResults(examId)
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
-      link.download = `KetQua_${tenDeThi}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`
+      link.download = `KetQua_${examPaperName}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`
       link.click()
       window.URL.revokeObjectURL(url)
     } catch { /* silent */ }
@@ -293,7 +293,7 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
           <option value="">— Chọn kỳ thi —</option>
           {scopedKyThis.map((kt) => (
             <option key={kt.id} value={kt.id}>
-              {kt.maKyThi} — {kt.tenKyThi}{kt.tenKhoa ? ` [${kt.tenKhoa}]` : kt.donViToChuc ? ` [${kt.donViToChuc}]` : ''}
+              {kt.campaignCode} — {kt.campaignName}{kt.departmentName ? ` [${kt.departmentName}]` : kt.donViToChuc ? ` [${kt.donViToChuc}]` : ''}
             </option>
           ))}
         </select>
@@ -404,25 +404,25 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
 
             return (
               <div key={exam.id} className="bg-white rounded-xl border shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
-                {/* DeThi Header */}
+                {/* ExamPaper Header */}
                 <div className="bg-gray-50 border-b px-5 py-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="space-y-1">
                     <h3 className="text-lg font-bold text-gray-900">
-                      {exam.tenDeThi}
+                      {exam.examPaperName}
                     </h3>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700 font-mono font-medium">
-                        {exam.maDeThi}
+                        {exam.examPaperCode}
                       </span>
-                      {exam.khoaPhong && (
+                      {exam.department && (
                         <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-medium">
-                          🏢 {exam.khoaPhong}
+                          🏢 {exam.department}
                         </span>
                       )}
                       <span className={`px-2 py-0.5 rounded font-semibold ${
-                        exam.congBoKetQua ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        exam.isResultPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}>
-                        {exam.congBoKetQua ? '👁 Đã công bố điểm' : '🔒 Chưa công bố điểm'}
+                        {exam.isResultPublished ? '👁 Đã công bố điểm' : '🔒 Chưa công bố điểm'}
                       </span>
                       {hasSubmissions && (
                         <span className={`px-2 py-0.5 rounded font-semibold ${
@@ -435,14 +435,14 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleExportResults(exam.id, exam.tenDeThi || '')}>
+                    <Button variant="outline" size="sm" onClick={() => handleExportResults(exam.id, exam.examPaperName || '')}>
                       <Download className="h-3.5 w-3.5 mr-1" />
                       Kết quả
                     </Button>
                   </div>
                 </div>
 
-                {/* DeThi Content */}
+                {/* ExamPaper Content */}
                 <div className="p-5">
                   {!hasSubmissions ? (
                     <div className="text-center py-8 text-gray-400 text-sm">

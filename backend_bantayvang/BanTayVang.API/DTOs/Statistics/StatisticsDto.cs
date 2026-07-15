@@ -32,8 +32,8 @@ namespace BanTayVang.API.DTOs.Statistics
     public class ExamStatisticsDto
     {
         public int KyThiId { get; set; }
-        public string? MaKyThi { get; set; }
-        public string? TenKyThi { get; set; }
+        public string? CampaignCode { get; set; }
+        public string? CampaignName { get; set; }
         public int TotalParticipants { get; set; }
         public int CompletedCount { get; set; }
         public int InProgressCount { get; set; }
@@ -59,14 +59,14 @@ namespace BanTayVang.API.DTOs.Statistics
     public class UserExamHistoryDto
     {
         public int BaiThiId { get; set; }
-        public string? MaDeThi { get; set; }
-        public string? TenDeThi { get; set; }
-        public DateTime? ThoiGianBatDau { get; set; }
-        public DateTime? ThoiGianNop { get; set; }
-        public string? TrangThai { get; set; }
-        public int? SoCauDung { get; set; }
-        public int? TongSoCau { get; set; }
-        public double? TongDiem { get; set; }
+        public string? ExamPaperCode { get; set; }
+        public string? ExamPaperName { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? SubmitTime { get; set; }
+        public string? Status { get; set; }
+        public int? CorrectAnswers { get; set; }
+        public int? TotalQuestions { get; set; }
+        public double? TotalScore { get; set; }
         public int? SoCanhBao { get; set; }
     }
 
@@ -78,7 +78,7 @@ namespace BanTayVang.API.DTOs.Statistics
         public int UserId { get; set; }
         public string? Username { get; set; }
         public string? FullName { get; set; }
-        public string? KhoaPhong { get; set; }
+        public string? Department { get; set; }
         public int ExamsTaken { get; set; }
         public double AverageScore { get; set; }
         public double HighestScore { get; set; }

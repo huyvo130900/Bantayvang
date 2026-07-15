@@ -19,11 +19,11 @@ export function PublicRegistrationPage() {
   }
 
   const [formData, setFormData] = useState({
-    hoTen: '',
+    fullName: '',
     cccd: '',
     soDienThoai: '',
     email: '',
-    matKhau: '',
+    password: '',
     donViCongTac: '',
     chuyenNganh: '',
     khoaPhongId: '',
@@ -33,7 +33,7 @@ export function PublicRegistrationPage() {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const res = await departmentApi.getAll({ trangThai: true })
+        const res = await departmentApi.getAll({ status: true })
         if (res.data) {
           const list = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : [])
           setDepartments(list)
@@ -47,7 +47,7 @@ export function PublicRegistrationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.hoTen || !formData.cccd || !formData.soDienThoai || !formData.matKhau) {
+    if (!formData.fullName || !formData.cccd || !formData.soDienThoai || !formData.password) {
       showToast('Vui lòng điền đầy đủ các trường bắt buộc', false)
       return
     }
@@ -88,12 +88,12 @@ export function PublicRegistrationPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label htmlFor="hoTen" className="text-sm font-medium leading-none">Họ và tên *</label>
+                <label htmlFor="fullName" className="text-sm font-medium leading-none">Họ và tên *</label>
                 <Input
-                  id="hoTen"
+                  id="fullName"
                   placeholder="Nguyễn Văn A"
-                  value={formData.hoTen}
-                  onChange={(e) => setFormData({ ...formData, hoTen: e.target.value })}
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   required
                 />
               </div>
@@ -131,13 +131,13 @@ export function PublicRegistrationPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="matKhau" className="text-sm font-medium leading-none">Mật khẩu *</label>
+                <label htmlFor="password" className="text-sm font-medium leading-none">Mật khẩu *</label>
                 <Input
-                  id="matKhau"
+                  id="password"
                   type="password"
                   placeholder="Tự tạo mật khẩu"
-                  value={formData.matKhau}
-                  onChange={(e) => setFormData({ ...formData, matKhau: e.target.value })}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                 />
               </div>
@@ -162,9 +162,9 @@ export function PublicRegistrationPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="khoaPhong" className="text-sm font-medium leading-none">Khoa / Phòng muốn thi</label>
+                <label htmlFor="department" className="text-sm font-medium leading-none">Khoa / Phòng muốn thi</label>
                 <select
-                  id="khoaPhong"
+                  id="department"
                   className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   value={formData.khoaPhongId}
                   onChange={(e) => setFormData({ ...formData, khoaPhongId: e.target.value })}
@@ -172,7 +172,7 @@ export function PublicRegistrationPage() {
                   <option value="">Chọn khoa / phòng</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id.toString()}>
-                      {d.tenKhoa}
+                      {d.departmentName}
                     </option>
                   ))}
                 </select>

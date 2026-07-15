@@ -14,7 +14,7 @@ export interface NotificationDto {
 
 export interface CreateNotificationDto {
   userId?: number | null
-  khoaPhong?: string | null
+  department?: string | null
   title: string
   message: string
   type?: string
@@ -23,13 +23,13 @@ export interface CreateNotificationDto {
 
 export interface ExamScheduleDto {
   examId: number
-  maDeThi: string | null
-  tenDeThi: string | null
+  examPaperCode: string | null
+  examPaperName: string | null
   thoiGianBatDau: string | null
-  thoiGianLamBai: number | null
+  durationMinutes: number | null
   thoiGianKetThuc: string | null
-  trangThai: string | null
-  soCauHoi: number
+  status: string | null
+  totalQuestions: number
   isAvailable: boolean
   availabilityMessage: string
 }

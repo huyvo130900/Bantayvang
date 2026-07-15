@@ -7,7 +7,6 @@ namespace BanTayVang.API.Models
     /// Refresh token entity for JWT token management
     /// OWASP A07: Identification and Authentication Failures prevention
     /// </summary>
-    [Table("TOKEN_LAM_MOI")]
     public class RefreshToken
     {
         [Key]
@@ -64,7 +63,7 @@ namespace BanTayVang.API.Models
         /// Navigation property to user
         /// </summary>
         [ForeignKey("UserId")]
-        public virtual Taikhoan? User { get; set; }
+        public virtual User? User { get; set; }
 
         /// <summary>
         /// Check if token is valid (not expired, used, or revoked)

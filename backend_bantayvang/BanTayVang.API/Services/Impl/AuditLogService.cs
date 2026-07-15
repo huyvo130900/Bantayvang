@@ -26,27 +26,27 @@ namespace BanTayVang.API.Services.Impl
             string? method = null,
             string? path = null,
             int? statusCode = null,
-            string? khoaPhong = null)
+            string? department = null)
         {
             try
             {
-                var log = new Logthaotac
+                var log = new AuditLog
                 {
-                    IdTaiKhoan = userId,
-                    TenDangNhap = username,
+                    UserId = userId,
+                    Username = username,
                     LoaiThaoTac = actionType?.Length > 100 ? actionType.Substring(0, 100) : actionType,
                     ChiTiet = description?.Length > 4000 ? description.Substring(0, 4000) : description,
                     PhuongThuc = method,
                     DuongDan = path?.Length > 500 ? path.Substring(0, 500) : path,
                     MaHttp = statusCode,
-                    ThoiGian = DateTime.Now,
-                    IdBaiThi = baithiId,
+                    ActionTime = DateTime.Now,
+                    ExamSubmissionId = baithiId,
                     DiaChiIp = ipAddress,
                     UserAgent = userAgent?.Length > 500 ? userAgent.Substring(0, 500) : userAgent,
-                    KhoaPhong = khoaPhong
+                    Department = department
                 };
 
-                _context.Logthaotacs.Add(log);
+                _context.AuditLogs.Add(log);
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -57,9 +57,9 @@ namespace BanTayVang.API.Services.Impl
 
         public async Task<List<AuditLogEntry>> GetRecentLogsAsync(int top = 500)
         {
-            return await _context.Logthaotacs
-                .Include(l => l.TaiKhoan)
-                .OrderByDescending(l => l.ThoiGian)
+            return await _context.AuditLogs
+                .Include(l => l.User)
+                .OrderByDescending(l => l.ActionTime)
                 .Take(top)
                 .Select(l => MapToEntry(l))
                 .ToListAsync();
@@ -67,9 +67,9 @@ namespace BanTayVang.API.Services.Impl
 
         public async Task<List<AuditLogEntry>> GetUserLogsAsync(int userId, int top = 100)
         {
-            return await _context.Logthaotacs
-                .Where(l => l.IdTaiKhoan == userId)
-                .OrderByDescending(l => l.ThoiGian)
+            return await _context.AuditLogs
+                .Where(l => l.UserId == userId)
+                .OrderByDescending(l => l.ActionTime)
                 .Take(top)
                 .Select(l => MapToEntry(l))
                 .ToListAsync();
@@ -77,9 +77,9 @@ namespace BanTayVang.API.Services.Impl
 
         public async Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int baithiId)
         {
-            return await _context.Logthaotacs
-                .Where(l => l.IdBaiThi == baithiId)
-                .OrderByDescending(l => l.ThoiGian)
+            return await _context.AuditLogs
+                .Where(l => l.ExamSubmissionId == baithiId)
+                .OrderByDescending(l => l.ActionTime)
                 .Select(l => MapToEntry(l))
                 .ToListAsync();
         }
@@ -92,22 +92,22 @@ namespace BanTayVang.API.Services.Impl
             int page = 1,
             int pageSize = 50)
         {
-            var query = _context.Logthaotacs.AsQueryable();
+            var query = _context.AuditLogs.AsQueryable();
 
             if (!string.IsNullOrEmpty(actionType))
                 query = query.Where(l => l.LoaiThaoTac != null && l.LoaiThaoTac.Contains(actionType));
 
             if (!string.IsNullOrEmpty(username))
-                query = query.Where(l => l.TenDangNhap != null && l.TenDangNhap.Contains(username));
+                query = query.Where(l => l.Username != null && l.Username.Contains(username));
 
             if (from.HasValue)
-                query = query.Where(l => l.ThoiGian >= from);
+                query = query.Where(l => l.ActionTime >= from);
 
             if (to.HasValue)
-                query = query.Where(l => l.ThoiGian <= to.Value.AddDays(1));
+                query = query.Where(l => l.ActionTime <= to.Value.AddDays(1));
 
             return await query
-                .OrderByDescending(l => l.ThoiGian)
+                .OrderByDescending(l => l.ActionTime)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(l => MapToEntry(l))
@@ -120,31 +120,31 @@ namespace BanTayVang.API.Services.Impl
             DateTime? from = null,
             DateTime? to = null)
         {
-            var query = _context.Logthaotacs.AsQueryable();
+            var query = _context.AuditLogs.AsQueryable();
             if (!string.IsNullOrEmpty(actionType))
                 query = query.Where(l => l.LoaiThaoTac != null && l.LoaiThaoTac.Contains(actionType));
             if (!string.IsNullOrEmpty(username))
-                query = query.Where(l => l.TenDangNhap != null && l.TenDangNhap.Contains(username));
-            if (from.HasValue) query = query.Where(l => l.ThoiGian >= from);
-            if (to.HasValue) query = query.Where(l => l.ThoiGian <= to.Value.AddDays(1));
+                query = query.Where(l => l.Username != null && l.Username.Contains(username));
+            if (from.HasValue) query = query.Where(l => l.ActionTime >= from);
+            if (to.HasValue) query = query.Where(l => l.ActionTime <= to.Value.AddDays(1));
             return await query.CountAsync();
         }
 
-        private static AuditLogEntry MapToEntry(Logthaotac l) => new()
+        private static AuditLogEntry MapToEntry(AuditLog l) => new()
         {
             Id = l.Id,
-            UserId = l.IdTaiKhoan,
-            Username = l.TenDangNhap ?? l.TaiKhoan?.TenDangNhap,
-            BaithiId = l.IdBaiThi,
+            UserId = l.UserId,
+            Username = l.Username ?? l.User?.Username,
+            BaithiId = l.ExamSubmissionId,
             ActionType = l.LoaiThaoTac,
             Method = l.PhuongThuc,
             Path = l.DuongDan,
             StatusCode = l.MaHttp,
             Description = l.ChiTiet,
-            Timestamp = l.ThoiGian,
+            Timestamp = l.ActionTime,
             IpAddress = l.DiaChiIp,
             UserAgent = l.UserAgent,
-            KhoaPhong = l.KhoaPhong
+            Department = l.Department
         };
     }
 }

@@ -1,17 +1,17 @@
 import { z } from 'zod'
 
 export const createExamSchema = z.object({
-  maDeThi: z
+  examPaperCode: z
     .string()
     .min(1, 'Mã đề thi không được trống')
     .max(50)
     .regex(/^[A-Z0-9_-]+$/, 'Chỉ chấp nhận chữ hoa, số, gạch ngang, gạch dưới'),
-  tenDeThi: z.string().max(255).optional().or(z.literal('')),
-  thoiGianLamBai: z.number().min(1, 'Tối thiểu 1 phút').max(1008000, 'Tối đa 1008000 phút').optional(),
+  examPaperName: z.string().max(255).optional().or(z.literal('')),
+  durationMinutes: z.number().min(1, 'Tối thiểu 1 phút').max(1008000, 'Tối đa 1008000 phút').optional(),
   thoiGianBatDau: z.string().optional().or(z.literal('')),
-  trangThai: z.string().optional(),
+  status: z.string().optional(),
   // Cấu hình câu hỏi random từ ngân hàng
-  khoaPhong: z.string().min(1, 'Vui lòng chọn khoa/phòng').optional().or(z.literal('')),
+  department: z.string().min(1, 'Vui lòng chọn khoa/phòng').optional().or(z.literal('')),
   soCauRandom: z.number().min(1, 'Số câu phải >= 1').max(200, 'Tối đa 200 câu').optional(),
   // Legacy
   danhSachIdCauHoi: z.array(z.number()),

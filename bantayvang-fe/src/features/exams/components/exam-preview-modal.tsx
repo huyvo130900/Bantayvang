@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { examsApiExtended } from '../api'
-import type { DethiDto, ExamPreviewDtoFE } from '../types'
+import type { ExamPaperDto, ExamPreviewDtoFE } from '../types'
 import { Button } from '@/components/ui/button'
 import { X, Printer, CheckCircle2, Clock, FileQuestion, RefreshCw } from 'lucide-react'
 
 interface Props {
-  exam: DethiDto | null
+  exam: ExamPaperDto | null
   onClose: () => void
 }
 
@@ -49,10 +49,10 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
         return
       }
 
-      const totalQuestions = preview.cauHois.length
-      const tenParts = (exam.tenDeThi ?? '').split(' - ')
+      const totalQuestions = preview.questions.length
+      const tenParts = (exam.examPaperName ?? '').split(' - ')
       const examName = tenParts[0] ?? ''
-      const paperLabel = tenParts.slice(1).join(' - ') || (exam.maDeThi ?? '')
+      const paperLabel = tenParts.slice(1).join(' - ') || (exam.examPaperCode ?? '')
 
       const html = `<!DOCTYPE html>
 <html lang="vi">
@@ -191,7 +191,7 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
     </div>
     <div class="exam-info">
       <h1>${examName}</h1>
-      <div class="meta">Mã đề: <strong>${paperLabel}</strong> &nbsp;|&nbsp; Thời gian: ${exam.thoiGianLamBai} phút &nbsp;|&nbsp; Số câu: ${totalQuestions}</div>
+      <div class="meta">Mã đề: <strong>${paperLabel}</strong> &nbsp;|&nbsp; Thời gian: ${exam.durationMinutes} phút &nbsp;|&nbsp; Số câu: ${totalQuestions}</div>
     </div>
   </div>
 
@@ -217,12 +217,12 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
   </div>
 
   <!-- Questions -->
-  ${preview.cauHois.map((q, i) => `
+  ${preview.questions.map((q, i) => `
     <div class="question">
-      <p>Câu ${i + 1}: ${q.noiDung ?? ''}</p>
-      ${q.luachons.length === 0
+      <p>Câu ${i + 1}: ${q.content ?? ''}</p>
+      ${q.questionOptions.length === 0
         ? `<div class="essay-lines">${Array(5).fill('<div class="essay-line"></div>').join('')}</div>`
-        : q.luachons.map((c, ci) => `<div class="choice">${String.fromCharCode(65 + ci)}. ${c.noiDung ?? ''}</div>`).join('')
+        : q.questionOptions.map((c, ci) => `<div class="choice">${String.fromCharCode(65 + ci)}. ${c.content ?? ''}</div>`).join('')
       }
     </div>
   `).join('')}
@@ -247,12 +247,12 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{exam.tenDeThi}</h2>
+            <h2 className="text-lg font-bold text-gray-900">{exam.examPaperName}</h2>
             <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
-              <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">{exam.maDeThi}</span>
-              <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {exam.thoiGianLamBai} phút</span>
-              <span className="flex items-center gap-1"><FileQuestion className="h-3 w-3" /> {preview?.cauHois?.length ?? exam.soCauHoi} câu</span>
-              {exam.khoaPhong && <span className="text-blue-600">{exam.khoaPhong}</span>}
+              <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">{exam.examPaperCode}</span>
+              <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {exam.durationMinutes} phút</span>
+              <span className="flex items-center gap-1"><FileQuestion className="h-3 w-3" /> {preview?.questions?.length ?? exam.totalQuestions} câu</span>
+              {exam.department && <span className="text-blue-600">{exam.department}</span>}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -319,33 +319,33 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
           {error && <div className="text-center py-12 text-red-500">{error}</div>}
           {!loading && preview && (
             <div className="space-y-5">
-              {preview.cauHois.length === 0 ? (
+              {preview.questions.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                   Đề thi này dùng ngân hàng câu hỏi random — câu hỏi sẽ được chọn ngẫu nhiên khi thí sinh bắt đầu thi.
                 </div>
-              ) : preview.cauHois.map((q, idx) => (
+              ) : preview.questions.map((q, idx) => (
                 <div key={q.id} className="border rounded-xl p-4">
                   <p className="font-medium text-gray-900 mb-3">
                     <span className="text-primary font-bold mr-2">Câu {idx + 1}.</span>
-                    {q.noiDung}
+                    {q.content}
                   </p>
                   {q.chuDe && (
                     <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full mb-2 inline-block">{q.chuDe}</span>
                   )}
                   <div className="space-y-1.5 mt-2">
-                    {q.luachons.map((c, ci) => (
+                    {q.questionOptions.map((c, ci) => (
                       <div key={c.id} className={`flex items-center gap-2 p-2 rounded-lg text-sm ${
-                        c.laDapAnDung ? 'bg-green-50 border border-green-200' : 'bg-gray-50'
+                        c.isCorrect ? 'bg-green-50 border border-green-200' : 'bg-gray-50'
                       }`}>
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                          c.laDapAnDung ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                          c.isCorrect ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
                         }`}>
                           {String.fromCharCode(65 + ci)}
                         </span>
-                        <span className={c.laDapAnDung ? 'text-green-800 font-medium' : 'text-gray-700'}>
-                          {c.noiDung}
+                        <span className={c.isCorrect ? 'text-green-800 font-medium' : 'text-gray-700'}>
+                          {c.content}
                         </span>
-                        {c.laDapAnDung && <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto shrink-0" />}
+                        {c.isCorrect && <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto shrink-0" />}
                       </div>
                     ))}
                   </div>
@@ -358,7 +358,7 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
         {/* Footer */}
         <div className="px-6 py-3 border-t bg-gray-50 text-xs text-gray-400 shrink-0 flex items-center justify-between">
           <span>Đáp án đúng được đánh dấu màu xanh lá · Chỉ hiển thị cho Admin và Quản lý Khoa</span>
-          {preview && <span>{preview.cauHois.length} câu hỏi</span>}
+          {preview && <span>{preview.questions.length} câu hỏi</span>}
         </div>
       </div>
     </div>

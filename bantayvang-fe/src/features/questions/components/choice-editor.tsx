@@ -1,11 +1,11 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Trash2 } from 'lucide-react'
-import type { CreateLuachonDto } from '../types'
+import type { CreateQuestionOptionDto } from '../types'
 
 interface ChoiceEditorProps {
-  choices: CreateLuachonDto[]
-  onChange: (choices: CreateLuachonDto[]) => void
+  choices: CreateQuestionOptionDto[]
+  onChange: (choices: CreateQuestionOptionDto[]) => void
   error?: string
 }
 
@@ -13,26 +13,26 @@ export function ChoiceEditor({ choices, onChange, error }: ChoiceEditorProps) {
   const addChoice = () => {
     onChange([
       ...choices,
-      { noiDung: '', thuTu: choices.length + 1, laDapAnDung: false },
+      { content: '', orderIndex: choices.length + 1, isCorrect: false },
     ])
   }
 
   const removeChoice = (index: number) => {
     if (choices.length <= 2) return
-    const updated = choices.filter((_, i) => i !== index).map((c, i) => ({ ...c, thuTu: i + 1 }))
+    const updated = choices.filter((_, i) => i !== index).map((c, i) => ({ ...c, orderIndex: i + 1 }))
     onChange(updated)
   }
 
-  const updateContent = (index: number, noiDung: string) => {
+  const updateContent = (index: number, content: string) => {
     const updated = [...choices]
-    updated[index] = { ...updated[index], noiDung }
+    updated[index] = { ...updated[index], content }
     onChange(updated)
   }
 
   const toggleCorrect = (index: number) => {
     const updated = choices.map((c, i) => ({
       ...c,
-      laDapAnDung: i === index ? !c.laDapAnDung : c.laDapAnDung,
+      isCorrect: i === index ? !c.isCorrect : c.isCorrect,
     }))
     onChange(updated)
   }
@@ -45,14 +45,14 @@ export function ChoiceEditor({ choices, onChange, error }: ChoiceEditorProps) {
         <div key={index} className="flex items-center gap-2">
           <input
             type="checkbox"
-            checked={choice.laDapAnDung}
+            checked={choice.isCorrect}
             onChange={() => toggleCorrect(index)}
             className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
             title="Đáp án đúng"
           />
           <span className="text-sm text-gray-500 w-6">{String.fromCharCode(65 + index)}.</span>
           <Input
-            value={choice.noiDung}
+            value={choice.content}
             onChange={(e) => updateContent(index, e.target.value)}
             placeholder={`Lựa chọn ${String.fromCharCode(65 + index)}`}
             className="flex-1"

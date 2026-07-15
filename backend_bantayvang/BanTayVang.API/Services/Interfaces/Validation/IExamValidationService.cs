@@ -16,7 +16,7 @@ namespace BanTayVang.API.Services.Interfaces.Validation
         /// <param name="createDto">Exam creation data</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Validation result</returns>
-        Task<ValidationResultDto> ValidateCreateExamAsync(CreateDethiDto createDto, CancellationToken cancellationToken = default);
+        Task<ValidationResultDto> ValidateCreateExamAsync(CreateExamPaperDto createDto, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Validates exam update data
@@ -24,7 +24,7 @@ namespace BanTayVang.API.Services.Interfaces.Validation
         /// <param name="updateDto">Exam update data</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Validation result</returns>
-        Task<ValidationResultDto> ValidateUpdateExamAsync(UpdateDethiDto updateDto, CancellationToken cancellationToken = default);
+        Task<ValidationResultDto> ValidateUpdateExamAsync(UpdateExamPaperDto updateDto, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Validates exam start request

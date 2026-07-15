@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createQuestionSchema, type CreateQuestionFormData } from '../schemas'
-import type { CauhoiDto, LoaicauhoiDto } from '../types'
+import type { QuestionDto, LoaicauhoiDto } from '../types'
 import { Button } from '@/components/ui/button'
 import { ChoiceEditor } from './choice-editor'
 import { X, ImagePlus, Trash2 } from 'lucide-react'
@@ -12,7 +12,7 @@ import { questionsApi } from '../api'
 
 interface QuestionFormDialogProps {
   open: boolean
-  question: CauhoiDto | null
+  question: QuestionDto | null
   questionTypes: LoaicauhoiDto[]
   onClose: () => void
   onSubmit: (data: CreateQuestionFormData) => void
@@ -43,30 +43,30 @@ export function QuestionFormDialog({
     defaultValues: getDefaults(null),
   })
 
-  const noiDungValue = form.watch('noiDung')
-  const khoaPhongValue = form.watch('khoaPhong')
-  const idLoaiCauHoi = form.watch('idLoaiCauHoi')
-  const selectedType = questionTypes.find((t) => t.id === idLoaiCauHoi)
-  const isEssay = selectedType?.tenLoai?.toLowerCase().includes('tự luận') || selectedType?.tenLoai?.toLowerCase().includes('tu luan') || selectedType?.moTa?.toLowerCase().includes('tự luận') || selectedType?.moTa?.toLowerCase().includes('tu luan')
+  const noiDungValue = form.watch('content')
+  const khoaPhongValue = form.watch('department')
+  const questionCategoryId = form.watch('questionCategoryId')
+  const selectedType = questionTypes.find((t) => t.id === questionCategoryId)
+  const isEssay = selectedType?.categoryName?.toLowerCase().includes('tự luận') || selectedType?.categoryName?.toLowerCase().includes('tu luan') || selectedType?.moTa?.toLowerCase().includes('tự luận') || selectedType?.moTa?.toLowerCase().includes('tu luan')
 
   useEffect(() => {
     if (isEssay) {
-      const currentChoices = form.getValues('danhSachLuaChon')
+      const currentChoices = form.getValues('options')
       if (!currentChoices || currentChoices.length !== 1) {
-        form.setValue('danhSachLuaChon', [
-          { noiDung: currentChoices?.[0]?.noiDung || '', thuTu: 1, laDapAnDung: true },
+        form.setValue('options', [
+          { content: currentChoices?.[0]?.content || '', orderIndex: 1, isCorrect: true },
         ])
       }
-      form.setValue('hinhAnh', undefined)
+      form.setValue('imageUrl', undefined)
       setImagePreview(null)
     } else {
-      const currentChoices = form.getValues('danhSachLuaChon')
+      const currentChoices = form.getValues('options')
       if (!currentChoices || currentChoices.length < 2) {
-        form.setValue('danhSachLuaChon', [
-          { noiDung: currentChoices?.[0]?.noiDung || '', thuTu: 1, laDapAnDung: true },
-          { noiDung: '', thuTu: 2, laDapAnDung: false },
-          { noiDung: '', thuTu: 3, laDapAnDung: false },
-          { noiDung: '', thuTu: 4, laDapAnDung: false },
+        form.setValue('options', [
+          { content: currentChoices?.[0]?.content || '', orderIndex: 1, isCorrect: true },
+          { content: '', orderIndex: 2, isCorrect: false },
+          { content: '', orderIndex: 3, isCorrect: false },
+          { content: '', orderIndex: 4, isCorrect: false },
         ])
       }
     }
@@ -103,10 +103,10 @@ export function QuestionFormDialog({
     if (open) {
       const defaults = getDefaults(question)
       if (defaultKhoaPhong) {
-        defaults.khoaPhong = defaultKhoaPhong
+        defaults.department = defaultKhoaPhong
       }
       form.reset(defaults)
-      setImagePreview(question?.hinhAnh || null)
+      setImagePreview(question?.imageUrl || null)
       setIsDuplicate(false)
       setCheckingDuplicate(false)
     }
@@ -128,7 +128,7 @@ export function QuestionFormDialog({
       )
       if (res.data.success && res.data.data?.url) {
         const url = res.data.data.url
-        form.setValue('hinhAnh', url)
+        form.setValue('imageUrl', url)
         setImagePreview(url)
       }
     } catch {
@@ -140,37 +140,37 @@ export function QuestionFormDialog({
   }
 
   const handleRemoveImage = () => {
-    form.setValue('hinhAnh', undefined)
+    form.setValue('imageUrl', undefined)
     setImagePreview(null)
   }
 
   const handleFormSubmit = form.handleSubmit((data) => {
     if (!isEssay) {
-      if (!data.danhSachLuaChon || data.danhSachLuaChon.length < 2) {
-        form.setError('danhSachLuaChon', {
+      if (!data.options || data.options.length < 2) {
+        form.setError('options', {
           type: 'manual',
           message: 'Phải có ít nhất 2 lựa chọn',
         })
         return
       }
-      const hasEmptyChoice = data.danhSachLuaChon.some(c => !c.noiDung?.trim())
+      const hasEmptyChoice = data.options.some(c => !c.content?.trim())
       if (hasEmptyChoice) {
-        form.setError('danhSachLuaChon', {
+        form.setError('options', {
           type: 'manual',
           message: 'Nội dung lựa chọn không được trống',
         })
         return
       }
-      if (!data.danhSachLuaChon.some(c => c.laDapAnDung)) {
-        form.setError('danhSachLuaChon', {
+      if (!data.options.some(c => c.isCorrect)) {
+        form.setError('options', {
           type: 'manual',
           message: 'Phải có ít nhất 1 đáp án đúng',
         })
         return
       }
     } else {
-      data.danhSachLuaChon = []
-      data.hinhAnh = undefined
+      data.options = []
+      data.imageUrl = undefined
     }
     onSubmit(data)
   })
@@ -192,13 +192,13 @@ export function QuestionFormDialog({
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Nội dung câu hỏi *</label>
             <textarea
-              {...form.register('noiDung')}
+              {...form.register('content')}
               rows={3}
               className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
               placeholder="Nhập nội dung câu hỏi..."
             />
-            {form.formState.errors.noiDung && (
-              <p className="text-xs text-red-500">{form.formState.errors.noiDung.message}</p>
+            {form.formState.errors.content && (
+              <p className="text-xs text-red-500">{form.formState.errors.content.message}</p>
             )}
             {isDuplicate && (
               <p className="text-xs text-red-500 font-medium mt-1">
@@ -217,19 +217,19 @@ export function QuestionFormDialog({
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Loại câu hỏi</label>
               <select
-                {...form.register('idLoaiCauHoi', { valueAsNumber: true })}
+                {...form.register('questionCategoryId', { valueAsNumber: true })}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">-- Chọn loại --</option>
                 {questionTypes.map((t) => (
-                  <option key={t.id} value={t.id}>{t.tenLoai}</option>
+                  <option key={t.id} value={t.id}>{t.categoryName}</option>
                 ))}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Khoa/Phòng</label>
               <select
-                {...form.register('khoaPhong')}
+                {...form.register('department')}
                 disabled={!!defaultKhoaPhong}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-75 disabled:bg-gray-100"
               >
@@ -248,7 +248,7 @@ export function QuestionFormDialog({
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Mức độ khó *</label>
               <select
-                {...form.register('doKho')}
+                {...form.register('difficulty')}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">-- Chọn độ khó --</option>
@@ -304,18 +304,18 @@ export function QuestionFormDialog({
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Đáp án chuẩn / Hướng dẫn chấm</label>
               <textarea
-                {...form.register('danhSachLuaChon.0.noiDung')}
+                {...form.register('options.0.content')}
                 rows={4}
                 placeholder="Nhập đáp án chuẩn hoặc các ý chính cần có..."
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-y"
               />
-              {form.formState.errors.danhSachLuaChon?.[0]?.noiDung && (
-                <p className="text-xs text-red-500">{form.formState.errors.danhSachLuaChon[0].noiDung.message}</p>
+              {form.formState.errors.options?.[0]?.content && (
+                <p className="text-xs text-red-500">{form.formState.errors.options[0].content.message}</p>
               )}
             </div>
           ) : (
             <Controller
-              name="danhSachLuaChon"
+              name="options"
               control={form.control}
               render={({ field, fieldState }) => (
                 <ChoiceEditor
@@ -342,32 +342,32 @@ export function QuestionFormDialog({
   )
 }
 
-function getDefaults(question: CauhoiDto | null): CreateQuestionFormData {
+function getDefaults(question: QuestionDto | null): CreateQuestionFormData {
   if (question) {
     return {
-      noiDung: question.noiDung || '',
-      idLoaiCauHoi: question.idLoaiCauHoi || undefined,
-      doKho: question.doKho || 'Dễ',
-      khoaPhong: question.khoaPhong || undefined,
-      hinhAnh: question.hinhAnh || undefined,
-      danhSachLuaChon: question.danhSachLuaChon.map((l) => ({
-        noiDung: l.noiDung || '',
-        thuTu: l.thuTu || 1,
-        laDapAnDung: l.laDapAnDung || false,
+      content: question.content || '',
+      questionCategoryId: question.questionCategoryId || undefined,
+      difficulty: question.difficulty || 'Dễ',
+      department: question.department || undefined,
+      imageUrl: question.imageUrl || undefined,
+      options: question.options.map((l) => ({
+        content: l.content || '',
+        orderIndex: l.orderIndex || 1,
+        isCorrect: l.isCorrect || false,
       })),
     }
   }
   return {
-    noiDung: '',
-    idLoaiCauHoi: undefined,
-    doKho: '',
-    khoaPhong: undefined,
-    hinhAnh: undefined,
-    danhSachLuaChon: [
-      { noiDung: '', thuTu: 1, laDapAnDung: true },
-      { noiDung: '', thuTu: 2, laDapAnDung: false },
-      { noiDung: '', thuTu: 3, laDapAnDung: false },
-      { noiDung: '', thuTu: 4, laDapAnDung: false },
+    content: '',
+    questionCategoryId: undefined,
+    difficulty: '',
+    department: undefined,
+    imageUrl: undefined,
+    options: [
+      { content: '', orderIndex: 1, isCorrect: true },
+      { content: '', orderIndex: 2, isCorrect: false },
+      { content: '', orderIndex: 3, isCorrect: false },
+      { content: '', orderIndex: 4, isCorrect: false },
     ],
   }
 }

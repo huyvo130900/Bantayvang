@@ -1,16 +1,16 @@
 import { Button } from '@/components/ui/button'
 import { Trash2, Pencil, Building2, ClipboardList } from 'lucide-react'
-import type { KyThiDto } from '../types'
+import type { ExamCampaignDto } from '../types'
 import { formatDate } from '@/lib/utils'
 
 interface KyThiTableProps {
-  kyThis: KyThiDto[]
+  examCampaigns: ExamCampaignDto[]
   isLoading: boolean
   showKhoa?: boolean   // Admin bật để thấy cột Khoa/Đơn vị
-  onView: (kyThi: KyThiDto) => void
-  onEdit: (kyThi: KyThiDto) => void
-  onDelete: (kyThi: KyThiDto) => void
-  onChangeStatus: (kyThi: KyThiDto, status: string) => void
+  onView: (examCampaign: ExamCampaignDto) => void
+  onEdit: (examCampaign: ExamCampaignDto) => void
+  onDelete: (examCampaign: ExamCampaignDto) => void
+  onChangeStatus: (examCampaign: ExamCampaignDto, status: string) => void
 }
 
 const STATUS_OPTIONS = [
@@ -27,7 +27,7 @@ const statusColors: Record<string, string> = {
   DaKetThuc: 'bg-gray-100 text-gray-500',
 }
 
-export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit, onDelete, onChangeStatus }: KyThiTableProps) {
+export function KyThiTable({ examCampaigns, isLoading, showKhoa = false, onView, onEdit, onDelete, onChangeStatus }: KyThiTableProps) {
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -38,7 +38,7 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
     )
   }
 
-  if (kyThis.length === 0) {
+  if (examCampaigns.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed rounded-xl">
         <span className="text-4xl mb-3">🏆</span>
@@ -69,7 +69,7 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
           </tr>
         </thead>
         <tbody className="divide-y">
-          {kyThis.map((k) => (
+          {examCampaigns.map((k) => (
             <tr key={k.id} className="hover:bg-gray-50 transition-colors">
               <td className="px-4 py-3 text-center">
                 <Button
@@ -82,25 +82,25 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
                   Quản lý đề
                 </Button>
               </td>
-              <td className="px-4 py-3 font-mono text-xs text-gray-600">{k.maKyThi}</td>
+              <td className="px-4 py-3 font-mono text-xs text-gray-600">{k.campaignCode}</td>
               <td className="px-4 py-3">
                 <button
                   onClick={() => onView(k)}
                   className="font-medium text-primary hover:underline text-left focus:outline-none transition-colors"
                 >
-                  {k.tenKyThi}
+                  {k.campaignName}
                 </button>
                 {/* Chỉ hiện tên khoa dưới tên khi KHÔNG hiện cột Khoa riêng */}
-                {!showKhoa && k.tenKhoa && (
-                  <p className="text-xs text-gray-400 mt-0.5">{k.tenKhoa}</p>
+                {!showKhoa && k.departmentName && (
+                  <p className="text-xs text-gray-400 mt-0.5">{k.departmentName}</p>
                 )}
               </td>
               {showKhoa && (
                 <td className="px-4 py-3">
-                  {k.tenKhoa ? (
+                  {k.departmentName ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                       <Building2 className="h-3 w-3" />
-                      {k.tenKhoa}
+                      {k.departmentName}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 whitespace-nowrap">
@@ -131,9 +131,9 @@ export function KyThiTable({ kyThis, isLoading, showKhoa = false, onView, onEdit
               </td>
               <td className="px-4 py-3">
                 <select
-                  value={k.trangThai || ''}
+                  value={k.status || ''}
                   onChange={(e) => onChangeStatus(k, e.target.value)}
-                  className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary ${statusColors[k.trangThai || ''] || 'bg-gray-100 text-gray-500'}`}
+                  className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary ${statusColors[k.status || ''] || 'bg-gray-100 text-gray-500'}`}
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>

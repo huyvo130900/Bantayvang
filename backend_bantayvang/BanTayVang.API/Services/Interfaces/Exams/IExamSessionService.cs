@@ -16,7 +16,7 @@ namespace BanTayVang.API.Services.Interfaces.Exams
         /// <param name="taikhoanId">User taking the exam</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Exam session details</returns>
-        Task<BaseResponseDto<BaithiDto>> StartExamAsync(StartExamDto startDto, int taikhoanId, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto<ExamSubmissionDto>> StartExamAsync(StartExamDto startDto, int taikhoanId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets exam questions for a session (without correct answers)
@@ -34,7 +34,7 @@ namespace BanTayVang.API.Services.Interfaces.Exams
         /// <param name="taikhoanId">User ID for security validation</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Exam progress details</returns>
-        Task<BaseResponseDto<BaithiDto>> GetExamProgressAsync(int baithiId, int taikhoanId, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto<ExamSubmissionDto>> GetExamProgressAsync(int baithiId, int taikhoanId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Pauses an exam session

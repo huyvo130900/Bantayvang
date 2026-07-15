@@ -64,7 +64,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   }
 
   // Support both Vietnamese and English field names from backend
-  const displayName = user?.hoTen || user?.fullName || user?.tenDangNhap || user?.username || 'User'
+  const displayName = user?.fullName || user?.fullName || user?.username || user?.username || 'User'
   const displayRole = user?.tenVaiTro || user?.role || ''
 
   return (

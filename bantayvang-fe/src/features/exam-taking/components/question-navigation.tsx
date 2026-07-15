@@ -20,7 +20,7 @@ export function QuestionNavigation({
       <div className="grid grid-cols-5 gap-2">
         {questions.map((q, idx) => {
           const userAns = answers[q.id]
-          const hasChoices = q.danhSachLuaChon && q.danhSachLuaChon.length > 0
+          const hasChoices = q.options && q.options.length > 0
           
           let isAnswered = false
           if (userAns) {

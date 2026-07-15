@@ -1,10 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { questionsApi } from './api'
-import type { CauhoiDto, QuestionFilterDto, LoaicauhoiDto } from './types'
+import type { QuestionDto, QuestionFilterDto, LoaicauhoiDto } from './types'
 import type { PaginationDto } from '@/types'
 
 interface QuestionsState {
-  questions: CauhoiDto[]
+  questions: QuestionDto[]
   pagination: PaginationDto | null
   questionTypes: LoaicauhoiDto[]
   isLoading: boolean

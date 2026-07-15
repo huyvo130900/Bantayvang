@@ -1,50 +1,50 @@
-export interface LuachonDto {
+export interface QuestionOptionDto {
   id: number
-  idCauHoi: number | null
-  noiDung: string | null
-  laDapAnDung: boolean | null
-  thuTu: number | null
+  questionId: number | null
+  content: string | null
+  isCorrect: boolean | null
+  orderIndex: number | null
 }
 
-export interface CauhoiDto {
+export interface QuestionDto {
   id: number
-  idLoaiCauHoi: number | null
-  tenLoaiCauHoi: string | null
-  noiDung: string | null
-  doKho: string | null
-  khoaPhong: string | null
-  hinhAnh: string | null
-  ngayTao: string | null
-  ngayCapNhat: string | null
-  danhSachLuaChon: LuachonDto[]
-  danhSachKyThi?: string[]
-  danhSachDeThi?: string[]
+  questionCategoryId: number | null
+  categoryName: string | null
+  content: string | null
+  difficulty: string | null
+  department: string | null
+  imageUrl: string | null
+  createdAt: string | null
+  updatedAt: string | null
+  options: QuestionOptionDto[]
+  campaigns?: string[]
+  examPapers?: string[]
 }
 
-export interface CreateCauhoiDto {
-  noiDung: string
-  idLoaiCauHoi?: number
-  doKho?: string
-  mucDo?: string
-  hinhAnh?: string
-  khoaPhong?: string
-  danhSachLuaChon?: CreateLuachonDto[]
+export interface CreateQuestionDto {
+  content: string
+  questionCategoryId?: number
+  difficulty?: string
+  level?: string
+  imageUrl?: string
+  department?: string
+  options?: CreateQuestionOptionDto[]
 }
 
-export interface CreateLuachonDto {
-  noiDung: string
-  thuTu: number
-  laDapAnDung: boolean
+export interface CreateQuestionOptionDto {
+  content: string
+  orderIndex: number
+  isCorrect: boolean
 }
 
-export interface UpdateCauhoiDto extends CreateCauhoiDto {
+export interface UpdateQuestionDto extends CreateQuestionDto {
   id: number
 }
 
 export interface QuestionFilterDto {
-  idLoaiCauHoi?: number
-  doKho?: string
-  khoaPhong?: string
+  questionCategoryId?: number
+  difficulty?: string
+  department?: string
   searchKeyword?: string
   showDuplicatesOnly?: boolean
   kyThiId?: number
@@ -57,14 +57,14 @@ export interface QuestionFilterDto {
 
 export interface LoaicauhoiDto {
   id: number
-  tenLoai: string | null
+  categoryName: string | null
   moTa: string | null
-  soCauHoi?: number
+  totalQuestions?: number
 }
 
 
 
 export interface CreateLoaicauhoiDto {
-  tenLoai: string
+  categoryName: string
   moTa?: string
 }

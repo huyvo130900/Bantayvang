@@ -1,16 +1,16 @@
 import apiClient from '@/lib/axios'
-import type { DangKyThiDto, CreateDangKyThiDto, RejectDto } from './types'
+import type { ExamRegistrationDto, CreateExamRegistrationDto, RejectDto } from './types'
 
 export const registrationApi = {
-  create: (dto: CreateDangKyThiDto) =>
-    apiClient.post<{ message: string; data: DangKyThiDto }>('/DangKyThi/public', dto),
+  create: (dto: CreateExamRegistrationDto) =>
+    apiClient.post<{ message: string; data: ExamRegistrationDto }>('/ExamRegistration/public', dto),
 
   getPending: () =>
-    apiClient.get<DangKyThiDto[]>('/DangKyThi/pending'),
+    apiClient.get<ExamRegistrationDto[]>('/ExamRegistration/pending'),
 
   approve: (id: number) =>
-    apiClient.post<{ message: string }>(`/DangKyThi/${id}/approve`),
+    apiClient.post<{ message: string }>(`/ExamRegistration/${id}/approve`),
 
   reject: (id: number, dto: RejectDto) =>
-    apiClient.post<{ message: string }>(`/DangKyThi/${id}/reject`, dto),
+    apiClient.post<{ message: string }>(`/ExamRegistration/${id}/reject`, dto),
 }

@@ -14,7 +14,7 @@ namespace BanTayVang.API.Helpers
             => user.IsInRole("DeptManager");
 
         /// <summary>
-        /// Returns null for Admin (unrestricted), or the IdKhoaQuanLy for DeptManager.
+        /// Returns null for Admin (unrestricted), or the DeptManagerDeptId for DeptManager.
         /// </summary>
         public static int? GetDeptManagerKhoaId(ClaimsPrincipal user)
         {
@@ -33,12 +33,12 @@ namespace BanTayVang.API.Helpers
             return int.TryParse(val, out var id) ? id : (int?)null;
         }
 
-        public static bool CanAccessKhoa(ClaimsPrincipal user, string? khoaPhong)
+        public static bool CanAccessKhoa(ClaimsPrincipal user, string? department)
         {
             if (IsAdmin(user)) return true;
             if (!IsDeptManager(user)) return false;
             var myKhoa = GetKhoaPhong(user);
-            return string.IsNullOrEmpty(myKhoa) || myKhoa == khoaPhong;
+            return string.IsNullOrEmpty(myKhoa) || myKhoa == department;
         }
     }
 }

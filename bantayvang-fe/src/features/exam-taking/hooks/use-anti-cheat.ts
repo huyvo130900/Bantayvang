@@ -31,7 +31,7 @@ export function useAntiCheat({ baithiId, enabled, onForceSubmit }: UseAntiCheatO
 
     try {
       await examTakingApi.logWarning({
-        idBaiThi: baithiIdRef.current,
+        examSubmissionId: baithiIdRef.current,
         loaiCanhBao: type,
         moTa: description,
       })

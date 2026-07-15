@@ -13,9 +13,9 @@ namespace BanTayVang.API.Services.Impl.Import
 
         /// <summary>
         /// Select strategy by question type ID.
-        /// Kept for backward compatibility only — prefer GetStrategy(tenLoai) which is ID-independent.
+        /// Kept for backward compatibility only — prefer GetStrategy(categoryName) which is ID-independent.
         /// </summary>
-        [Obsolete("Use GetStrategy(tenLoai) to avoid ID coupling with DB.")]
+        [Obsolete("Use GetStrategy(categoryName) to avoid ID coupling with DB.")]
         public IQuestionImportStrategy GetStrategyById(int questionTypeId)
         {
             return questionTypeId switch
@@ -24,7 +24,7 @@ namespace BanTayVang.API.Services.Impl.Import
                      ?? throw new InvalidOperationException("Không tìm thấy chiến lược import câu hỏi Trắc nghiệm."),
                 2 => _strategies.FirstOrDefault(s => s is EssayImportStrategy)
                      ?? throw new InvalidOperationException("Không tìm thấy chiến lược import câu hỏi Tự luận."),
-                _ => throw new NotSupportedException($"Loại câu hỏi ID '{questionTypeId}' không được hỗ trợ import qua Excel. Thay vào đó hãy dùng GetStrategy(tenLoai).")
+                _ => throw new NotSupportedException($"Loại câu hỏi ID '{questionTypeId}' không được hỗ trợ import qua Excel. Thay vào đó hãy dùng GetStrategy(categoryName).")
             };
         }
 

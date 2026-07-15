@@ -22,29 +22,29 @@ namespace BanTayVang.API.Services.Impl
             {
                 var dashboard = new DashboardDto
                 {
-                    TotalUsers = await _context.Taikhoans.CountAsync(),
-                    ActiveUsers = await _context.Taikhoans.CountAsync(u => u.TrangThai == true),
-                    TotalQuestions = await _context.Cauhois.CountAsync(c => c.DaXoa != true),
-                    TotalExams = await _context.Dethis.CountAsync(),
-                    ActiveExams = await _context.Dethis.CountAsync(d => d.TrangThai == "Active"),
-                    TotalSubmissions = await _context.Baithis.CountAsync(),
-                    InProgressExams = await _context.Baithis.CountAsync(b => b.TrangThai == "InProgress"),
-                    CompletedExams = await _context.Baithis.CountAsync(b => b.TrangThai == "Completed"),
-                    TotalCheatingWarnings = await _context.Canhbaogianlans.CountAsync()
+                    TotalUsers = await _context.Users.CountAsync(),
+                    ActiveUsers = await _context.Users.CountAsync(u => u.Status == true),
+                    TotalQuestions = await _context.Questions.CountAsync(c => c.DaXoa != true),
+                    TotalExams = await _context.ExamPapers.CountAsync(),
+                    ActiveExams = await _context.ExamPapers.CountAsync(d => d.Status == "Active"),
+                    TotalSubmissions = await _context.ExamSubmissions.CountAsync(),
+                    InProgressExams = await _context.ExamSubmissions.CountAsync(b => b.Status == "InProgress"),
+                    CompletedExams = await _context.ExamSubmissions.CountAsync(b => b.Status == "Completed"),
+                    TotalCheatingWarnings = await _context.CheatWarnings.CountAsync()
                 };
 
-                var completedScores = await _context.Baithis
-                    .Where(b => b.TrangThai == "Completed" && b.TongDiem != null && b.TongSoCau != null && b.TongSoCau > 0)
-                    .Select(b => (double)b.TongDiem.GetValueOrDefault() / b.TongSoCau.GetValueOrDefault() * 10)
+                var completedScores = await _context.ExamSubmissions
+                    .Where(b => b.Status == "Completed" && b.TotalScore != null && b.TotalQuestions != null && b.TotalQuestions > 0)
+                    .Select(b => (double)b.TotalScore.GetValueOrDefault() / b.TotalQuestions.GetValueOrDefault() * 10)
                     .ToListAsync();
 
                 dashboard.AverageScore = completedScores.Any() ? completedScores.Average() : 0;
 
                 // Recent activities (last 10 completed exams)
-                var recentExams = await _context.Baithis
+                var recentExams = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
-                    .Where(b => b.TrangThai == "Completed")
-                    .OrderByDescending(b => b.ThoiGianNop)
+                    .Where(b => b.Status == "Completed")
+                    .OrderByDescending(b => b.SubmitTime)
                     .Take(10)
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
@@ -53,9 +53,9 @@ namespace BanTayVang.API.Services.Impl
                 dashboard.RecentActivities = recentExams.Select(b => new RecentActivityDto
                 {
                     ActivityType = "EXAM_COMPLETED",
-                    Description = $"Hoàn thành đề thi {b.IdDeThiNavigation?.MaDeThi} - Điểm: {b.TongDiem}",
-                    Timestamp = b.ThoiGianNop ?? DateTime.Now,
-                    Username = b.IdTaiKhoanNavigation?.TenDangNhap
+                    Description = $"Hoàn thành đề thi {b.IdDeThiNavigation?.ExamPaperCode} - Điểm: {b.TotalScore}",
+                    Timestamp = b.SubmitTime ?? DateTime.Now,
+                    Username = b.IdTaiKhoanNavigation?.Username
                 }).ToList();
 
                 return new BaseResponseDto<DashboardDto>
@@ -81,49 +81,49 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var kyThi = await _context.KyThis.FirstOrDefaultAsync(k => k.Id == kyThiId);
-                if (kyThi == null)
+                var examCampaign = await _context.ExamCampaigns.FirstOrDefaultAsync(k => k.Id == kyThiId);
+                if (examCampaign == null)
                     return new BaseResponseDto<ExamStatisticsDto> { Success = false, Message = "Không tìm thấy kỳ thi" };
 
-                var submissions = await _context.Baithis
+                var submissions = await _context.ExamSubmissions
                     .Include(b => b.IdDeThiNavigation)
-                    .Where(b => b.IdKyThi == kyThiId)
+                    .Where(b => b.ExamCampaignId == kyThiId)
                     .ToListAsync();
 
                 // Group by participant to get unique candidate attempts
                 var latestSubmissions = submissions
-                    .Where(b => b.IdTaiKhoan != null)
-                    .GroupBy(b => b.IdTaiKhoan!.Value)
+                    .Where(b => b.UserId != null)
+                    .GroupBy(b => b.UserId!.Value)
                     .Select(g => g.OrderByDescending(b => b.Id).First())
                     .ToList();
 
                 var latestCompletedSubmissions = submissions
-                    .Where(b => b.IdTaiKhoan != null && b.TrangThai == "Completed")
-                    .GroupBy(b => b.IdTaiKhoan!.Value)
+                    .Where(b => b.UserId != null && b.Status == "Completed")
+                    .GroupBy(b => b.UserId!.Value)
                     .Select(g => g.OrderByDescending(b => b.Id).First())
                     .ToList();
 
                 // Normalize scores to a 10-point scale based on correct answers and total questions
                 var scores = latestCompletedSubmissions
-                    .Where(b => b.TongDiem.HasValue && b.TongSoCau.HasValue && b.TongSoCau.Value > 0)
-                    .Select(b => (double)b.TongDiem.GetValueOrDefault() / b.TongSoCau.GetValueOrDefault() * 10)
+                    .Where(b => b.TotalScore.HasValue && b.TotalQuestions.HasValue && b.TotalQuestions.Value > 0)
+                    .Select(b => (double)b.TotalScore.GetValueOrDefault() / b.TotalQuestions.GetValueOrDefault() * 10)
                     .ToList();
 
                 var passCount = 0;
                 var failCount = 0;
                 foreach (var b in latestCompletedSubmissions)
                 {
-                    var threshold = kyThi.SoCauDungToiThieu ?? b.IdDeThiNavigation?.SoCauDungToiThieu;
+                    var threshold = examCampaign.MinPassQuestions ?? b.IdDeThiNavigation?.MinPassQuestions;
                     bool isPass;
                     if (threshold.HasValue)
                     {
-                        isPass = (b.SoCauDung ?? 0) >= threshold.Value;
+                        isPass = (b.CorrectAnswers ?? 0) >= threshold.Value;
                     }
                     else
                     {
-                        var totalQuestions = b.TongSoCau ?? 10;
+                        var totalQuestions = b.TotalQuestions ?? 10;
                         var defaultThreshold = totalQuestions > 0 ? (double)totalQuestions / 2 : 5;
-                        isPass = (b.SoCauDung ?? 0) >= defaultThreshold;
+                        isPass = (b.CorrectAnswers ?? 0) >= defaultThreshold;
                     }
 
                     if (isPass) passCount++;
@@ -132,12 +132,12 @@ namespace BanTayVang.API.Services.Impl
 
                 var stats = new ExamStatisticsDto
                 {
-                    KyThiId = kyThi.Id,
-                    MaKyThi = kyThi.MaKyThi,
-                    TenKyThi = kyThi.TenKyThi,
+                    KyThiId = examCampaign.Id,
+                    CampaignCode = examCampaign.CampaignCode,
+                    CampaignName = examCampaign.CampaignName,
                     TotalParticipants = latestSubmissions.Count,
                     CompletedCount = latestCompletedSubmissions.Count,
-                    InProgressCount = latestSubmissions.Count(s => !latestCompletedSubmissions.Any(c => c.IdTaiKhoan == s.IdTaiKhoan)),
+                    InProgressCount = latestSubmissions.Count(s => !latestCompletedSubmissions.Any(c => c.UserId == s.UserId)),
                     AverageScore = scores.Any() ? scores.Average() : 0,
                     HighestScore = scores.Any() ? scores.Max() : 0,
                     LowestScore = scores.Any() ? scores.Min() : 0,
@@ -178,21 +178,21 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var history = await _context.Baithis
-                    .Where(b => b.IdTaiKhoan == userId)
+                var history = await _context.ExamSubmissions
+                    .Where(b => b.UserId == userId)
                     .Include(b => b.IdDeThiNavigation)
-                    .OrderByDescending(b => b.ThoiGianBatDau ?? b.ThoiGianNop)
+                    .OrderByDescending(b => b.StartTime ?? b.SubmitTime)
                     .Select(b => new UserExamHistoryDto
                     {
                         BaiThiId = b.Id,
-                        MaDeThi = b.IdDeThiNavigation!.MaDeThi,
-                        TenDeThi = b.IdDeThiNavigation.TenDeThi,
-                        ThoiGianBatDau = b.ThoiGianBatDau,
-                        ThoiGianNop = b.ThoiGianNop,
-                        TrangThai = b.TrangThai,
-                        SoCauDung = b.SoCauDung,
-                        TongSoCau = b.TongSoCau,
-                        TongDiem = b.TongDiem,
+                        ExamPaperCode = b.IdDeThiNavigation!.ExamPaperCode,
+                        ExamPaperName = b.IdDeThiNavigation.ExamPaperName,
+                        StartTime = b.StartTime,
+                        SubmitTime = b.SubmitTime,
+                        Status = b.Status,
+                        CorrectAnswers = b.CorrectAnswers,
+                        TotalQuestions = b.TotalQuestions,
+                        TotalScore = b.TotalScore,
                         SoCanhBao = b.TongSoCanhBao
                     })
                     .ToListAsync();
@@ -220,20 +220,20 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var performers = await _context.Baithis
+                var performers = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
-                    .Where(b => b.TrangThai == "Completed" && b.TongDiem != null && b.IdTaiKhoan != null)
+                    .Where(b => b.Status == "Completed" && b.TotalScore != null && b.UserId != null)
                     .Include(b => b.IdTaiKhoanNavigation)
-                    .GroupBy(b => b.IdTaiKhoan)
+                    .GroupBy(b => b.UserId)
                     .Select(g => new TopPerformerDto
                     {
                         UserId = g.Key!.Value,
-                        Username = g.First().IdTaiKhoanNavigation!.TenDangNhap,
-                        FullName = g.First().IdTaiKhoanNavigation!.HoTen,
-                        KhoaPhong = g.First().IdTaiKhoanNavigation!.KhoaPhong,
+                        Username = g.First().IdTaiKhoanNavigation!.Username,
+                        FullName = g.First().IdTaiKhoanNavigation!.FullName,
+                        Department = g.First().IdTaiKhoanNavigation!.Department,
                         ExamsTaken = g.Count(),
-                        AverageScore = g.Average(b => b.TongDiem!.Value),
-                        HighestScore = g.Max(b => b.TongDiem!.Value)
+                        AverageScore = g.Average(b => b.TotalScore!.Value),
+                        HighestScore = g.Max(b => b.TotalScore!.Value)
                     })
                     .OrderByDescending(p => p.AverageScore)
                     .Take(top)

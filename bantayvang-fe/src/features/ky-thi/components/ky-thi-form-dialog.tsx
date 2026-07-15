@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAppSelector } from '@/app/hooks'
 import { getKyThiSchema, type CreateKyThiFormData } from '../schemas'
-import type { KyThiDto } from '../types'
+import type { ExamCampaignDto } from '../types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X, Check, ChevronDown } from 'lucide-react'
@@ -12,7 +12,7 @@ import type { DepartmentDto } from '@/features/departments/types'
 
 interface KyThiFormDialogProps {
   open: boolean
-  kyThi: KyThiDto | null
+  examCampaign: ExamCampaignDto | null
   onClose: () => void
   onSubmit: (data: CreateKyThiFormData) => void
   isLoading: boolean
@@ -42,8 +42,8 @@ const generateKyThiCode = () => {
   return `KT_${year}${month}${day}_${hours}${minutes}${seconds}_${rand}`
 }
 
-export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: KyThiFormDialogProps) {
-  const isEdit = !!kyThi
+export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoading }: KyThiFormDialogProps) {
+  const isEdit = !!examCampaign
   const currentUser = useAppSelector((state) => state.auth.user)
   const isDeptManager = currentUser?.role === 'DeptManager' || currentUser?.tenVaiTro === 'DeptManager'
 
@@ -53,8 +53,8 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const form = useForm<CreateKyThiFormData>({
-    resolver: zodResolver(getKyThiSchema(isEdit, kyThi?.thoiGianBatDau, kyThi?.thoiGianKetThuc)) as any,
-    defaultValues: { maKyThi: '', tenKyThi: '', moTa: '', khoaPhongId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any, thoiGianLamBai: '' as any },
+    resolver: zodResolver(getKyThiSchema(isEdit, examCampaign?.thoiGianBatDau, examCampaign?.thoiGianKetThuc)) as any,
+    defaultValues: { campaignCode: '', campaignName: '', moTa: '', khoaPhongId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any, durationMinutes: '' as any },
   })
 
   // Programmatically register custom fields
@@ -65,7 +65,7 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
   // Load departments
   useEffect(() => {
     if (open) {
-      departmentApi.getAll({ trangThai: true, pageSize: 100 })
+      departmentApi.getAll({ status: true, pageSize: 100 })
         .then((res) => setDepartments(res.data?.data || []))
         .catch(() => {})
     }
@@ -78,7 +78,7 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
         setIsDropdownOpen(false)
         const currentId = form.getValues('khoaPhongId')
         const currentDept = departments.find(d => d.id === currentId)
-        setSearchTerm(!currentId ? 'Tất cả các khoa' : (currentDept ? currentDept.tenKhoa : ''))
+        setSearchTerm(!currentId ? 'Tất cả các khoa' : (currentDept ? currentDept.departmentName : ''))
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -86,39 +86,39 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
   }, [departments, form])
 
   useEffect(() => {
-    if (kyThi) {
+    if (examCampaign) {
       form.reset({
-        maKyThi: kyThi.maKyThi || '',
-        tenKyThi: kyThi.tenKyThi || '',
-        moTa: kyThi.moTa || '',
-        khoaPhongId: kyThi.khoaPhongId || '' as any,
-        thoiGianBatDau: toLocalInputString(kyThi.thoiGianBatDau),
-        thoiGianKetThuc: toLocalInputString(kyThi.thoiGianKetThuc),
-        donViToChuc: kyThi.donViToChuc || '',
-        soCauDungToiThieu: kyThi.soCauDungToiThieu ?? '' as any,
-        tongSoCauHoi: kyThi.tongSoCauHoi ?? '' as any,
-        thoiGianLamBai: kyThi.thoiGianLamBai ?? '' as any,
+        campaignCode: examCampaign.campaignCode || '',
+        campaignName: examCampaign.campaignName || '',
+        moTa: examCampaign.moTa || '',
+        khoaPhongId: examCampaign.khoaPhongId || '' as any,
+        thoiGianBatDau: toLocalInputString(examCampaign.thoiGianBatDau),
+        thoiGianKetThuc: toLocalInputString(examCampaign.thoiGianKetThuc),
+        donViToChuc: examCampaign.donViToChuc || '',
+        soCauDungToiThieu: examCampaign.soCauDungToiThieu ?? '' as any,
+        tongSoCauHoi: examCampaign.tongSoCauHoi ?? '' as any,
+        durationMinutes: examCampaign.durationMinutes ?? '' as any,
       })
-      setSearchTerm(kyThi.tenKhoa || 'Tất cả các khoa')
+      setSearchTerm(examCampaign.departmentName || 'Tất cả các khoa')
     } else {
       if (isDeptManager) {
         form.reset({
-          maKyThi: generateKyThiCode(),
-          tenKyThi: '',
+          campaignCode: generateKyThiCode(),
+          campaignName: '',
           moTa: '',
           khoaPhongId: currentUser?.idKhoaQuanLy || '' as any,
           thoiGianBatDau: '',
           thoiGianKetThuc: '',
-          donViToChuc: currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || '',
+          donViToChuc: currentUser?.tenKhoaQuanLy || currentUser?.department || '',
           soCauDungToiThieu: '' as any,
           tongSoCauHoi: '' as any,
-          thoiGianLamBai: '' as any
+          durationMinutes: '' as any
         })
-        setSearchTerm(currentUser?.tenKhoaQuanLy || currentUser?.khoaPhong || '')
+        setSearchTerm(currentUser?.tenKhoaQuanLy || currentUser?.department || '')
       } else {
         form.reset({
-          maKyThi: generateKyThiCode(),
-          tenKyThi: '',
+          campaignCode: generateKyThiCode(),
+          campaignName: '',
           moTa: '',
           khoaPhongId: '' as any,
           thoiGianBatDau: '',
@@ -126,22 +126,22 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
           donViToChuc: '',
           soCauDungToiThieu: '' as any,
           tongSoCauHoi: '' as any,
-          thoiGianLamBai: '' as any,
+          durationMinutes: '' as any,
         })
         setSearchTerm('Tất cả các khoa')
       }
     }
-  }, [open, kyThi, form, isDeptManager, currentUser])
+  }, [open, examCampaign, form, isDeptManager, currentUser])
 
   if (!open) return null
 
   const selectedDeptId = form.watch('khoaPhongId')
   const selectedDept = departments.find(d => d.id === selectedDeptId)
-  const selectedDeptName = !selectedDeptId ? 'Tất cả các khoa' : (selectedDept ? selectedDept.tenKhoa : '')
+  const selectedDeptName = !selectedDeptId ? 'Tất cả các khoa' : (selectedDept ? selectedDept.departmentName : '')
 
   const filteredDepts = departments.filter(d => {
     if (searchTerm === selectedDeptName) return true
-    return d.tenKhoa.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    return d.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) || 
            d.maKhoa.toLowerCase().includes(searchTerm.toLowerCase())
   })
 
@@ -159,8 +159,8 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Mã kỳ thi *</label>
-              <Input {...form.register('maKyThi')} placeholder="KT_Q2_2026" readOnly className="bg-gray-100 cursor-not-allowed" />
-              {form.formState.errors.maKyThi && <p className="text-xs text-red-500">{form.formState.errors.maKyThi.message}</p>}
+              <Input {...form.register('campaignCode')} placeholder="KT_Q2_2026" readOnly className="bg-gray-100 cursor-not-allowed" />
+              {form.formState.errors.campaignCode && <p className="text-xs text-red-500">{form.formState.errors.campaignCode.message}</p>}
             </div>
             <div className="space-y-1 relative" ref={dropdownRef}>
               <label className="text-sm font-medium text-gray-700">Khoa / Phòng ban</label>
@@ -222,11 +222,11 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
                         }`}
                         onClick={() => {
                           form.setValue('khoaPhongId', d.id)
-                          setSearchTerm(d.tenKhoa)
+                          setSearchTerm(d.departmentName)
                           setIsDropdownOpen(false)
                         }}
                       >
-                        <span>{d.tenKhoa} ({d.maKhoa})</span>
+                        <span>{d.departmentName} ({d.maKhoa})</span>
                         {selectedDeptId === d.id && <Check className="h-4 w-4 text-blue-600" />}
                       </div>
                     ))
@@ -238,8 +238,8 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
 
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Tên kỳ thi *</label>
-            <Input {...form.register('tenKyThi')} placeholder="Kỳ thi nội bộ Q2/2026" />
-            {form.formState.errors.tenKyThi && <p className="text-xs text-red-500">{form.formState.errors.tenKyThi.message}</p>}
+            <Input {...form.register('campaignName')} placeholder="Kỳ thi nội bộ Q2/2026" />
+            {form.formState.errors.campaignName && <p className="text-xs text-red-500">{form.formState.errors.campaignName.message}</p>}
           </div>
 
           <div className="space-y-1">
@@ -285,11 +285,11 @@ export function KyThiFormDialog({ open, kyThi, onClose, onSubmit, isLoading }: K
             <Input
               type="number"
               min={1}
-              {...form.register('thoiGianLamBai')}
+              {...form.register('durationMinutes')}
               placeholder="VD: 60"
             />
-            {form.formState.errors.thoiGianLamBai && (
-              <p className="text-xs text-red-500">{form.formState.errors.thoiGianLamBai.message}</p>
+            {form.formState.errors.durationMinutes && (
+              <p className="text-xs text-red-500">{form.formState.errors.durationMinutes.message}</p>
             )}
             <p className="text-[11px] text-gray-400">
               Mặc định 60 phút nếu để trống. Áp dụng cho các đề thi.

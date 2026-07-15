@@ -16,9 +16,9 @@ namespace BanTayVang.API.Services.Impl.Exams
     /// </summary>
     public class ExamSessionService : IExamSessionService
     {
-        private readonly IDethiRepository _dethiRepository;
-        private readonly IBaithiRepository _baithiRepository;
-        private readonly IChitietlambaiRepository _chitietRepository;
+        private readonly IExamPaperRepository _examPaperRepository;
+        private readonly IExamSubmissionRepository _examSubmissionRepository;
+        private readonly ISubmissionDetailRepository _chitietRepository;
         private readonly IExamValidationService _validationService;
         private readonly IExamSecurityService _securityService;
         private readonly IMapper _mapper;
@@ -26,17 +26,17 @@ namespace BanTayVang.API.Services.Impl.Exams
         private readonly ILogger<ExamSessionService> _logger;
 
         public ExamSessionService(
-            IDethiRepository dethiRepository,
-            IBaithiRepository baithiRepository,
-            IChitietlambaiRepository chitietRepository,
+            IExamPaperRepository dethiRepository,
+            IExamSubmissionRepository baithiRepository,
+            ISubmissionDetailRepository chitietRepository,
             IExamValidationService validationService,
             IExamSecurityService securityService,
             IMapper mapper,
             BanTayVangDbContext context,
             ILogger<ExamSessionService> logger)
         {
-            _dethiRepository = dethiRepository ?? throw new ArgumentNullException(nameof(dethiRepository));
-            _baithiRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
+            _examPaperRepository = dethiRepository ?? throw new ArgumentNullException(nameof(dethiRepository));
+            _examSubmissionRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
             _chitietRepository = chitietRepository ?? throw new ArgumentNullException(nameof(chitietRepository));
             _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
             _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
@@ -45,20 +45,20 @@ namespace BanTayVang.API.Services.Impl.Exams
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<BaseResponseDto<BaithiDto>> StartExamAsync(StartExamDto startDto, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> StartExamAsync(StartExamDto startDto, int taikhoanId, CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("Starting exam session for user {UserId} with exam code {ExamCode}, KyThiId {KyThiId}", taikhoanId, startDto.MaDeThi, startDto.KyThiId);
+                _logger.LogInformation("Starting exam session for user {UserId} with exam code {ExamCode}, KyThiId {KyThiId}", taikhoanId, startDto.ExamPaperCode, startDto.KyThiId);
 
                 // OWASP A03: Injection - Input validation
                 var validationResult = await _validationService.ValidateStartExamAsync(startDto, taikhoanId, cancellationToken);
                 if (!validationResult.IsValid)
                 {
                     await _securityService.LogSecurityEventAsync("EXAM_START_VALIDATION_FAILED",
-                        $"User {taikhoanId} failed validation for exam {startDto.MaDeThi}",
+                        $"User {taikhoanId} failed validation for exam {startDto.ExamPaperCode}",
                         taikhoanId, "Medium", cancellationToken);
-                    return new BaseResponseDto<BaithiDto>
+                    return new BaseResponseDto<ExamSubmissionDto>
                     {
                         Success = false,
                         Message = validationResult.Message,
@@ -66,31 +66,31 @@ namespace BanTayVang.API.Services.Impl.Exams
                     };
                 }
 
-                // Resolve exam paper (Dethi)
+                // Resolve exam paper (ExamPaper)
                 // Rule: Thí sinh làm các đề khác nhau khi thi lại. Làm hết các đề mới lặp lại.
-                Dethi? dethi = null;
+                ExamPaper? examPaper = null;
                 if (startDto.KyThiId.HasValue)
                 {
-                    dethi = await _dethiRepository.ResolveExamForCandidateAsync(startDto.KyThiId.Value, taikhoanId, cancellationToken);
+                    examPaper = await _examPaperRepository.ResolveExamForCandidateAsync(startDto.KyThiId.Value, taikhoanId, cancellationToken);
                 }
 
-                // Fallback to MaDeThi if not resolved via KyThiId
-                if (dethi == null)
+                // Fallback to ExamPaperCode if not resolved via KyThiId
+                if (examPaper == null)
                 {
-                    if (string.IsNullOrEmpty(startDto.MaDeThi))
+                    if (string.IsNullOrEmpty(startDto.ExamPaperCode))
                     {
-                        return new BaseResponseDto<BaithiDto> { Success = false, Message = "Kỳ thi chưa có đề thi" };
+                        return new BaseResponseDto<ExamSubmissionDto> { Success = false, Message = "Kỳ thi chưa có đề thi" };
                     }
-                    dethi = await _dethiRepository.GetByMaDeThiAsync(startDto.MaDeThi);
+                    examPaper = await _examPaperRepository.GetByMaDeThiAsync(startDto.ExamPaperCode);
                 }
 
-                if (dethi == null)
+                if (examPaper == null)
                 {
                     await _securityService.LogSecurityEventAsync("EXAM_NOT_FOUND",
-                        $"User {taikhoanId} attempted to access non-existent exam {startDto.MaDeThi}",
+                        $"User {taikhoanId} attempted to access non-existent exam {startDto.ExamPaperCode}",
                         taikhoanId, "Medium", cancellationToken);
 
-                    return new BaseResponseDto<BaithiDto>
+                    return new BaseResponseDto<ExamSubmissionDto>
                     {
                         Success = false,
                         Message = "Không tìm thấy đề thi"
@@ -98,13 +98,13 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // OWASP A01: Broken Access Control - Time-based access control
-                if (dethi.ThoiGianBatDau > DateTime.Now)
+                if (examPaper.StartTime > DateTime.Now)
                 {
                     await _securityService.LogSecurityEventAsync("EXAM_EARLY_ACCESS_ATTEMPT",
-                        $"User {taikhoanId} attempted early access to exam {dethi.MaDeThi}",
+                        $"User {taikhoanId} attempted early access to exam {examPaper.ExamPaperCode}",
                         taikhoanId, "High", cancellationToken);
 
-                    return new BaseResponseDto<BaithiDto>
+                    return new BaseResponseDto<ExamSubmissionDto>
                     {
                         Success = false,
                         Message = "Chưa đến thời gian thi"
@@ -112,34 +112,34 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // Check for existing IN-PROGRESS session (resume it)
-                var existingBaithi = await _baithiRepository.GetActiveExamSessionAsync(taikhoanId, dethi.Id);
+                var existingBaithi = await _examSubmissionRepository.GetActiveExamSessionAsync(taikhoanId, examPaper.Id);
 
-                Baithi baithi;
-                if (existingBaithi != null && existingBaithi.TrangThai == "InProgress")
+                ExamSubmission examSubmission;
+                if (existingBaithi != null && existingBaithi.Status == "InProgress")
                 {
                     // Resume existing in-progress session
-                    baithi = existingBaithi;
-                    _logger.LogInformation("Resuming existing exam session {SessionId} for user {UserId}", baithi.Id, taikhoanId);
+                    examSubmission = existingBaithi;
+                    _logger.LogInformation("Resuming existing exam session {SessionId} for user {UserId}", examSubmission.Id, taikhoanId);
                 }
                 else
                 {
                     // Create new session
-                    var dethiWithQuestions = await _dethiRepository.GetWithQuestionsAsync(dethi.Id);
+                    var dethiWithQuestions = await _examPaperRepository.GetWithQuestionsAsync(examPaper.Id);
 
-                    // Lấy toàn bộ câu hỏi, loại trùng lặp theo IdCauHoi
-                    var allQuestions = (dethiWithQuestions?.DethiCauhois ?? new List<DethiCauhoi>())
-                        .Where(dc => dc.IdCauHoi.HasValue && dc.IdCauHoiNavigation != null)
-                        .GroupBy(dc => dc.IdCauHoi!.Value)
+                    // Lấy toàn bộ câu hỏi, loại trùng lặp theo QuestionId
+                    var allQuestions = (dethiWithQuestions?.ExamPaperQuestions ?? new List<ExamPaperQuestion>())
+                        .Where(dc => dc.QuestionId.HasValue && dc.IdCauHoiNavigation != null)
+                        .GroupBy(dc => dc.QuestionId!.Value)
                         .Select(g => g.First())
                         .ToList();
 
                     // Đọc giới hạn số câu từ ChecksumData (nếu có)
                     int soCauLimit = allQuestions.Count;
-                    if (!string.IsNullOrEmpty(dethi.ChecksumData) && dethi.ChecksumData.Contains("SO_CAU:"))
+                    if (!string.IsNullOrEmpty(examPaper.ChecksumData) && examPaper.ChecksumData.Contains("SO_CAU:"))
                     {
                         try
                         {
-                            var parts = dethi.ChecksumData.Split('|');
+                            var parts = examPaper.ChecksumData.Split('|');
                             var soCauPart = parts.FirstOrDefault(p => p.StartsWith("SO_CAU:"));
                             if (soCauPart != null && int.TryParse(soCauPart.Replace("SO_CAU:", ""), out int soCauConfig))
                                 soCauLimit = Math.Min(soCauConfig, allQuestions.Count);
@@ -154,52 +154,52 @@ namespace BanTayVang.API.Services.Impl.Exams
                         .Take(soCauLimit)
                         .ToList();
 
-                    baithi = new Baithi
+                    examSubmission = new ExamSubmission
                     {
-                        IdTaiKhoan = taikhoanId,
-                        IdDeThi = dethi.Id,
-                        MaDeThi = dethi.MaDeThi,
-                        IdKyThi = startDto.KyThiId ?? dethi.KyThiId, // Link KyThiId to the exam session
-                        TrangThai = "InProgress",
-                        TongSoCau = selectedQuestions.Count,
+                        UserId = taikhoanId,
+                        ExamPaperId = examPaper.Id,
+                        ExamPaperCode = examPaper.ExamPaperCode,
+                        ExamCampaignId = startDto.KyThiId ?? examPaper.KyThiId, // Link KyThiId to the exam session
+                        Status = "InProgress",
+                        TotalQuestions = selectedQuestions.Count,
                         TongSoCanhBao = 0,
-                        ThoiGianBatDau = DateTime.Now
+                        StartTime = DateTime.Now
                     };
 
-                    baithi = await _baithiRepository.AddAsync(baithi);
+                    examSubmission = await _examSubmissionRepository.AddAsync(examSubmission);
 
-                    // Lưu thứ tự câu hỏi đã chọn vào Chitietlambai (placeholder, chưa có đáp án)
+                    // Lưu thứ tự câu hỏi đã chọn vào SubmissionDetail (placeholder, chưa có đáp án)
                     for (int i = 0; i < selectedQuestions.Count; i++)
                     {
-                        var placeholder = new Chitietlambai
+                        var placeholder = new SubmissionDetail
                         {
-                            IdBaiThi = baithi.Id,
-                            IdCauHoi = selectedQuestions[i].IdCauHoi,
-                            IdLuaChonDaChon = null,
+                            ExamSubmissionId = examSubmission.Id,
+                            QuestionId = selectedQuestions[i].QuestionId,
+                            SelectedOptionId = null,
                             CauTraLoiTuLuan = null,
                             ThoiGianTraLoi = null,
                             DaLuu = false,
-                            DiemDatDuoc = null
+                            ScoreObtained = null
                         };
                         await _chitietRepository.AddAsync(placeholder);
                     }
 
                     await _securityService.LogSecurityEventAsync("EXAM_SESSION_STARTED",
-                        $"User {taikhoanId} started exam session {baithi.Id} for exam {dethi.MaDeThi} with {selectedQuestions.Count} questions",
+                        $"User {taikhoanId} started exam session {examSubmission.Id} for exam {examPaper.ExamPaperCode} with {selectedQuestions.Count} questions",
                         taikhoanId, "Info", cancellationToken);
 
-                    _logger.LogInformation("Created new exam session {SessionId} for user {UserId} with {Count} unique questions", baithi.Id, taikhoanId, selectedQuestions.Count);
+                    _logger.LogInformation("Created new exam session {SessionId} for user {UserId} with {Count} unique questions", examSubmission.Id, taikhoanId, selectedQuestions.Count);
                 }
 
-                var result = _mapper.Map<BaithiDto>(baithi);
-                result.TenDeThi = dethi.TenDeThi;
-                result.ThoiGianLamBai = dethi.ThoiGianLamBai;
-                result.ThoiGianBatDau = dethi.ThoiGianBatDau;
+                var result = _mapper.Map<ExamSubmissionDto>(examSubmission);
+                result.ExamPaperName = examPaper.ExamPaperName;
+                result.DurationMinutes = examPaper.DurationMinutes;
+                result.StartTime = examPaper.StartTime;
 
                 // Calculate remaining time with security validation
-                result.ThoiGianConLai = CalculateRemainingTime(dethi, baithi.ThoiGianBatDau);
+                result.ThoiGianConLai = CalculateRemainingTime(examPaper, examSubmission.StartTime);
 
-                return new BaseResponseDto<BaithiDto>
+                return new BaseResponseDto<ExamSubmissionDto>
                 {
                     Success = true,
                     Message = "Bắt đầu làm bài thành công",
@@ -208,13 +208,13 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting exam session for user {UserId} with exam code {ExamCode}", taikhoanId, startDto.MaDeThi);
+                _logger.LogError(ex, "Error starting exam session for user {UserId} with exam code {ExamCode}", taikhoanId, startDto.ExamPaperCode);
 
                 await _securityService.LogSecurityEventAsync("EXAM_START_ERROR",
                     $"System error during exam start for user {taikhoanId}: {ex.Message}",
                     taikhoanId, "High", cancellationToken);
 
-                return new BaseResponseDto<BaithiDto>
+                return new BaseResponseDto<ExamSubmissionDto>
                 {
                     Success = false,
                     Message = "Có lỗi xảy ra khi bắt đầu thi",
@@ -230,8 +230,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                 _logger.LogInformation("Getting exam questions for session {SessionId} and user {UserId}", baithiId, taikhoanId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var baithi = await _baithiRepository.GetByIdAsync(baithiId);
-                if (baithi == null || baithi.IdTaiKhoan != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(baithiId);
+                if (examSubmission == null || examSubmission.UserId != taikhoanId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_EXAM_ACCESS",
                         $"User {taikhoanId} attempted unauthorized access to exam session {baithiId}",
@@ -244,7 +244,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     };
                 }
 
-                if (baithi.TrangThai != "InProgress")
+                if (examSubmission.Status != "InProgress")
                 {
                     return new BaseResponseDto<List<ExamQuestionDto>>
                     {
@@ -253,8 +253,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                     };
                 }
 
-                var dethi = await _dethiRepository.GetWithQuestionsAsync(baithi.IdDeThi!.Value);
-                if (dethi == null)
+                var examPaper = await _examPaperRepository.GetWithQuestionsAsync(examSubmission.ExamPaperId!.Value);
+                if (examPaper == null)
                 {
                     return new BaseResponseDto<List<ExamQuestionDto>>
                     {
@@ -265,14 +265,14 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                 var questions = new List<ExamQuestionDto>();
 
-                // Đọc danh sách câu hỏi từ Chitietlambai đã được lưu lúc StartExam
+                // Đọc danh sách câu hỏi từ SubmissionDetail đã được lưu lúc StartExam
                 // → thứ tự cố định, không shuffle lại, không bị trùng lặp
                 var savedChitiets = await _chitietRepository.GetByBaiThiAsync(baithiId);
 
-                // Distinct theo IdCauHoi để phòng trường hợp dữ liệu cũ có bản ghi trùng
+                // Distinct theo QuestionId để phòng trường hợp dữ liệu cũ có bản ghi trùng
                 var orderedChitiets = savedChitiets
-                    .Where(c => c.IdCauHoi.HasValue)
-                    .GroupBy(c => c.IdCauHoi!.Value)
+                    .Where(c => c.QuestionId.HasValue)
+                    .GroupBy(c => c.QuestionId!.Value)
                     .Select(g => g.OrderBy(c => c.Id).First()) // lấy bản ghi cũ nhất
                     .OrderBy(c => c.Id)                         // giữ thứ tự insert lúc Start
                     .ToList();
@@ -282,11 +282,11 @@ namespace BanTayVang.API.Services.Impl.Exams
                 {
                     var random = new Random(baithiId);
                     int? soCauLimit = null;
-                    if (!string.IsNullOrEmpty(dethi.ChecksumData) && dethi.ChecksumData.Contains("SO_CAU:"))
+                    if (!string.IsNullOrEmpty(examPaper.ChecksumData) && examPaper.ChecksumData.Contains("SO_CAU:"))
                     {
                         try
                         {
-                            var parts = dethi.ChecksumData.Split('|');
+                            var parts = examPaper.ChecksumData.Split('|');
                             var soCauPart = parts.FirstOrDefault(p => p.StartsWith("SO_CAU:"));
                             if (soCauPart != null && int.TryParse(soCauPart.Replace("SO_CAU:", ""), out int soCauConfig))
                                 soCauLimit = soCauConfig;
@@ -294,9 +294,9 @@ namespace BanTayVang.API.Services.Impl.Exams
                         catch { /* ignore */ }
                     }
 
-                    var allDethiCauhois = dethi.DethiCauhois
-                        .Where(dc => dc.IdCauHoi.HasValue && dc.IdCauHoiNavigation != null)
-                        .GroupBy(dc => dc.IdCauHoi!.Value)
+                    var allDethiCauhois = examPaper.ExamPaperQuestions
+                        .Where(dc => dc.QuestionId.HasValue && dc.IdCauHoiNavigation != null)
+                        .GroupBy(dc => dc.QuestionId!.Value)
                         .Select(g => g.First())
                         .ToList();
 
@@ -306,81 +306,81 @@ namespace BanTayVang.API.Services.Impl.Exams
                         .ToList();
 
                     int thuTuFallback = 1;
-                    foreach (var dethiCauhoi in shuffled)
+                    foreach (var examPaperQuestion in shuffled)
                     {
-                        var cauhoi = dethiCauhoi.IdCauHoiNavigation!;
-                        var choiceRandom = new Random(baithiId * 1000 + cauhoi.Id);
-                        var shuffledChoices = cauhoi.Luachons
+                        var question = examPaperQuestion.IdCauHoiNavigation!;
+                        var choiceRandom = new Random(baithiId * 1000 + question.Id);
+                        var shuffledChoices = question.QuestionOptions
                             .OrderBy(_ => choiceRandom.Next())
-                            .Select((l, idx) => new ExamChoiceDto { Id = l.Id, NoiDung = SanitizeHtmlContent(l.NoiDung), ThuTu = idx + 1 })
+                            .Select((l, idx) => new ExamChoiceDto { Id = l.Id, Content = SanitizeHtmlContent(l.Content), OrderIndex = idx + 1 })
                             .ToList();
 
                         questions.Add(new ExamQuestionDto
                         {
-                            Id = cauhoi.Id,
-                            NoiDung = SanitizeHtmlContent(cauhoi.NoiDung),
-                            HinhAnh = cauhoi.HinhAnh,
+                            Id = question.Id,
+                            Content = SanitizeHtmlContent(question.Content),
+                            ImageUrl = question.ImageUrl,
                             ThuTuCau = thuTuFallback++,
-                            DanhSachLuaChon = shuffledChoices,
-                            ChoPhepChonNhieu = cauhoi.Luachons.Count(l => l.LaDapAnDung == true) > 1
+                            Options = shuffledChoices,
+                            ChoPhepChonNhieu = question.QuestionOptions.Count(l => l.IsCorrect == true) > 1
                         });
                     }
                 }
                 else
                 {
-                    // Nhóm chi tiết làm bài theo IdCauHoi để lấy toàn bộ đáp án đã chọn (hỗ trợ chọn nhiều)
+                    // Nhóm chi tiết làm bài theo QuestionId để lấy toàn bộ đáp án đã chọn (hỗ trợ chọn nhiều)
                     var chitietsByQuestion = savedChitiets
-                        .Where(c => c.IdCauHoi.HasValue)
-                        .GroupBy(c => c.IdCauHoi!.Value)
+                        .Where(c => c.QuestionId.HasValue)
+                        .GroupBy(c => c.QuestionId!.Value)
                         .ToDictionary(g => g.Key, g => g.ToList());
 
-                    var cauhoiIds = orderedChitiets.Select(c => c.IdCauHoi!.Value).ToList();
-                    var dethiCauhoisMap = dethi.DethiCauhois
-                        .Where(dc => dc.IdCauHoi.HasValue && cauhoiIds.Contains(dc.IdCauHoi.Value))
-                        .GroupBy(dc => dc.IdCauHoi!.Value)
+                    var cauhoiIds = orderedChitiets.Select(c => c.QuestionId!.Value).ToList();
+                    var dethiCauhoisMap = examPaper.ExamPaperQuestions
+                        .Where(dc => dc.QuestionId.HasValue && cauhoiIds.Contains(dc.QuestionId.Value))
+                        .GroupBy(dc => dc.QuestionId!.Value)
                         .ToDictionary(g => g.Key, g => g.First().IdCauHoiNavigation);
 
-                    int thuTu = 1;
+                    int orderIndex = 1;
                     foreach (var ct in orderedChitiets)
                     {
-                        var cauHoiId = ct.IdCauHoi!.Value;
-                        if (!dethiCauhoisMap.TryGetValue(cauHoiId, out var cauhoi) || cauhoi == null)
+                        var cauHoiId = ct.QuestionId!.Value;
+                        if (!dethiCauhoisMap.TryGetValue(cauHoiId, out var question) || question == null)
                             continue;
 
                         // Lấy tất cả lựa chọn đã chọn cho câu hỏi này
                         var questionChitiets = chitietsByQuestion.ContainsKey(cauHoiId) 
                             ? chitietsByQuestion[cauHoiId] 
-                            : new List<Chitietlambai> { ct };
+                            : new List<SubmissionDetail> { ct };
 
                         var selectedChoiceIds = questionChitiets
-                            .Where(c => c.IdLuaChonDaChon.HasValue)
-                            .Select(c => c.IdLuaChonDaChon!.Value)
+                            .Where(c => c.SelectedOptionId.HasValue)
+                            .Select(c => c.SelectedOptionId!.Value)
                             .ToList();
 
                         // Shuffle đáp án dùng seed cố định theo session + câu hỏi
-                        var choiceRandom = new Random(baithiId * 1000 + cauhoi.Id);
-                        var shuffledChoices = cauhoi.Luachons
+                        var choiceRandom = new Random(baithiId * 1000 + question.Id);
+                        var shuffledChoices = question.QuestionOptions
                             .OrderBy(_ => choiceRandom.Next())
                             .Select((l, idx) => new ExamChoiceDto
                             {
                                 Id = l.Id,
-                                NoiDung = SanitizeHtmlContent(l.NoiDung),
-                                ThuTu = idx + 1
+                                Content = SanitizeHtmlContent(l.Content),
+                                OrderIndex = idx + 1
                             })
                             .ToList();
 
                         var questionDto = new ExamQuestionDto
                         {
-                            Id = cauhoi.Id,
-                            NoiDung = SanitizeHtmlContent(cauhoi.NoiDung),
-                            HinhAnh = cauhoi.HinhAnh,
-                            ThuTuCau = thuTu++,
-                            DanhSachLuaChon = shuffledChoices,
-                            IdLuaChonDaChon = selectedChoiceIds.Count > 0 ? (int?)selectedChoiceIds[0] : null,
+                            Id = question.Id,
+                            Content = SanitizeHtmlContent(question.Content),
+                            ImageUrl = question.ImageUrl,
+                            ThuTuCau = orderIndex++,
+                            Options = shuffledChoices,
+                            SelectedOptionId = selectedChoiceIds.Count > 0 ? (int?)selectedChoiceIds[0] : null,
                             IdLuaChonDaChonList = selectedChoiceIds,
                             CauTraLoiTuLuan = SanitizeHtmlContent(questionChitiets.First().CauTraLoiTuLuan),
                             DaLuu = questionChitiets.Any(c => c.DaLuu ?? false),
-                            ChoPhepChonNhieu = cauhoi.Luachons.Count(l => l.LaDapAnDung == true) > 1
+                            ChoPhepChonNhieu = question.QuestionOptions.Count(l => l.IsCorrect == true) > 1
                         };
 
                         questions.Add(questionDto);
@@ -411,36 +411,36 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
         }
 
-        public async Task<BaseResponseDto<BaithiDto>> GetExamProgressAsync(int baithiId, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> GetExamProgressAsync(int baithiId, int taikhoanId, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Getting exam progress for session {SessionId} and user {UserId}", baithiId, taikhoanId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var baithi = await _baithiRepository.GetWithDetailsAsync(baithiId);
-                if (baithi == null || baithi.IdTaiKhoan != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetWithDetailsAsync(baithiId);
+                if (examSubmission == null || examSubmission.UserId != taikhoanId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_PROGRESS_ACCESS",
                         $"User {taikhoanId} attempted unauthorized access to progress of session {baithiId}",
                         taikhoanId, "High", cancellationToken);
 
-                    return new BaseResponseDto<BaithiDto>
+                    return new BaseResponseDto<ExamSubmissionDto>
                     {
                         Success = false,
                         Message = "Không có quyền truy cập bài thi này"
                     };
                 }
 
-                var result = _mapper.Map<BaithiDto>(baithi);
-                result.TenDeThi = baithi.IdDeThiNavigation?.TenDeThi;
-                result.ThoiGianLamBai = baithi.IdDeThiNavigation?.ThoiGianLamBai;
-                result.ThoiGianBatDau = baithi.IdDeThiNavigation?.ThoiGianBatDau;
+                var result = _mapper.Map<ExamSubmissionDto>(examSubmission);
+                result.ExamPaperName = examSubmission.IdDeThiNavigation?.ExamPaperName;
+                result.DurationMinutes = examSubmission.IdDeThiNavigation?.DurationMinutes;
+                result.StartTime = examSubmission.IdDeThiNavigation?.StartTime;
 
                 // Calculate remaining time
-                result.ThoiGianConLai = CalculateRemainingTime(baithi.IdDeThiNavigation, baithi.ThoiGianBatDau);
+                result.ThoiGianConLai = CalculateRemainingTime(examSubmission.IdDeThiNavigation, examSubmission.StartTime);
 
-                return new BaseResponseDto<BaithiDto>
+                return new BaseResponseDto<ExamSubmissionDto>
                 {
                     Success = true,
                     Message = "Lấy tiến độ bài thi thành công",
@@ -455,7 +455,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     $"System error getting progress for user {taikhoanId}, session {baithiId}: {ex.Message}",
                     taikhoanId, "Medium", cancellationToken);
 
-                return new BaseResponseDto<BaithiDto>
+                return new BaseResponseDto<ExamSubmissionDto>
                 {
                     Success = false,
                     Message = "Có lỗi xảy ra khi lấy tiến độ bài thi",
@@ -471,8 +471,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                 _logger.LogInformation("Pausing exam session {SessionId} for user {UserId}", baithiId, taikhoanId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var baithi = await _baithiRepository.GetByIdAsync(baithiId);
-                if (baithi == null || baithi.IdTaiKhoan != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(baithiId);
+                if (examSubmission == null || examSubmission.UserId != taikhoanId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_PAUSE_ATTEMPT",
                         $"User {taikhoanId} attempted unauthorized pause of session {baithiId}",
@@ -485,7 +485,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     };
                 }
 
-                if (baithi.TrangThai != "InProgress")
+                if (examSubmission.Status != "InProgress")
                 {
                     return new BaseResponseDto
                     {
@@ -494,8 +494,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                     };
                 }
 
-                baithi.TrangThai = "Paused";
-                await _baithiRepository.UpdateAsync(baithi);
+                examSubmission.Status = "Paused";
+                await _examSubmissionRepository.UpdateAsync(examSubmission);
 
                 await _securityService.LogSecurityEventAsync("EXAM_PAUSED",
                     $"User {taikhoanId} paused exam session {baithiId}",
@@ -531,8 +531,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                 _logger.LogInformation("Resuming exam session {SessionId} for user {UserId}", baithiId, taikhoanId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var baithi = await _baithiRepository.GetByIdAsync(baithiId);
-                if (baithi == null || baithi.IdTaiKhoan != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(baithiId);
+                if (examSubmission == null || examSubmission.UserId != taikhoanId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_RESUME_ATTEMPT",
                         $"User {taikhoanId} attempted unauthorized resume of session {baithiId}",
@@ -545,7 +545,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     };
                 }
 
-                if (baithi.TrangThai != "Paused")
+                if (examSubmission.Status != "Paused")
                 {
                     return new BaseResponseDto
                     {
@@ -554,8 +554,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                     };
                 }
 
-                baithi.TrangThai = "InProgress";
-                await _baithiRepository.UpdateAsync(baithi);
+                examSubmission.Status = "InProgress";
+                await _examSubmissionRepository.UpdateAsync(examSubmission);
 
                 await _securityService.LogSecurityEventAsync("EXAM_RESUMED",
                     $"User {taikhoanId} resumed exam session {baithiId}",
@@ -589,15 +589,15 @@ namespace BanTayVang.API.Services.Impl.Exams
         /// <summary>
         /// Calculate remaining exam time with security validation
         /// </summary>
-        private int CalculateRemainingTime(Dethi? dethi, DateTime? sessionStartTime)
+        private int CalculateRemainingTime(ExamPaper? examPaper, DateTime? sessionStartTime)
         {
-            if (dethi?.ThoiGianBatDau == null || dethi.ThoiGianLamBai == null || sessionStartTime == null)
+            if (examPaper?.StartTime == null || examPaper.DurationMinutes == null || sessionStartTime == null)
             {
                 return 0;
             }
 
             var thoiGianDaLam = DateTime.Now - sessionStartTime.Value;
-            var thoiGianConLai = (dethi.ThoiGianLamBai.Value * 60) - (int)thoiGianDaLam.TotalSeconds;
+            var thoiGianConLai = (examPaper.DurationMinutes.Value * 60) - (int)thoiGianDaLam.TotalSeconds;
             return Math.Max(0, thoiGianConLai);
         }
 

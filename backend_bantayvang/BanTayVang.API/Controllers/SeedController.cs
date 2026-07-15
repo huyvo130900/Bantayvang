@@ -13,13 +13,13 @@ namespace BanTayVang.API.Controllers
     [Route("api/[controller]")]
     public class SeedController : ControllerBase
     {
-        private readonly ITaikhoanRepository _userRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IPasswordService _passwordService;
         private readonly ILogger<SeedController> _logger;
         private readonly IWebHostEnvironment _env;
 
         public SeedController(
-            ITaikhoanRepository userRepository,
+            IUserRepository userRepository,
             IPasswordService passwordService,
             ILogger<SeedController> logger,
             IWebHostEnvironment env)
@@ -54,11 +54,11 @@ namespace BanTayVang.API.Controllers
                 // Generate new hash for "admin123"
                 var newHash = _passwordService.HashPassword("admin123");
                 
-                admin.MatKhau = newHash;
-                admin.TrangThai = true;
-                admin.IdVaiTro = 1;
-                if (string.IsNullOrEmpty(admin.HoTen))
-                    admin.HoTen = "Quản trị viên hệ thống";
+                admin.Password = newHash;
+                admin.Status = true;
+                admin.RoleId = 1;
+                if (string.IsNullOrEmpty(admin.FullName))
+                    admin.FullName = "Quản trị viên hệ thống";
 
                 await _userRepository.UpdateAsync(admin);
 

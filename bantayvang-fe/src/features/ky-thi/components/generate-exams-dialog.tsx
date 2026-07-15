@@ -6,7 +6,7 @@ import { X, Sparkles, AlertTriangle, CheckCircle, HelpCircle, Loader2 } from 'lu
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { kyThiApi } from '../api'
-import type { KyThiDto, ExamGenerationConfig } from '../types'
+import type { ExamCampaignDto, ExamGenerationConfig } from '../types'
 
 const schema = z.object({
   soLuongDe: z.number().min(1, 'Số lượng đề tối thiểu là 1').max(100, 'Số lượng đề tối đa là 100'),
@@ -16,20 +16,20 @@ const schema = z.object({
   soCauEasy: z.number().nonnegative(),
   soCauMedium: z.number().nonnegative(),
   soCauHard: z.number().nonnegative(),
-  khoaPhong: z.string().optional(),
+  department: z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
 
 interface GenerateExamsDialogProps {
   open: boolean
-  kyThi: KyThiDto | null
+  examCampaign: ExamCampaignDto | null
   onClose: () => void
   onSuccess: (message: string) => void
 }
 
 
-export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: GenerateExamsDialogProps) {
+export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: GenerateExamsDialogProps) {
   const [checking, setChecking] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [checkWarnings, setCheckWarnings] = useState<string[]>([])
@@ -46,21 +46,21 @@ export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: Generat
       soCauEasy: 10,
       soCauMedium: 7,
       soCauHard: 3,
-      khoaPhong: '',
+      department: '',
     },
   })
 
   // Load initial form values
   useEffect(() => {
     if (open) {
-      // Load department from KyThi tenKhoa or donViToChuc if possible as default
-      if (kyThi) {
-        form.setValue('khoaPhong', kyThi.tenKhoa || kyThi.donViToChuc || '')
-        if (kyThi.tongSoCauHoi) {
-          form.setValue('tongSoCau', kyThi.tongSoCauHoi)
-          form.setValue('soCauMC', kyThi.tongSoCauHoi)
+      // Load department from ExamCampaign departmentName or donViToChuc if possible as default
+      if (examCampaign) {
+        form.setValue('department', examCampaign.departmentName || examCampaign.donViToChuc || '')
+        if (examCampaign.tongSoCauHoi) {
+          form.setValue('tongSoCau', examCampaign.tongSoCauHoi)
+          form.setValue('soCauMC', examCampaign.tongSoCauHoi)
           form.setValue('soCauEssay', 0)
-          form.setValue('soCauEasy', kyThi.tongSoCauHoi)
+          form.setValue('soCauEasy', examCampaign.tongSoCauHoi)
           form.setValue('soCauMedium', 0)
           form.setValue('soCauHard', 0)
         }
@@ -69,7 +69,7 @@ export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: Generat
       setCheckPassed(null)
       setValidationError(null)
     }
-  }, [open, kyThi, form])
+  }, [open, examCampaign, form])
 
   // Watch form fields for live validation
   const watchAllFields = form.watch()
@@ -89,7 +89,7 @@ export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: Generat
     setValidationError(null)
   }, [tongSoCau, soCauMC, soCauEssay, soCauEasy, soCauMedium, soCauHard])
 
-  if (!open || !kyThi) return null
+  if (!open || !examCampaign) return null
 
   const handleCheck = async () => {
     if (validationError) return
@@ -97,13 +97,13 @@ export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: Generat
     setCheckWarnings([])
     setCheckPassed(null)
     try {
-      const khoaPhongValue = (kyThi.tenKhoa || kyThi.donViToChuc || '').trim()
+      const khoaPhongValue = (examCampaign.departmentName || examCampaign.donViToChuc || '').trim()
       const isAllDepts = !khoaPhongValue || khoaPhongValue === 'Tất cả các khoa' || khoaPhongValue === 'Tất cả khoa phòng'
       const config: ExamGenerationConfig = {
         ...form.getValues(),
-        khoaPhong: isAllDepts ? undefined : khoaPhongValue,
+        department: isAllDepts ? undefined : khoaPhongValue,
       }
-      const res = await kyThiApi.checkExamGeneration(kyThi.id, config)
+      const res = await kyThiApi.checkExamGeneration(examCampaign.id, config)
       if (res.data.success && res.data.data) {
         setCheckWarnings(res.data.data.warnings)
         setCheckPassed(res.data.data.canGenerate)
@@ -123,13 +123,13 @@ export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: Generat
     if (validationError || checkPassed === false) return
     setGenerating(true)
     try {
-      const khoaPhongValue = (kyThi.tenKhoa || kyThi.donViToChuc || '').trim()
+      const khoaPhongValue = (examCampaign.departmentName || examCampaign.donViToChuc || '').trim()
       const isAllDepts = !khoaPhongValue || khoaPhongValue === 'Tất cả các khoa' || khoaPhongValue === 'Tất cả khoa phòng'
       const config: ExamGenerationConfig = {
         ...data,
-        khoaPhong: isAllDepts ? undefined : khoaPhongValue,
+        department: isAllDepts ? undefined : khoaPhongValue,
       }
-      const res = await kyThiApi.generateExams(kyThi.id, config)
+      const res = await kyThiApi.generateExams(examCampaign.id, config)
       if (res.data.success) {
         onSuccess(res.data.message || 'Tạo bộ đề thi thành công!')
         onClose()
@@ -164,7 +164,7 @@ export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: Generat
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">Tạo bộ đề thi ngẫu nhiên</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Kỳ thi: {kyThi.tenKyThi}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Kỳ thi: {examCampaign.campaignName}</p>
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-gray-200/50">
@@ -204,7 +204,7 @@ export function GenerateExamsDialog({ open, kyThi, onClose, onSuccess }: Generat
               type="text"
               readOnly
               disabled
-              value={kyThi.tenKhoa || kyThi.donViToChuc || 'Tất cả các khoa'}
+              value={examCampaign.departmentName || examCampaign.donViToChuc || 'Tất cả các khoa'}
               className="h-10 rounded-lg border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
             />
           </div>

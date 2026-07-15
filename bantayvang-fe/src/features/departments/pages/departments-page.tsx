@@ -15,7 +15,7 @@ export function DepartmentsPage() {
   // Form tạo/sửa khoa
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<DepartmentDto | null>(null)
-  const [form, setForm] = useState({ maKhoa: '', tenKhoa: '', moTa: '', trangThai: true })
+  const [form, setForm] = useState({ maKhoa: '', departmentName: '', moTa: '', status: true })
 
   // Dialog gán quản lý
   const [assignTarget, setAssignTarget] = useState<DepartmentDto | null>(null)
@@ -67,10 +67,10 @@ export function DepartmentsPage() {
   }
 
   const handleSubmit = async () => {
-    if (!form.tenKhoa.trim()) { setError('Vui lòng nhập tên khoa'); return }
+    if (!form.departmentName.trim()) { setError('Vui lòng nhập tên khoa'); return }
     try {
       if (editing) {
-        await departmentApi.update(editing.id, { tenKhoa: form.tenKhoa, moTa: form.moTa, trangThai: form.trangThai })
+        await departmentApi.update(editing.id, { departmentName: form.departmentName, moTa: form.moTa, status: form.status })
         setSuccess('Cập nhật khoa thành công')
       } else {
         if (!form.maKhoa.trim()) { setError('Vui lòng nhập mã khoa'); return }
@@ -87,7 +87,7 @@ export function DepartmentsPage() {
 
   const handleEdit = (d: DepartmentDto) => {
     setEditing(d)
-    setForm({ maKhoa: d.maKhoa, tenKhoa: d.tenKhoa, moTa: d.moTa || '', trangThai: d.trangThai })
+    setForm({ maKhoa: d.maKhoa, departmentName: d.departmentName, moTa: d.moTa || '', status: d.status })
     setShowForm(true)
   }
 
@@ -105,7 +105,7 @@ export function DepartmentsPage() {
     setSelectedManagerId(d.deptManagerId ?? null)
     setLoadingManagers(true)
     try {
-      const res = await usersApi.list({ pageNumber: 1, pageSize: 100, idVaiTro: 5 })
+      const res = await usersApi.list({ pageNumber: 1, pageSize: 100, roleId: 5 })
       setDeptManagers(res.data.data || [])
     } catch { setError('Không thể tải danh sách quản lý') }
     finally { setLoadingManagers(false) }
@@ -117,7 +117,7 @@ export function DepartmentsPage() {
     setAssigning(true)
     try {
       await departmentApi.assignManager(assignTarget.id, { deptManagerId: selectedManagerId })
-      setSuccess(`Đã gán quản lý cho ${assignTarget.tenKhoa}`)
+      setSuccess(`Đã gán quản lý cho ${assignTarget.departmentName}`)
       setAssignTarget(null)
       load()
     } catch (err: unknown) {
@@ -126,7 +126,7 @@ export function DepartmentsPage() {
   }
 
   const handleRemoveManager = async (d: DepartmentDto) => {
-    if (!window.confirm(`Xóa quản lý khỏi ${d.tenKhoa}?`)) return
+    if (!window.confirm(`Xóa quản lý khỏi ${d.departmentName}?`)) return
     try {
       await departmentApi.assignManager(d.id, { deptManagerId: 0 })
       setSuccess('Đã xóa quản lý')
@@ -221,7 +221,7 @@ export function DepartmentsPage() {
             className="hidden"
             onChange={handleImportFile}
           />
-          <Button onClick={() => { setEditing(null); setForm({ maKhoa: '', tenKhoa: '', moTa: '', trangThai: true }); setShowForm(true) }}>
+          <Button onClick={() => { setEditing(null); setForm({ maKhoa: '', departmentName: '', moTa: '', status: true }); setShowForm(true) }}>
             <Plus className="h-4 w-4 mr-2" /> Thêm Khoa
           </Button>
         </div>
@@ -264,7 +264,7 @@ export function DepartmentsPage() {
               )}
               <div>
                 <label className="text-sm font-medium text-gray-700">Tên Khoa *</label>
-                <Input value={form.tenKhoa} onChange={e => setForm(f => ({ ...f, tenKhoa: e.target.value }))}
+                <Input value={form.departmentName} onChange={e => setForm(f => ({ ...f, departmentName: e.target.value }))}
                   placeholder="VD: Khoa Nội" className="mt-1" />
               </div>
               <div>
@@ -273,8 +273,8 @@ export function DepartmentsPage() {
                   placeholder="Mô tả khoa..." className="mt-1" />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.trangThai}
-                  onChange={e => setForm(f => ({ ...f, trangThai: e.target.checked }))} className="rounded" />
+                <input type="checkbox" checked={form.status}
+                  onChange={e => setForm(f => ({ ...f, status: e.target.checked }))} className="rounded" />
                 <span className="text-sm text-gray-700">Đang hoạt động</span>
               </label>
             </div>
@@ -293,7 +293,7 @@ export function DepartmentsPage() {
             <div>
               <h2 className="text-lg font-semibold">Gán Quản lý Khoa</h2>
               <p className="text-sm text-gray-500 mt-0.5">
-                Khoa: <strong>{assignTarget.tenKhoa}</strong>
+                Khoa: <strong>{assignTarget.departmentName}</strong>
               </p>
             </div>
 
@@ -321,8 +321,8 @@ export function DepartmentsPage() {
                   <option value="">-- Chọn quản lý --</option>
                   {deptManagers.map(u => (
                     <option key={u.id} value={u.id}>
-                      {u.hoTen} ({u.tenDangNhap || u.email})
-                      {u.khoaPhong ? ` — Hiện quản lý: ${u.khoaPhong}` : ' — Chưa phân khoa'}
+                      {u.fullName} ({u.username || u.email})
+                      {u.department ? ` — Hiện quản lý: ${u.department}` : ' — Chưa phân khoa'}
                     </option>
                   ))}
                 </select>
@@ -371,7 +371,7 @@ export function DepartmentsPage() {
                       <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{d.maKhoa}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-medium">{d.tenKhoa}</td>
+                  <td className="px-4 py-3 font-medium">{d.departmentName}</td>
                   <td className="px-4 py-3">
                     {d.tenQuanLy ? (
                       <div className="flex items-center gap-2">
@@ -399,9 +399,9 @@ export function DepartmentsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      d.trangThai ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      d.status ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                     }`}>
-                      {d.trangThai ? 'Hoạt động' : 'Vô hiệu'}
+                      {d.status ? 'Hoạt động' : 'Vô hiệu'}
                     </span>
                   </td>
                   <td className="px-4 py-3">

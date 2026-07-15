@@ -1,30 +1,30 @@
-export interface DethiDto {
+export interface ExamPaperDto {
   id: number
-  maDeThi: string | null
-  tenDeThi: string | null
-  thoiGianLamBai: number | null
-  tongDiem: number | null
+  examPaperCode: string | null
+  examPaperName: string | null
+  durationMinutes: number | null
+  totalScore: number | null
   thoiGianBatDau: string | null
   linkTruyCap: string | null
-  trangThai: string | null
-  ngayTao: string | null
-  soCauHoi: number
-  khoaPhong?: string | null
+  status: string | null
+  createdAt: string | null
+  totalQuestions: number
+  department?: string | null
   soCauRandom?: number | null
-  congBoKetQua?: boolean
+  isResultPublished?: boolean
   thoiGianCongBo?: string | null
   kyThiId?: number | null
   soCauDungToiThieu?: number | null
 }
 
-export interface CreateDethiDto {
-  maDeThi: string
-  tenDeThi?: string
-  thoiGianLamBai: number
+export interface CreateExamPaperDto {
+  examPaperCode: string
+  examPaperName?: string
+  durationMinutes: number
   thoiGianBatDau?: string
-  trangThai?: string
+  status?: string
   // Mới: chọn câu hỏi theo khoa + số câu random
-  khoaPhong?: string
+  department?: string
   soCauRandom?: number
   // Legacy: chọn tay (không dùng nữa nhưng giữ tương thích)
   danhSachIdCauHoi: number[]
@@ -35,8 +35,8 @@ export interface CreateDethiDto {
 export interface ExamAssignmentDto {
   id: number
   examId: number
-  maDeThi: string | null
-  tenDeThi: string | null
+  examPaperCode: string | null
+  examPaperName: string | null
   userId: number
   username: string | null
   fullName: string | null
@@ -46,18 +46,18 @@ export interface ExamAssignmentDto {
   isActive: boolean
   note: string | null
   // Trạng thái bài thi
-  trangThai: string  // Pending | InProgress | Completed | AutoSubmitted
+  status: string  // Pending | InProgress | Completed | AutoSubmitted
   // Kết quả nếu đã thi xong
   baithiId: number | null
   diemSo: number | null
-  tongDiem: number | null
-  soCauDung: number | null
+  totalScore: number | null
+  correctAnswers: number | null
   tongSoCau: number | null
   ngayHoanThanh: string | null
   datYeuCau: boolean | null
   thoiGianBatDau: string | null
   thoiGianKetThuc: string | null
-  thoiGianLamBai: number | null
+  durationMinutes: number | null
 }
 
 export interface CreateExamAssignmentDto {
@@ -77,12 +77,12 @@ export interface ExtendExamTimeDto {
 export interface MyExamDto {
   id: number
   examId: number
-  maDeThi: string | null
-  tenDeThi: string | null
+  examPaperCode: string | null
+  examPaperName: string | null
   thoiGianBatDau: string | null
   thoiGianKetThuc: string | null
-  thoiGianLamBai: number | null
-  trangThai: string | null
+  durationMinutes: number | null
+  status: string | null
   baithiId: number | null
   ghiChu: string | null
   extraMinutes: number | null
@@ -90,24 +90,24 @@ export interface MyExamDto {
 
 export interface ExamPreviewDtoFE {
   id: number
-  maDeThi: string | null
-  tenDeThi: string | null
-  thoiGianLamBai: number | null
-  trangThai: string | null
-  khoaPhong: string | null
-  congBoKetQua: boolean
-  cauHois: QuestionPreviewFE[]
+  examPaperCode: string | null
+  examPaperName: string | null
+  durationMinutes: number | null
+  status: string | null
+  department: string | null
+  isResultPublished: boolean
+  questions: QuestionPreviewFE[]
 }
 
 export interface QuestionPreviewFE {
   id: number
-  noiDung: string | null
+  content: string | null
   chuDe: string | null
-  luachons: ChoicePreviewFE[]
+  questionOptions: ChoicePreviewFE[]
 }
 
 export interface ChoicePreviewFE {
   id: number
-  noiDung: string | null
-  laDapAnDung: boolean | null
+  content: string | null
+  isCorrect: boolean | null
 }

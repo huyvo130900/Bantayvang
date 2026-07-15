@@ -5,9 +5,9 @@ namespace BanTayVang.API.BackgroundJobs
 {
     /// <summary>
     /// Background job tự động công bố điểm khi đề thi hết hạn.
-    /// Logic: Dethi.TrangThai = 'Active' VÀ ThoiGianBatDau + ThoiGianLamBai đã qua
-    /// VÀ tất cả bài thi đã Completed/AutoSubmitted VÀ CongBoKetQua = false
-    /// → tự động set CongBoKetQua = true.
+    /// Logic: ExamPaper.Status = 'Active' VÀ StartTime + DurationMinutes đã qua
+    /// VÀ tất cả bài thi đã Completed/AutoSubmitted VÀ IsResultPublished = false
+    /// → tự động set IsResultPublished = true.
     /// Chạy mỗi 2 phút.
     /// </summary>
     public class AutoPublishExpiredExamsJob : BackgroundService
@@ -60,34 +60,34 @@ namespace BanTayVang.API.BackgroundJobs
             var now = DateTime.Now;
 
             // Lấy các Đề thi đang hoạt động có Kỳ thi liên kết đã hết hạn, chưa công bố
-            var candidates = await db.Dethis
+            var candidates = await db.ExamPapers
                 .Include(d => d.KyThiNavigation)
-                .Where(d => d.CongBoKetQua == false
+                .Where(d => d.IsResultPublished == false
                          && d.KyThiId != null
                          && d.KyThiNavigation != null
-                         && d.KyThiNavigation.ThoiGianKetThuc != null
-                         && d.KyThiNavigation.ThoiGianKetThuc <= now)
+                         && d.KyThiNavigation.EndTime != null
+                         && d.KyThiNavigation.EndTime <= now)
                 .ToListAsync(ct);
 
             int published = 0;
 
-            foreach (var dethi in candidates)
+            foreach (var examPaper in candidates)
             {
                 // Kiểm tra còn bài thi nào đang InProgress thuộc đề thi này không
-                bool hasInProgress = await db.Baithis
-                    .AnyAsync(b => b.IdDeThi == dethi.Id && b.TrangThai == "InProgress", ct);
+                bool hasInProgress = await db.ExamSubmissions
+                    .AnyAsync(b => b.ExamPaperId == examPaper.Id && b.Status == "InProgress", ct);
 
                 if (hasInProgress)
                     continue;
 
                 // Công bố điểm cho đề thi này
-                dethi.CongBoKetQua = true;
-                dethi.ThoiGianCongBo = now;
+                examPaper.IsResultPublished = true;
+                examPaper.ThoiGianCongBo = now;
                 published++;
 
                 _logger.LogInformation(
-                    "Auto-published Dethi {TenDe} (Id={Id}) at {Time}",
-                    dethi.TenDeThi, dethi.Id, now);
+                    "Auto-published ExamPaper {TenDe} (Id={Id}) at {Time}",
+                    examPaper.ExamPaperName, examPaper.Id, now);
             }
 
             if (published > 0)

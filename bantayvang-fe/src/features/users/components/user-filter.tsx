@@ -31,7 +31,7 @@ export function UserFilter({ filter, onFilterChange, onCreateClick, hideRoleFilt
   const [departments, setDepartments] = useState<DepartmentDto[]>([])
 
   useEffect(() => {
-    departmentApi.getAll({ trangThai: true, pageSize: 200 })
+    departmentApi.getAll({ status: true, pageSize: 200 })
       .then((res: { data: { data?: DepartmentDto[] } }) => {
         const data = res.data?.data
         if (Array.isArray(data)) setDepartments(data)
@@ -55,18 +55,18 @@ export function UserFilter({ filter, onFilterChange, onCreateClick, hideRoleFilt
       {!hideRoleFilter && departments.length > 0 && (
         <select
           className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          value={filter.khoaPhong ?? ''}
+          value={filter.department ?? ''}
           onChange={(e) =>
             onFilterChange({
-              khoaPhong: e.target.value || undefined,
+              department: e.target.value || undefined,
               pageNumber: 1,
             })
           }
         >
           <option value="">Tất cả Khoa/Phòng</option>
           {departments.map((d) => (
-            <option key={d.id} value={d.tenKhoa}>
-              {d.tenKhoa}
+            <option key={d.id} value={d.departmentName}>
+              {d.departmentName}
             </option>
           ))}
         </select>
@@ -75,10 +75,10 @@ export function UserFilter({ filter, onFilterChange, onCreateClick, hideRoleFilt
       {!hideRoleFilter && (
         <select
           className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          value={filter.idVaiTro ?? ''}
+          value={filter.roleId ?? ''}
           onChange={(e) =>
             onFilterChange({
-              idVaiTro: e.target.value ? Number(e.target.value) : undefined,
+              roleId: e.target.value ? Number(e.target.value) : undefined,
               pageNumber: 1,
             })
           }
@@ -93,10 +93,10 @@ export function UserFilter({ filter, onFilterChange, onCreateClick, hideRoleFilt
 
       <select
         className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        value={filter.trangThai === undefined ? '' : String(filter.trangThai)}
+        value={filter.status === undefined ? '' : String(filter.status)}
         onChange={(e) =>
           onFilterChange({
-            trangThai: e.target.value === '' ? undefined : e.target.value === 'true',
+            status: e.target.value === '' ? undefined : e.target.value === 'true',
             pageNumber: 1,
           })
         }

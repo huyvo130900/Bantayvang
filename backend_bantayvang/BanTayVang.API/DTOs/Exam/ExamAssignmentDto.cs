@@ -4,8 +4,8 @@ namespace BanTayVang.API.DTOs.Exam
     {
         public int Id { get; set; }
         public int ExamId { get; set; }
-        public string? MaDeThi { get; set; }
-        public string? TenDeThi { get; set; }
+        public string? ExamPaperCode { get; set; }
+        public string? ExamPaperName { get; set; }
         public int UserId { get; set; }
         public string? Username { get; set; }
         public string? FullName { get; set; }
@@ -16,19 +16,19 @@ namespace BanTayVang.API.DTOs.Exam
         public string? Note { get; set; }
 
         // Trạng thái bài thi của học sinh
-        public string TrangThai { get; set; } = "Pending"; // Pending | InProgress | Completed | AutoSubmitted
+        public string Status { get; set; } = "Pending"; // Pending | InProgress | Completed | AutoSubmitted
 
         // Thông tin kết quả nếu đã thi xong
         public int? BaithiId { get; set; }
         public double? DiemSo { get; set; }
-        public double? TongDiem { get; set; }
-        public int? SoCauDung { get; set; }
-        public int? TongSoCau { get; set; }
+        public double? TotalScore { get; set; }
+        public int? CorrectAnswers { get; set; }
+        public int? TotalQuestions { get; set; }
         public DateTime? NgayHoanThanh { get; set; }
         public bool? DatYeuCau { get; set; }  // >= 50% điểm
-        public string? ThoiGianBatDau { get; set; }
-        public string? ThoiGianKetThuc { get; set; }
-        public int? ThoiGianLamBai { get; set; }
+        public string? StartTime { get; set; }
+        public string? EndTime { get; set; }
+        public int? DurationMinutes { get; set; }
     }
 
     public class CreateExamAssignmentDto

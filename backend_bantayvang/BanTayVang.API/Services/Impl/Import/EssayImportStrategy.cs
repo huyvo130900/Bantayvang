@@ -7,23 +7,23 @@ namespace BanTayVang.API.Services.Impl.Import
 {
     public class EssayImportStrategy : IQuestionImportStrategy
     {
-        private readonly ICauhoiRepository _cauhoiRepository;
+        private readonly IQuestionRepository _questionRepository;
 
-        public EssayImportStrategy(ICauhoiRepository cauhoiRepository)
+        public EssayImportStrategy(IQuestionRepository cauhoiRepository)
         {
-            _cauhoiRepository = cauhoiRepository;
+            _questionRepository = cauhoiRepository;
         }
 
         public string QuestionTypeName => "Tự luận";
 
-        public async Task<List<Cauhoi>> ParseAndValidateAsync(
+        public async Task<List<Question>> ParseAndValidateAsync(
             IXLWorksheet worksheet, 
-            int nguoiTao, 
-            string khoaPhong, 
+            int createdBy, 
+            string department, 
             List<string> errors,
             bool isExamImport = false)
         {
-            var parsedQuestions = new List<Cauhoi>();
+            var parsedQuestions = new List<Question>();
             var rows = worksheet.RowsUsed().Skip(1); // Bỏ qua header
             int rowNumber = 1;
             var seenContents = new HashSet<string>();
@@ -34,54 +34,54 @@ namespace BanTayVang.API.Services.Impl.Import
                 try
                 {
                     // 1. Nội dung câu hỏi (Cột 1)
-                    var noiDung = row.Cell(1).GetString().Trim();
-                    if (string.IsNullOrWhiteSpace(noiDung))
+                    var content = row.Cell(1).GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(content))
                         continue;
 
                     // 2. Độ khó (Cột 2)
-                    string doKho = "1"; // Mặc định là Dễ (1)
+                    string difficulty = "1"; // Mặc định là Dễ (1)
                     if (!isExamImport)
                     {
                         var doKhoValStr = row.Cell(2).GetString().Trim().ToLowerInvariant();
-                        if (doKhoValStr == "3" || doKhoValStr == "k" || doKhoValStr.Contains("khó") || doKhoValStr.Contains("kho")) doKho = "3";
-                        else if (doKhoValStr == "2" || doKhoValStr == "tb" || doKhoValStr.Contains("trung bình") || doKhoValStr.Contains("trung binh")) doKho = "2";
-                        else if (doKhoValStr == "1" || doKhoValStr.Contains("dễ") || doKhoValStr.Contains("de")) doKho = "1";
+                        if (doKhoValStr == "3" || doKhoValStr == "k" || doKhoValStr.Contains("khó") || doKhoValStr.Contains("kho")) difficulty = "3";
+                        else if (doKhoValStr == "2" || doKhoValStr == "tb" || doKhoValStr.Contains("trung bình") || doKhoValStr.Contains("trung binh")) difficulty = "2";
+                        else if (doKhoValStr == "1" || doKhoValStr.Contains("dễ") || doKhoValStr.Contains("de")) difficulty = "1";
                     }
 
                     // 3. Kiểm tra trùng lặp
-                    var noiDungChuan = noiDung.ToLower();
+                    var noiDungChuan = content.ToLower();
                     
                     // Kiểm tra trùng lặp trong cùng file
                     if (!seenContents.Add(noiDungChuan))
                     {
-                        errors.Add($"Dòng {rowNumber}: Câu hỏi trùng lặp trong cùng file Excel — \"{noiDung}\" — bỏ qua.");
+                        errors.Add($"Dòng {rowNumber}: Câu hỏi trùng lặp trong cùng file Excel — \"{content}\" — bỏ qua.");
                         continue;
                     }
 
                     // Kiểm tra trùng lặp với CSDL (chỉ kiểm tra nếu không phải "Không thuộc ngân hàng")
-                    if (khoaPhong != "Không thuộc ngân hàng")
+                    if (department != "Không thuộc ngân hàng")
                     {
-                        var existingQuestion = await _cauhoiRepository.FindDuplicateAsync(noiDungChuan, khoaPhong);
+                        var existingQuestion = await _questionRepository.FindDuplicateAsync(noiDungChuan, department);
                         if (existingQuestion != null)
                         {
-                            errors.Add($"Dòng {rowNumber}: Câu hỏi tự luận đã tồn tại trong CSDL (Id: {existingQuestion.Id}) — \"{noiDung}\"");
+                            errors.Add($"Dòng {rowNumber}: Câu hỏi tự luận đã tồn tại trong CSDL (Id: {existingQuestion.Id}) — \"{content}\"");
                             continue;
                         }
                     }
 
                     // 4. Tạo thực thể câu hỏi (Không có lựa chọn)
-                    var cauhoi = new Cauhoi
+                    var question = new Question
                     {
-                        NoiDung = noiDung,
-                        DoKho = doKho,
-                        NguoiTao = nguoiTao,
-                        NgayTao = DateTime.Now,
+                        Content = content,
+                        Difficulty = difficulty,
+                        CreatedBy = createdBy,
+                        CreatedAt = DateTime.Now,
                         DaXoa = false,
-                        KhoaPhong = khoaPhong,
-                        Luachons = new List<Luachon>() // Không có lựa chọn cho tự luận
+                        Department = department,
+                        QuestionOptions = new List<QuestionOption>() // Không có lựa chọn cho tự luận
                     };
 
-                    parsedQuestions.Add(cauhoi);
+                    parsedQuestions.Add(question);
                 }
                 catch (Exception ex)
                 {

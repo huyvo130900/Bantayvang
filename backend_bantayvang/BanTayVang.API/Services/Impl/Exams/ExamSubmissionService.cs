@@ -15,9 +15,9 @@ namespace BanTayVang.API.Services.Impl.Exams
     /// </summary>
     public class ExamSubmissionService : IExamSubmissionService
     {
-        private readonly IBaithiRepository _baithiRepository;
-        private readonly IChitietlambaiRepository _chitietRepository;
-        private readonly IDethiRepository _dethiRepository;
+        private readonly IExamSubmissionRepository _examSubmissionRepository;
+        private readonly ISubmissionDetailRepository _chitietRepository;
+        private readonly IExamPaperRepository _examPaperRepository;
         private readonly IExamValidationService _validationService;
         private readonly IExamSecurityService _securityService;
         private readonly IMapper _mapper;
@@ -25,18 +25,18 @@ namespace BanTayVang.API.Services.Impl.Exams
         private readonly ILogger<ExamSubmissionService> _logger;
 
         public ExamSubmissionService(
-            IBaithiRepository baithiRepository,
-            IChitietlambaiRepository chitietRepository,
-            IDethiRepository dethiRepository,
+            IExamSubmissionRepository baithiRepository,
+            ISubmissionDetailRepository chitietRepository,
+            IExamPaperRepository dethiRepository,
             IExamValidationService validationService,
             IExamSecurityService securityService,
             IMapper mapper,
             BanTayVangDbContext context,
             ILogger<ExamSubmissionService> logger)
         {
-            _baithiRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
+            _examSubmissionRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
             _chitietRepository = chitietRepository ?? throw new ArgumentNullException(nameof(chitietRepository));
-            _dethiRepository = dethiRepository ?? throw new ArgumentNullException(nameof(dethiRepository));
+            _examPaperRepository = dethiRepository ?? throw new ArgumentNullException(nameof(dethiRepository));
             _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
             _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
@@ -49,14 +49,14 @@ namespace BanTayVang.API.Services.Impl.Exams
             try
             {
                 _logger.LogInformation("Saving answer for user {UserId}, session {SessionId}, question {QuestionId}",
-                    taikhoanId, answerDto.IdBaiThi, answerDto.IdCauHoi);
+                    taikhoanId, answerDto.ExamSubmissionId, answerDto.QuestionId);
 
                 // OWASP A03: Injection - Input validation
                 var validationResult = await ValidateAnswerAsync(answerDto, cancellationToken);
                 if (!validationResult.Success)
                 {
                     await _securityService.LogSecurityEventAsync("ANSWER_VALIDATION_FAILED",
-                        $"User {taikhoanId} failed answer validation for session {answerDto.IdBaiThi}",
+                        $"User {taikhoanId} failed answer validation for session {answerDto.ExamSubmissionId}",
                         taikhoanId, "Medium", cancellationToken);
                     return new BaseResponseDto
                     {
@@ -67,11 +67,11 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var baithi = await _baithiRepository.GetByIdAsync(answerDto.IdBaiThi);
-                if (baithi == null || baithi.IdTaiKhoan != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(answerDto.ExamSubmissionId);
+                if (examSubmission == null || examSubmission.UserId != taikhoanId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_ANSWER_SUBMISSION",
-                        $"User {taikhoanId} attempted unauthorized answer submission to session {answerDto.IdBaiThi}",
+                        $"User {taikhoanId} attempted unauthorized answer submission to session {answerDto.ExamSubmissionId}",
                         taikhoanId, "High", cancellationToken);
 
                     return new BaseResponseDto
@@ -81,10 +81,10 @@ namespace BanTayVang.API.Services.Impl.Exams
                     };
                 }
 
-                if (baithi.TrangThai != "InProgress")
+                if (examSubmission.Status != "InProgress")
                 {
                     await _securityService.LogSecurityEventAsync("ANSWER_TO_INACTIVE_EXAM",
-                        $"User {taikhoanId} attempted to submit answer to inactive exam session {answerDto.IdBaiThi}",
+                        $"User {taikhoanId} attempted to submit answer to inactive exam session {answerDto.ExamSubmissionId}",
                         taikhoanId, "Medium", cancellationToken);
 
                     return new BaseResponseDto
@@ -95,11 +95,11 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // Check if exam time has expired
-                var dethi = await _dethiRepository.GetByIdAsync(baithi.IdDeThi!.Value);
-                if (IsExamExpired(dethi, baithi.ThoiGianBatDau))
+                var examPaper = await _examPaperRepository.GetByIdAsync(examSubmission.ExamPaperId!.Value);
+                if (IsExamExpired(examPaper, examSubmission.StartTime))
                 {
                     // Auto-submit expired exam
-                    await AutoSubmitExpiredExam(baithi, taikhoanId, cancellationToken);
+                    await AutoSubmitExpiredExam(examSubmission, taikhoanId, cancellationToken);
 
                     return new BaseResponseDto
                     {
@@ -109,11 +109,11 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // OWASP A03: Injection - Sanitize input data
-                var chitiet = new Chitietlambai
+                var chitiet = new SubmissionDetail
                 {
-                    IdBaiThi = answerDto.IdBaiThi,
-                    IdCauHoi = answerDto.IdCauHoi,
-                    IdLuaChonDaChon = answerDto.IdLuaChonDaChon,
+                    ExamSubmissionId = answerDto.ExamSubmissionId,
+                    QuestionId = answerDto.QuestionId,
+                    SelectedOptionId = answerDto.SelectedOptionId,
                     CauTraLoiTuLuan = SanitizeTextInput(answerDto.CauTraLoiTuLuan),
                     ThoiGianTraLoi = DateTime.Now,
                     DaLuu = answerDto.DaLuu
@@ -122,7 +122,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                 await _chitietRepository.SaveAnswerAsync(chitiet);
 
                 await _securityService.LogSecurityEventAsync("ANSWER_SAVED",
-                    $"User {taikhoanId} saved answer for question {answerDto.IdCauHoi} in session {answerDto.IdBaiThi}",
+                    $"User {taikhoanId} saved answer for question {answerDto.QuestionId} in session {answerDto.ExamSubmissionId}",
                     taikhoanId, "Info", cancellationToken);
 
                 return new BaseResponseDto
@@ -134,7 +134,7 @@ namespace BanTayVang.API.Services.Impl.Exams
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving answer for user {UserId}, session {SessionId}, question {QuestionId}",
-                    taikhoanId, answerDto.IdBaiThi, answerDto.IdCauHoi);
+                    taikhoanId, answerDto.ExamSubmissionId, answerDto.QuestionId);
 
                 await _securityService.LogSecurityEventAsync("ANSWER_SAVE_ERROR",
                     $"System error saving answer for user {taikhoanId}: {ex.Message}",
@@ -149,34 +149,34 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
         }
 
-        public async Task<BaseResponseDto<BaithiDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId, CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("Submitting exam for user {UserId}, session {SessionId}", taikhoanId, submitDto.IdBaiThi);
+                _logger.LogInformation("Submitting exam for user {UserId}, session {SessionId}", taikhoanId, submitDto.ExamSubmissionId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var baithi = await _baithiRepository.GetWithDetailsAsync(submitDto.IdBaiThi);
-                if (baithi == null || baithi.IdTaiKhoan != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetWithDetailsAsync(submitDto.ExamSubmissionId);
+                if (examSubmission == null || examSubmission.UserId != taikhoanId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_EXAM_SUBMISSION",
-                        $"User {taikhoanId} attempted unauthorized submission of session {submitDto.IdBaiThi}",
+                        $"User {taikhoanId} attempted unauthorized submission of session {submitDto.ExamSubmissionId}",
                         taikhoanId, "High", cancellationToken);
 
-                    return new BaseResponseDto<BaithiDto>
+                    return new BaseResponseDto<ExamSubmissionDto>
                     {
                         Success = false,
                         Message = "Không có quyền truy cập bài thi này"
                     };
                 }
 
-                if (baithi.TrangThai == "Completed")
+                if (examSubmission.Status == "Completed")
                 {
                     await _securityService.LogSecurityEventAsync("DUPLICATE_EXAM_SUBMISSION",
-                        $"User {taikhoanId} attempted duplicate submission of session {submitDto.IdBaiThi}",
+                        $"User {taikhoanId} attempted duplicate submission of session {submitDto.ExamSubmissionId}",
                         taikhoanId, "Medium", cancellationToken);
 
-                    return new BaseResponseDto<BaithiDto>
+                    return new BaseResponseDto<ExamSubmissionDto>
                     {
                         Success = false,
                         Message = "Bài thi đã được nộp trước đó"
@@ -184,19 +184,19 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // OWASP A04: Insecure Design - Transaction integrity
-                using var transaction = await _baithiRepository.BeginTransactionAsync();
+                using var transaction = await _examSubmissionRepository.BeginTransactionAsync();
                 try
                 {
-                    // Nhóm danh sách câu trả lời theo IdCauHoi để dọn dẹp và lưu đồng bộ
+                    // Nhóm danh sách câu trả lời theo QuestionId để dọn dẹp và lưu đồng bộ
                     var answersByQuestion = submitDto.DanhSachCauTraLoi
-                        .GroupBy(a => a.IdCauHoi);
+                        .GroupBy(a => a.QuestionId);
 
                     foreach (var group in answersByQuestion)
                     {
                         var cauhoiId = group.Key;
 
                         // Xóa các câu trả lời cũ/placeholder của câu hỏi này
-                        await _chitietRepository.DeleteAnswersByQuestionAsync(submitDto.IdBaiThi, cauhoiId);
+                        await _chitietRepository.DeleteAnswersByQuestionAsync(submitDto.ExamSubmissionId, cauhoiId);
 
                         // Lưu các câu trả lời mới
                         foreach (var answer in group)
@@ -210,11 +210,11 @@ namespace BanTayVang.API.Services.Impl.Exams
                                 continue; // Bỏ qua đáp án không hợp lệ nhưng không làm dừng cả bài thi
                             }
 
-                            var chitiet = new Chitietlambai
+                            var chitiet = new SubmissionDetail
                             {
-                                IdBaiThi = answer.IdBaiThi,
-                                IdCauHoi = answer.IdCauHoi,
-                                IdLuaChonDaChon = answer.IdLuaChonDaChon,
+                                ExamSubmissionId = answer.ExamSubmissionId,
+                                QuestionId = answer.QuestionId,
+                                SelectedOptionId = answer.SelectedOptionId,
                                 CauTraLoiTuLuan = SanitizeTextInput(answer.CauTraLoiTuLuan),
                                 ThoiGianTraLoi = DateTime.Now,
                                 DaLuu = true
@@ -225,23 +225,23 @@ namespace BanTayVang.API.Services.Impl.Exams
                     }
 
                     // Grade the exam automatically (MCQs graded, Essays left ungraded)
-                    var (soCauDung, tongDiem) = await GradeExamAsync(submitDto.IdBaiThi);
+                    var (correctAnswers, totalScore) = await GradeExamAsync(submitDto.ExamSubmissionId);
 
                     // Update exam status
-                    baithi.TrangThai = "Completed";
-                    baithi.ThoiGianNop = DateTime.Now;
-                    baithi.SoCauDung = soCauDung;
-                    baithi.TongDiem = tongDiem;
+                    examSubmission.Status = "Completed";
+                    examSubmission.SubmitTime = DateTime.Now;
+                    examSubmission.CorrectAnswers = correctAnswers;
+                    examSubmission.TotalScore = totalScore;
 
                     await _context.SaveChangesAsync(cancellationToken);
                     await transaction.CommitAsync(cancellationToken);
 
                     await _securityService.LogSecurityEventAsync("EXAM_SUBMITTED",
-                        $"User {taikhoanId} successfully submitted exam session {submitDto.IdBaiThi} with score {tongDiem}",
+                        $"User {taikhoanId} successfully submitted exam session {submitDto.ExamSubmissionId} with score {totalScore}",
                         taikhoanId, "Info", cancellationToken);
 
-                    var result = _mapper.Map<BaithiDto>(baithi);
-                    return new BaseResponseDto<BaithiDto>
+                    var result = _mapper.Map<ExamSubmissionDto>(examSubmission);
+                    return new BaseResponseDto<ExamSubmissionDto>
                     {
                         Success = true,
                         Message = "Nộp bài thành công",
@@ -256,13 +256,13 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error submitting exam for user {UserId}, session {SessionId}", taikhoanId, submitDto.IdBaiThi);
+                _logger.LogError(ex, "Error submitting exam for user {UserId}, session {SessionId}", taikhoanId, submitDto.ExamSubmissionId);
 
                 await _securityService.LogSecurityEventAsync("EXAM_SUBMISSION_ERROR",
                     $"System error during exam submission for user {taikhoanId}: {ex.Message}",
                     taikhoanId, "High", cancellationToken);
 
-                return new BaseResponseDto<BaithiDto>
+                return new BaseResponseDto<ExamSubmissionDto>
                 {
                     Success = false,
                     Message = "Có lỗi xảy ra khi nộp bài",
@@ -277,23 +277,23 @@ namespace BanTayVang.API.Services.Impl.Exams
             {
                 _logger.LogInformation("Starting auto-submit process for expired exams");
 
-                var expiredExams = await _baithiRepository.GetExpiredInProgressExamsAsync();
+                var expiredExams = await _examSubmissionRepository.GetExpiredInProgressExamsAsync();
                 int submittedCount = 0;
 
-                foreach (var baithi in expiredExams)
+                foreach (var examSubmission in expiredExams)
                 {
                     try
                     {
-                        await AutoSubmitExpiredExam(baithi, baithi.IdTaiKhoan!.Value, cancellationToken);
+                        await AutoSubmitExpiredExam(examSubmission, examSubmission.UserId!.Value, cancellationToken);
                         submittedCount++;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error auto-submitting exam session {SessionId}", baithi.Id);
+                        _logger.LogError(ex, "Error auto-submitting exam session {SessionId}", examSubmission.Id);
 
                         await _securityService.LogSecurityEventAsync("AUTO_SUBMIT_ERROR",
-                            $"Error auto-submitting session {baithi.Id}: {ex.Message}",
-                            baithi.IdTaiKhoan!.Value, "Medium", cancellationToken);
+                            $"Error auto-submitting session {examSubmission.Id}: {ex.Message}",
+                            examSubmission.UserId!.Value, "Medium", cancellationToken);
                     }
                 }
 
@@ -323,7 +323,7 @@ namespace BanTayVang.API.Services.Impl.Exams
             try
             {
                 // OWASP A03: Injection - Input validation
-                if (answerDto.IdBaiThi <= 0)
+                if (answerDto.ExamSubmissionId <= 0)
                 {
                     return new BaseResponseDto<bool>
                     {
@@ -333,7 +333,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     };
                 }
 
-                if (answerDto.IdCauHoi <= 0)
+                if (answerDto.QuestionId <= 0)
                 {
                     return new BaseResponseDto<bool>
                     {
@@ -355,7 +355,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // Validate choice ID if provided
-                if (answerDto.IdLuaChonDaChon.HasValue && answerDto.IdLuaChonDaChon.Value <= 0)
+                if (answerDto.SelectedOptionId.HasValue && answerDto.SelectedOptionId.Value <= 0)
                 {
                     return new BaseResponseDto<bool>
                     {
@@ -401,87 +401,87 @@ namespace BanTayVang.API.Services.Impl.Exams
         /// <summary>
         /// Automatically grades the multiple-choice questions (MCQs) of an exam and leaves essay questions ungraded (null)
         /// </summary>
-        private async Task<(int SoCauDung, double TongDiem)> GradeExamAsync(int baithiId)
+        private async Task<(int CorrectAnswers, double TotalScore)> GradeExamAsync(int baithiId)
         {
             var answers = await _chitietRepository.GetByBaiThiAsync(baithiId);
-            int soCauDung = 0;
-            var answersByQuestion = answers.Where(c => c.IdCauHoi.HasValue).GroupBy(c => c.IdCauHoi!.Value);
+            int correctAnswers = 0;
+            var answersByQuestion = answers.Where(c => c.QuestionId.HasValue).GroupBy(c => c.QuestionId!.Value);
 
             foreach (var group in answersByQuestion)
             {
                 var question = group.First().IdCauHoiNavigation;
                 if (question == null) continue;
 
-                var correctChoiceIds = question.Luachons
-                    .Where(l => l.LaDapAnDung == true)
+                var correctChoiceIds = question.QuestionOptions
+                    .Where(l => l.IsCorrect == true)
                     .Select(l => l.Id)
                     .ToHashSet();
 
-                var tenLoai = question.IdLoaiCauHoiNavigation?.TenLoai;
-                var moTa = question.IdLoaiCauHoiNavigation?.MoTa;
-                var isEssay = tenLoai == "Tự luận" || tenLoai == "TuLuan" || tenLoai == "TL" || correctChoiceIds.Count == 0;
+                var categoryName = question.IdLoaiCauHoiNavigation?.CategoryName;
+                var moTa = question.IdLoaiCauHoiNavigation?.Description;
+                var isEssay = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL" || correctChoiceIds.Count == 0;
 
                 if (isEssay)
                 {
-                    // For essays, leave DiemDatDuoc as null (or whatever the user has manually graded)
-                    var existingScore = group.FirstOrDefault()?.DiemDatDuoc;
+                    // For essays, leave ScoreObtained as null (or whatever the user has manually graded)
+                    var existingScore = group.FirstOrDefault()?.ScoreObtained;
                     foreach (var ct in group)
                     {
-                        ct.DiemDatDuoc = existingScore;
+                        ct.ScoreObtained = existingScore;
                     }
-                    if (existingScore >= 1) soCauDung++;
+                    if (existingScore >= 1) correctAnswers++;
                 }
                 else
                 {
                     var userChoiceIds = group
-                        .Where(c => c.IdLuaChonDaChon.HasValue)
-                        .Select(c => c.IdLuaChonDaChon!.Value)
+                        .Where(c => c.SelectedOptionId.HasValue)
+                        .Select(c => c.SelectedOptionId!.Value)
                         .ToHashSet();
 
                     bool isFullyCorrect = correctChoiceIds.Count > 0 && correctChoiceIds.SetEquals(userChoiceIds);
 
                     foreach (var ct in group)
                     {
-                        ct.DiemDatDuoc = isFullyCorrect ? (1.0 / Math.Max(1, group.Count())) : 0.0;
+                        ct.ScoreObtained = isFullyCorrect ? (1.0 / Math.Max(1, group.Count())) : 0.0;
                     }
-                    if (isFullyCorrect) soCauDung++;
+                    if (isFullyCorrect) correctAnswers++;
                 }
             }
-            return (soCauDung, soCauDung);
+            return (correctAnswers, correctAnswers);
         }
 
         /// <summary>
         /// Auto-submit an expired exam
         /// </summary>
-        private async Task AutoSubmitExpiredExam(Baithi baithi, int taikhoanId, CancellationToken cancellationToken)
+        private async Task AutoSubmitExpiredExam(ExamSubmission examSubmission, int taikhoanId, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Auto-submitting expired exam session {SessionId} for user {UserId}", baithi.Id, taikhoanId);
+            _logger.LogInformation("Auto-submitting expired exam session {SessionId} for user {UserId}", examSubmission.Id, taikhoanId);
 
             // Grade exam automatically
-            var (soCauDung, tongDiem) = await GradeExamAsync(baithi.Id);
+            var (correctAnswers, totalScore) = await GradeExamAsync(examSubmission.Id);
 
             // Update exam status
-            baithi.TrangThai = "Completed";
-            baithi.ThoiGianNop = DateTime.Now;
-            baithi.SoCauDung = soCauDung;
-            baithi.TongDiem = tongDiem;
+            examSubmission.Status = "Completed";
+            examSubmission.SubmitTime = DateTime.Now;
+            examSubmission.CorrectAnswers = correctAnswers;
+            examSubmission.TotalScore = totalScore;
 
             await _context.SaveChangesAsync(cancellationToken);
 
             await _securityService.LogSecurityEventAsync("EXAM_AUTO_SUBMITTED",
-                $"Exam session {baithi.Id} auto-submitted for user {taikhoanId} due to time expiry",
+                $"Exam session {examSubmission.Id} auto-submitted for user {taikhoanId} due to time expiry",
                 taikhoanId, "Info", cancellationToken);
         }
 
         /// <summary>
         /// Check if exam time has expired
         /// </summary>
-        private bool IsExamExpired(Dethi? dethi, DateTime? sessionStartTime)
+        private bool IsExamExpired(ExamPaper? examPaper, DateTime? sessionStartTime)
         {
-            if (dethi?.ThoiGianLamBai == null || sessionStartTime == null)
+            if (examPaper?.DurationMinutes == null || sessionStartTime == null)
                 return false;
 
-            var examDurationMinutes = dethi.ThoiGianLamBai.Value;
+            var examDurationMinutes = examPaper.DurationMinutes.Value;
             var examEndTime = sessionStartTime.Value.AddMinutes(examDurationMinutes);
 
             return DateTime.Now > examEndTime;

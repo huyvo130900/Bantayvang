@@ -79,8 +79,8 @@ export function DeptManagerDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {dashboard?.tenKhoa
-              ? `Khoa: ${dashboard.tenKhoa}`
+            {dashboard?.departmentName
+              ? `Khoa: ${dashboard.departmentName}`
               : 'Dashboard Quản lý Khoa'}
           </p>
         </div>
@@ -141,21 +141,21 @@ export function DeptManagerDashboard() {
                     onClick={() => navigate('/dept-manager/ky-thi')}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-800 truncate">{kt.tenKyThi}</p>
+                      <p className="font-medium text-gray-800 truncate">{kt.campaignName}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {kt.soDeThi} đề thi · {kt.soThiSinh} thí sinh
                       </p>
                     </div>
                     <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0 mt-1 sm:mt-0">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        kt.trangThai === 'DangDienRa'
+                        kt.status === 'DangDienRa'
                           ? 'bg-green-100 text-green-700'
-                          : kt.trangThai === 'DaKetThuc'
+                          : kt.status === 'DaKetThuc'
                           ? 'bg-gray-100 text-gray-500'
                           : 'bg-yellow-100 text-yellow-700'
                       }`}>
-                        {kt.trangThai === 'DangDienRa' ? 'Đang diễn ra'
-                          : kt.trangThai === 'DaKetThuc' ? 'Đã kết thúc'
+                        {kt.status === 'DangDienRa' ? 'Đang diễn ra'
+                          : kt.status === 'DaKetThuc' ? 'Đã kết thúc'
                           : 'Chuẩn bị'}
                       </span>
                       <ChevronRight className="h-4 w-4 text-gray-400 hidden sm:block" />

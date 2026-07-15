@@ -31,87 +31,87 @@ namespace BanTayVang.API.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<BaseResponseDto<List<DethiDto>>>> GetAllExams([FromQuery] string? trangThai = null)
+        public async Task<ActionResult<BaseResponseDto<List<ExamPaperDto>>>> GetAllExams([FromQuery] string? status = null)
         {
-            // DeptManager: auto-scope to their KhoaPhong
-            string? khoaPhong = null;
+            // DeptManager: auto-scope to their Department
+            string? department = null;
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                khoaPhong = DepartmentAuthHelper.GetKhoaPhong(User);
-                if (string.IsNullOrEmpty(khoaPhong))
+                department = DepartmentAuthHelper.GetKhoaPhong(User);
+                if (string.IsNullOrEmpty(department))
                 {
-                    return BadRequest(BaseResponseDto<List<DethiDto>>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
+                    return BadRequest(BaseResponseDto<List<ExamPaperDto>>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
                 }
             }
 
-            var result = await _examService.GetAllExamsAsync(trangThai, khoaPhong);
+            var result = await _examService.GetAllExamsAsync(status, department);
             return Ok(result);
         }
 
         [HttpGet("active")]
-        public async Task<ActionResult<BaseResponseDto<List<DethiDto>>>> GetActiveExams()
+        public async Task<ActionResult<BaseResponseDto<List<ExamPaperDto>>>> GetActiveExams()
         {
             var result = await _examService.GetActiveExamsAsync();
             return Ok(result);
         }
 
-        [HttpGet("code/{maDeThi}")]
-        public async Task<ActionResult<BaseResponseDto<DethiDto>>> GetExamByCode(string maDeThi)
+        [HttpGet("code/{examPaperCode}")]
+        public async Task<ActionResult<BaseResponseDto<ExamPaperDto>>> GetExamByCode(string examPaperCode)
         {
-            var result = await _examService.GetExamByCodeAsync(maDeThi);
+            var result = await _examService.GetExamByCodeAsync(examPaperCode);
             if (!result.Success)
                 return NotFound(result);
             return Ok(result);
         }
 
         [HttpPost]
-        public async Task<ActionResult<BaseResponseDto<DethiDto>>> CreateExam([FromBody] CreateDethiDto createDto)
+        public async Task<ActionResult<BaseResponseDto<ExamPaperDto>>> CreateExam([FromBody] CreateExamPaperDto createDto)
         {
-            var nguoiTao = GetCurrentUserIdOrDefault();
+            var createdBy = GetCurrentUserIdOrDefault();
 
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 if (string.IsNullOrEmpty(myKhoa))
                 {
-                    return BadRequest(BaseResponseDto<DethiDto>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
+                    return BadRequest(BaseResponseDto<ExamPaperDto>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
                 }
-                createDto.KhoaPhong = myKhoa;
+                createDto.Department = myKhoa;
 
                 if (createDto.KyThiId.HasValue)
                 {
                     var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
-                    var targetKyThi = await _context.KyThis.FindAsync(createDto.KyThiId.Value);
-                    if (targetKyThi == null || targetKyThi.KhoaPhongId != myKhoaId)
+                    var targetKyThi = await _context.ExamCampaigns.FindAsync(createDto.KyThiId.Value);
+                    if (targetKyThi == null || targetKyThi.DepartmentId != myKhoaId)
                     {
-                        return BadRequest(BaseResponseDto<DethiDto>.FailureResult("Không thể liên kết đề thi với kỳ thi của khoa khác."));
+                        return BadRequest(BaseResponseDto<ExamPaperDto>.FailureResult("Không thể liên kết đề thi với kỳ thi của khoa khác."));
                     }
                 }
 
                 if (createDto.DanhSachIdCauHoi != null && createDto.DanhSachIdCauHoi.Any())
                 {
-                    var invalidQuestionsExist = await _context.Cauhois
-                        .AnyAsync(q => createDto.DanhSachIdCauHoi.Contains(q.Id) && q.KhoaPhong != myKhoa && q.KhoaPhong != "Không thuộc ngân hàng");
+                    var invalidQuestionsExist = await _context.Questions
+                        .AnyAsync(q => createDto.DanhSachIdCauHoi.Contains(q.Id) && q.Department != myKhoa && q.Department != "Không thuộc ngân hàng");
                     if (invalidQuestionsExist)
                     {
-                        return BadRequest(BaseResponseDto<DethiDto>.FailureResult("Tất cả câu hỏi trong đề thi phải thuộc về khoa của người quản lý hoặc câu hỏi tải lên dùng một lần."));
+                        return BadRequest(BaseResponseDto<ExamPaperDto>.FailureResult("Tất cả câu hỏi trong đề thi phải thuộc về khoa của người quản lý hoặc câu hỏi tải lên dùng một lần."));
                     }
                 }
             }
 
-            var result = await _examService.CreateExamAsync(createDto, nguoiTao);
+            var result = await _examService.CreateExamAsync(createDto, createdBy);
             if (!result.Success)
                 return BadRequest(result);
-            return CreatedAtAction(nameof(GetExamByCode), new { maDeThi = createDto.MaDeThi }, result);
+            return CreatedAtAction(nameof(GetExamByCode), new { examPaperCode = createDto.ExamPaperCode }, result);
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult<BaseResponseDto<DethiDto>>> UpdateExam(int id, [FromBody] UpdateDethiDto updateDto)
+        public async Task<ActionResult<BaseResponseDto<ExamPaperDto>>> UpdateExam(int id, [FromBody] UpdateExamPaperDto updateDto)
         {
-            var nguoiCapNhat = GetCurrentUserIdOrDefault();
+            var updatedBy = GetCurrentUserIdOrDefault();
             if (id != updateDto.Id)
             {
-                return BadRequest(BaseResponseDto<DethiDto>.FailureResult("ID mismatch"));
+                return BadRequest(BaseResponseDto<ExamPaperDto>.FailureResult("ID mismatch"));
             }
 
             if (DepartmentAuthHelper.IsDeptManager(User))
@@ -119,10 +119,10 @@ namespace BanTayVang.API.Controllers
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 if (string.IsNullOrEmpty(myKhoa))
                 {
-                    return BadRequest(BaseResponseDto<DethiDto>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
+                    return BadRequest(BaseResponseDto<ExamPaperDto>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
                 }
-                var existing = await _context.Dethis.FindAsync(id);
-                if (existing == null || existing.KhoaPhong != myKhoa)
+                var existing = await _context.ExamPapers.FindAsync(id);
+                if (existing == null || existing.Department != myKhoa)
                 {
                     return Forbid();
                 }
@@ -130,25 +130,25 @@ namespace BanTayVang.API.Controllers
                 if (updateDto.KyThiId.HasValue)
                 {
                     var myKhoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
-                    var targetKyThi = await _context.KyThis.FindAsync(updateDto.KyThiId.Value);
-                    if (targetKyThi == null || targetKyThi.KhoaPhongId != myKhoaId)
+                    var targetKyThi = await _context.ExamCampaigns.FindAsync(updateDto.KyThiId.Value);
+                    if (targetKyThi == null || targetKyThi.DepartmentId != myKhoaId)
                     {
-                        return BadRequest(BaseResponseDto<DethiDto>.FailureResult("Không thể liên kết đề thi với kỳ thi của khoa khác."));
+                        return BadRequest(BaseResponseDto<ExamPaperDto>.FailureResult("Không thể liên kết đề thi với kỳ thi của khoa khác."));
                     }
                 }
 
                 if (updateDto.DanhSachIdCauHoi != null && updateDto.DanhSachIdCauHoi.Any())
                 {
-                    var invalidQuestionsExist = await _context.Cauhois
-                        .AnyAsync(q => updateDto.DanhSachIdCauHoi.Contains(q.Id) && q.KhoaPhong != myKhoa && q.KhoaPhong != "Không thuộc ngân hàng");
+                    var invalidQuestionsExist = await _context.Questions
+                        .AnyAsync(q => updateDto.DanhSachIdCauHoi.Contains(q.Id) && q.Department != myKhoa && q.Department != "Không thuộc ngân hàng");
                     if (invalidQuestionsExist)
                     {
-                        return BadRequest(BaseResponseDto<DethiDto>.FailureResult("Tất cả câu hỏi trong đề thi phải thuộc về khoa của người quản lý hoặc câu hỏi tải lên dùng một lần."));
+                        return BadRequest(BaseResponseDto<ExamPaperDto>.FailureResult("Tất cả câu hỏi trong đề thi phải thuộc về khoa của người quản lý hoặc câu hỏi tải lên dùng một lần."));
                     }
                 }
             }
 
-            var result = await _examService.UpdateExamAsync(id, updateDto, nguoiCapNhat);
+            var result = await _examService.UpdateExamAsync(id, updateDto, updatedBy);
             if (!result.Success)
                 return BadRequest(result);
             return Ok(result);
@@ -157,50 +157,50 @@ namespace BanTayVang.API.Controllers
         [HttpPatch("{examId}/status")]
         [HttpPost("{examId}/status")]
         [HttpPut("{examId}/status")]
-        public async Task<ActionResult<BaseResponseDto<DethiDto>>> UpdateExamStatus(int examId, [FromBody] UpdateExamStatusDto dto)
+        public async Task<ActionResult<BaseResponseDto<ExamPaperDto>>> UpdateExamStatus(int examId, [FromBody] UpdateExamStatusDto dto)
         {
-            var nguoiCapNhat = GetCurrentUserIdOrDefault();
+            var updatedBy = GetCurrentUserIdOrDefault();
 
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 if (string.IsNullOrEmpty(myKhoa))
                 {
-                    return BadRequest(BaseResponseDto<DethiDto>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
+                    return BadRequest(BaseResponseDto<ExamPaperDto>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
                 }
-                var existing = await _context.Dethis.FindAsync(examId);
-                if (existing == null || existing.KhoaPhong != myKhoa)
+                var existing = await _context.ExamPapers.FindAsync(examId);
+                if (existing == null || existing.Department != myKhoa)
                 {
                     return Forbid();
                 }
             }
 
-            var result = await _examService.UpdateExamStatusAsync(examId, dto.TrangThai, nguoiCapNhat);
+            var result = await _examService.UpdateExamStatusAsync(examId, dto.Status, updatedBy);
             if (!result.Success)
                 return BadRequest(result);
             return Ok(result);
         }
 
         [HttpPost("status")]
-        public async Task<ActionResult<BaseResponseDto<DethiDto>>> UpdateExamStatusByBody([FromBody] UpdateExamStatusRequestDto dto)
+        public async Task<ActionResult<BaseResponseDto<ExamPaperDto>>> UpdateExamStatusByBody([FromBody] UpdateExamStatusRequestDto dto)
         {
-            var nguoiCapNhat = GetCurrentUserIdOrDefault();
+            var updatedBy = GetCurrentUserIdOrDefault();
 
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 if (string.IsNullOrEmpty(myKhoa))
                 {
-                    return BadRequest(BaseResponseDto<DethiDto>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
+                    return BadRequest(BaseResponseDto<ExamPaperDto>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
                 }
-                var existing = await _context.Dethis.FindAsync(dto.ExamId);
-                if (existing == null || existing.KhoaPhong != myKhoa)
+                var existing = await _context.ExamPapers.FindAsync(dto.ExamId);
+                if (existing == null || existing.Department != myKhoa)
                 {
                     return Forbid();
                 }
             }
 
-            var result = await _examService.UpdateExamStatusAsync(dto.ExamId, dto.TrangThai, nguoiCapNhat);
+            var result = await _examService.UpdateExamStatusAsync(dto.ExamId, dto.Status, updatedBy);
             if (!result.Success)
                 return BadRequest(result);
             return Ok(result);
@@ -218,8 +218,8 @@ namespace BanTayVang.API.Controllers
                 {
                     return BadRequest(BaseResponseDto.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
                 }
-                var existing = await _context.Dethis.FindAsync(examId);
-                if (existing == null || existing.KhoaPhong != myKhoa)
+                var existing = await _context.ExamPapers.FindAsync(examId);
+                if (existing == null || existing.Department != myKhoa)
                 {
                     return Forbid();
                 }
@@ -232,7 +232,7 @@ namespace BanTayVang.API.Controllers
         }
 
         [HttpPost("start")]
-        public async Task<ActionResult<BaseResponseDto<BaithiDto>>> StartExam([FromBody] StartExamDto startDto)
+        public async Task<ActionResult<BaseResponseDto<ExamSubmissionDto>>> StartExam([FromBody] StartExamDto startDto)
         {
             var taikhoanId = GetCurrentUserIdOrDefault();
 
@@ -271,14 +271,14 @@ namespace BanTayVang.API.Controllers
             // Save each choice as a separate answer
             BaseResponseDto? lastResult = null;
 
-            if (dto.IdLuaChonDaChon == null || !dto.IdLuaChonDaChon.Any())
+            if (dto.SelectedOptionId == null || !dto.SelectedOptionId.Any())
             {
                 // No choices - save as text answer or empty
                 var answerDto = new SubmitAnswerDto
                 {
-                    IdBaiThi = dto.IdBaiThi,
-                    IdCauHoi = dto.IdCauHoi,
-                    IdLuaChonDaChon = null,
+                    ExamSubmissionId = dto.ExamSubmissionId,
+                    QuestionId = dto.QuestionId,
+                    SelectedOptionId = null,
                     CauTraLoiTuLuan = dto.CauTraLoiTuLuan,
                     DaLuu = dto.DaLuu
                 };
@@ -286,13 +286,13 @@ namespace BanTayVang.API.Controllers
             }
             else
             {
-                foreach (var choiceId in dto.IdLuaChonDaChon)
+                foreach (var choiceId in dto.SelectedOptionId)
                 {
                     var answerDto = new SubmitAnswerDto
                     {
-                        IdBaiThi = dto.IdBaiThi,
-                        IdCauHoi = dto.IdCauHoi,
-                        IdLuaChonDaChon = choiceId,
+                        ExamSubmissionId = dto.ExamSubmissionId,
+                        QuestionId = dto.QuestionId,
+                        SelectedOptionId = choiceId,
                         CauTraLoiTuLuan = dto.CauTraLoiTuLuan,
                         DaLuu = dto.DaLuu
                     };
@@ -304,7 +304,7 @@ namespace BanTayVang.API.Controllers
         }
 
         [HttpGet("{baithiId}/progress")]
-        public async Task<ActionResult<BaseResponseDto<BaithiDto>>> GetExamProgress(int baithiId)
+        public async Task<ActionResult<BaseResponseDto<ExamSubmissionDto>>> GetExamProgress(int baithiId)
         {
             var taikhoanId = GetCurrentUserIdOrDefault();
 
@@ -313,7 +313,7 @@ namespace BanTayVang.API.Controllers
         }
 
         [HttpPost("submit")]
-        public async Task<ActionResult<BaseResponseDto<BaithiDto>>> SubmitExam([FromBody] SubmitExamDto submitDto)
+        public async Task<ActionResult<BaseResponseDto<ExamSubmissionDto>>> SubmitExam([FromBody] SubmitExamDto submitDto)
         {
             var taikhoanId = GetCurrentUserIdOrDefault();
 
@@ -325,9 +325,9 @@ namespace BanTayVang.API.Controllers
         public async Task<ActionResult<BaseResponseDto>> LogCheatingWarning([FromBody] CheatingWarningDto warningDto)
         {
             var result = await _examService.LogSuspiciousActivityAsync(
-                warningDto.IdBaiThi,
+                warningDto.ExamSubmissionId,
                 warningDto.LoaiCanhBao,
-                warningDto.MoTa ?? "");
+                warningDto.Description ?? "");
             return Ok(result);
         }
 
@@ -342,7 +342,7 @@ namespace BanTayVang.API.Controllers
         /// Lấy danh sách bài thi đã nộp (Completed) của user hiện tại
         /// </summary>
         [HttpGet("my-results")]
-        public async Task<ActionResult<BaseResponseDto<List<BaithiDto>>>> GetMyResults()
+        public async Task<ActionResult<BaseResponseDto<List<ExamSubmissionDto>>>> GetMyResults()
         {
             var taikhoanId = GetCurrentUserIdOrDefault();
             var result = await _examService.GetMyResultsAsync(taikhoanId);
@@ -370,8 +370,8 @@ namespace BanTayVang.API.Controllers
                 {
                     return BadRequest(BaseResponseDto<ExamPreviewDto>.FailureResult("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý."));
                 }
-                var existing = await _context.Dethis.FindAsync(id);
-                if (existing == null || existing.KhoaPhong != myKhoa)
+                var existing = await _context.ExamPapers.FindAsync(id);
+                if (existing == null || existing.Department != myKhoa)
                 {
                     return Forbid();
                 }
@@ -396,8 +396,8 @@ namespace BanTayVang.API.Controllers
                 {
                     return BadRequest("Tài khoản quản lý khoa chưa cấu hình khoa phòng quản lý.");
                 }
-                var existing = await _context.Dethis.FindAsync(id);
-                if (existing == null || existing.KhoaPhong != myKhoa)
+                var existing = await _context.ExamPapers.FindAsync(id);
+                if (existing == null || existing.Department != myKhoa)
                 {
                     return Forbid();
                 }
@@ -415,7 +415,7 @@ namespace BanTayVang.API.Controllers
         {
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("<!DOCTYPE html><html lang='vi'><head><meta charset='UTF-8'>");
-            sb.AppendLine("<title>Đề thi: " + System.Net.WebUtility.HtmlEncode(exam.TenDeThi ?? "") + "</title>");
+            sb.AppendLine("<title>Đề thi: " + System.Net.WebUtility.HtmlEncode(exam.ExamPaperName ?? "") + "</title>");
             sb.AppendLine("<style>body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:20px;font-size:13px}");
             sb.AppendLine(".print-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #000;padding-bottom:12px}");
             sb.AppendLine(".hospital-brand{display:flex;align-items:center;gap:12px;width:48%}");
@@ -439,9 +439,9 @@ namespace BanTayVang.API.Controllers
             sb.AppendLine("    </div>");
             sb.AppendLine("  </div>");
             sb.AppendLine("  <div class='exam-info'>");
-            sb.AppendLine($"    <h1>ĐỀ THI: {System.Net.WebUtility.HtmlEncode(exam.TenDeThi ?? "")}</h1>");
-            sb.AppendLine($"    <div class='meta'>Mã đề: <strong>{exam.MaDeThi}</strong> &nbsp;|&nbsp; Thời gian: <strong>{exam.ThoiGianLamBai} phút</strong> &nbsp;|&nbsp; Số câu: <strong>{exam.CauHois?.Count ?? 0}</strong>");
-            sb.AppendLine($"    <br/>Khoa: <strong>{System.Net.WebUtility.HtmlEncode(exam.KhoaPhong ?? "—")}</strong></div>");
+            sb.AppendLine($"    <h1>ĐỀ THI: {System.Net.WebUtility.HtmlEncode(exam.ExamPaperName ?? "")}</h1>");
+            sb.AppendLine($"    <div class='meta'>Mã đề: <strong>{exam.ExamPaperCode}</strong> &nbsp;|&nbsp; Thời gian: <strong>{exam.DurationMinutes} phút</strong> &nbsp;|&nbsp; Số câu: <strong>{exam.Questions?.Count ?? 0}</strong>");
+            sb.AppendLine($"    <br/>Khoa: <strong>{System.Net.WebUtility.HtmlEncode(exam.Department ?? "—")}</strong></div>");
             sb.AppendLine("  </div>");
             sb.AppendLine("</div>");
 
@@ -449,14 +449,14 @@ namespace BanTayVang.API.Controllers
             sb.AppendLine("<hr/>");
 
             int stt = 1;
-            foreach (var q in exam.CauHois ?? new())
+            foreach (var q in exam.Questions ?? new())
             {
-                sb.AppendLine($"<div class='question'><strong>Câu {stt++}:</strong> {System.Net.WebUtility.HtmlEncode(q.NoiDung ?? "")}");
+                sb.AppendLine($"<div class='question'><strong>Câu {stt++}:</strong> {System.Net.WebUtility.HtmlEncode(q.Content ?? "")}");
                 char letter = 'A';
-                foreach (var c in q.Luachons ?? new())
+                foreach (var c in q.QuestionOptions ?? new())
                 {
-                    var cls = c.LaDapAnDung == true ? "choice correct" : "choice";
-                    sb.AppendLine($"<div class='{cls}'>{letter++}. {System.Net.WebUtility.HtmlEncode(c.NoiDung ?? "")} {(c.LaDapAnDung == true ? "✓" : "")}</div>");
+                    var cls = c.IsCorrect == true ? "choice correct" : "choice";
+                    sb.AppendLine($"<div class='{cls}'>{letter++}. {System.Net.WebUtility.HtmlEncode(c.Content ?? "")} {(c.IsCorrect == true ? "✓" : "")}</div>");
                 }
                 sb.AppendLine("</div>");
             }

@@ -25,13 +25,13 @@ namespace BanTayVang.API.DTOs.Auth
 
         [Required(ErrorMessage = "Họ tên không được để trống")]
         [StringLength(255, ErrorMessage = "Họ tên tối đa 255 ký tự")]
-        public string HoTen { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
 
         /// <summary>
         /// Optional: Role ID (default = 3 - Student)
         /// 1 = Admin, 2 = Teacher, 3 = Student, 4 = Supervisor
         /// </summary>
-        public int IdVaiTro { get; set; } = 3;
+        public int RoleId { get; set; } = 3;
 
         /// <summary>
         /// Optional: Mã nhân viên
@@ -46,6 +46,6 @@ namespace BanTayVang.API.DTOs.Auth
         /// <summary>
         /// Optional: Khoa/Phòng
         /// </summary>
-        public string? KhoaPhong { get; set; }
+        public string? Department { get; set; }
     }
 }

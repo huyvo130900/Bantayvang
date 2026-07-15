@@ -29,17 +29,17 @@ namespace BanTayVang.API.Services.Impl
                     {
                         Id = a.Id,
                         ExamId = a.ExamId,
-                        MaDeThi = a.Exam!.MaDeThi,
-                        TenDeThi = a.Exam.TenDeThi,
+                        ExamPaperCode = a.Exam!.ExamPaperCode,
+                        ExamPaperName = a.Exam.ExamPaperName,
                         UserId = a.UserId,
-                        Username = a.User!.TenDangNhap,
-                        FullName = a.User.HoTen,
+                        Username = a.User!.Username,
+                        FullName = a.User.FullName,
                         AssignedAt = a.AssignedAt,
                         CustomStartTime = a.CustomStartTime,
                         ExtraMinutes = a.ExtraMinutes,
                         IsActive = a.IsActive,
                         Note = a.Note,
-                        TrangThai = "Pending"
+                        Status = "Pending"
                     })
                     .ToListAsync();
 
@@ -81,48 +81,48 @@ namespace BanTayVang.API.Services.Impl
                 foreach (var a in assignments)
                 {
                     // Tìm bài thi đã làm (nếu có)
-                    var baithi = await _context.Baithis
-                        .Where(b => b.IdTaiKhoan == userId && b.IdDeThi == a.ExamId)
-                        .OrderByDescending(b => b.ThoiGianBatDau)
+                    var examSubmission = await _context.ExamSubmissions
+                        .Where(b => b.UserId == userId && b.ExamPaperId == a.ExamId)
+                        .OrderByDescending(b => b.StartTime)
                         .FirstOrDefaultAsync();
 
-                    var trangThai = "Pending";
+                    var status = "Pending";
                     int? baithiId = null;
                     double? diemSo = null;
-                    double? tongDiem = null;
-                    int? soCauDung = null;
+                    double? totalScore = null;
+                    int? correctAnswers = null;
                     int? tongSoCau = null;
                     DateTime? ngayHoanThanh = null;
                     bool? datYeuCau = null;
-                    string? thoiGianLamBai = null;
+                    string? durationMinutes = null;
                     string? thoiGianKetThuc = null;
 
-                    if (baithi != null)
+                    if (examSubmission != null)
                     {
-                        baithiId = baithi.Id;
-                        trangThai = baithi.TrangThai ?? "InProgress";
-                        diemSo = baithi.TongDiem;
-                        soCauDung = baithi.SoCauDung;
-                        tongSoCau = baithi.TongSoCau;
-                        ngayHoanThanh = baithi.ThoiGianNop;
-                        thoiGianLamBai = baithi.ThoiGianBatDau?.ToString("yyyy-MM-ddTHH:mm:ss");
-                        thoiGianKetThuc = baithi.ThoiGianNop?.ToString("yyyy-MM-ddTHH:mm:ss");
+                        baithiId = examSubmission.Id;
+                        status = examSubmission.Status ?? "InProgress";
+                        diemSo = examSubmission.TotalScore;
+                        correctAnswers = examSubmission.CorrectAnswers;
+                        tongSoCau = examSubmission.TotalQuestions;
+                        ngayHoanThanh = examSubmission.SubmitTime;
+                        durationMinutes = examSubmission.StartTime?.ToString("yyyy-MM-ddTHH:mm:ss");
+                        thoiGianKetThuc = examSubmission.SubmitTime?.ToString("yyyy-MM-ddTHH:mm:ss");
 
                         // Lấy tổng điểm của đề thi
-                        tongDiem = a.Exam?.TongDiem;
+                        totalScore = a.Exam?.TotalScore;
 
                         // Đạt nếu >= 50% tổng điểm
-                        if (baithi.TongDiem.HasValue && a.Exam?.TongDiem > 0)
+                        if (examSubmission.TotalScore.HasValue && a.Exam?.TotalScore > 0)
                         {
-                            datYeuCau = baithi.TongDiem >= (a.Exam.TongDiem * 0.5);
+                            datYeuCau = examSubmission.TotalScore >= (a.Exam.TotalScore * 0.5);
                         }
 
                         // Redact scores if not published
-                        var congBo = baithi.CongBoRieng || (a.Exam?.CongBoKetQua ?? false);
+                        var congBo = examSubmission.CongBoRieng || (a.Exam?.IsResultPublished ?? false);
                         if (!congBo)
                         {
                             diemSo = null;
-                            soCauDung = null;
+                            correctAnswers = null;
                             datYeuCau = null;
                         }
                     }
@@ -131,27 +131,27 @@ namespace BanTayVang.API.Services.Impl
                     {
                         Id = a.Id,
                         ExamId = a.ExamId,
-                        MaDeThi = a.Exam?.MaDeThi,
-                        TenDeThi = a.Exam?.TenDeThi,
+                        ExamPaperCode = a.Exam?.ExamPaperCode,
+                        ExamPaperName = a.Exam?.ExamPaperName,
                         UserId = a.UserId,
-                        Username = a.User?.TenDangNhap,
-                        FullName = a.User?.HoTen,
+                        Username = a.User?.Username,
+                        FullName = a.User?.FullName,
                         AssignedAt = a.AssignedAt,
                         CustomStartTime = a.CustomStartTime,
                         ExtraMinutes = a.ExtraMinutes,
                         IsActive = a.IsActive,
                         Note = a.Note,
-                        TrangThai = trangThai,
+                        Status = status,
                         BaithiId = baithiId,
                         DiemSo = diemSo,
-                        TongDiem = tongDiem,
-                        SoCauDung = soCauDung,
-                        TongSoCau = tongSoCau,
+                        TotalScore = totalScore,
+                        CorrectAnswers = correctAnswers,
+                        TotalQuestions = tongSoCau,
                         NgayHoanThanh = ngayHoanThanh,
                         DatYeuCau = datYeuCau,
-                        ThoiGianBatDau = thoiGianLamBai,
-                        ThoiGianKetThuc = thoiGianKetThuc,
-                        ThoiGianLamBai = a.Exam?.ThoiGianLamBai
+                        StartTime = durationMinutes,
+                        EndTime = thoiGianKetThuc,
+                        DurationMinutes = a.Exam?.DurationMinutes
                     });
                 }
 
@@ -178,7 +178,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var exam = await _context.Dethis.FindAsync(dto.ExamId);
+                var exam = await _context.ExamPapers.FindAsync(dto.ExamId);
                 if (exam == null)
                     return new BaseResponseDto<int> { Success = false, Message = "Không tìm thấy đề thi" };
 
@@ -253,21 +253,21 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var baithi = await _context.Baithis.FindAsync(dto.BaiThiId);
-                if (baithi == null)
+                var examSubmission = await _context.ExamSubmissions.FindAsync(dto.BaiThiId);
+                if (examSubmission == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy bài thi" };
-                if (baithi.TrangThai != "InProgress")
+                if (examSubmission.Status != "InProgress")
                     return new BaseResponseDto { Success = false, Message = "Chỉ gia hạn bài thi đang làm" };
 
                 var assignment = await _context.ExamAssignments
-                    .FirstOrDefaultAsync(a => a.ExamId == baithi.IdDeThi && a.UserId == baithi.IdTaiKhoan);
+                    .FirstOrDefaultAsync(a => a.ExamId == examSubmission.ExamPaperId && a.UserId == examSubmission.UserId);
 
                 if (assignment == null)
                 {
                     assignment = new ExamAssignment
                     {
-                        ExamId = baithi.IdDeThi ?? 0,
-                        UserId = baithi.IdTaiKhoan ?? 0,
+                        ExamId = examSubmission.ExamPaperId ?? 0,
+                        UserId = examSubmission.UserId ?? 0,
                         AssignedAt = DateTime.UtcNow,
                         ExtraMinutes = dto.AdditionalMinutes,
                         IsActive = true,

@@ -13,7 +13,7 @@ namespace BanTayVang.API.Services.Interfaces
             string? method = null,
             string? path = null,
             int? statusCode = null,
-            string? khoaPhong = null);
+            string? department = null);
 
         Task<List<AuditLogEntry>> GetUserLogsAsync(int userId, int top = 100);
         Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int baithiId);
@@ -44,6 +44,6 @@ namespace BanTayVang.API.Services.Interfaces
         public DateTime? Timestamp { get; set; }
         public string? IpAddress { get; set; }
         public string? UserAgent { get; set; }
-        public string? KhoaPhong { get; set; }
+        public string? Department { get; set; }
     }
 }

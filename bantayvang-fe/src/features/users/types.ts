@@ -1,54 +1,54 @@
 export interface UserDto {
   id: number
   maNhanVien: string | null
-  tenDangNhap: string | null
+  username: string | null
   email: string | null
   soDienThoai: string | null
-  hoTen: string | null
+  fullName: string | null
   chucDanh: string | null
-  khoaPhong: string | null
-  idVaiTro: number | null
+  department: string | null
+  roleId: number | null
   tenVaiTro: string | null
   idKhoaQuanLy?: number | null
   tenKhoaQuanLy?: string | null
-  trangThai: boolean | null
-  ngayTao: string | null
+  status: boolean | null
+  createdAt: string | null
   lanDangNhapCuoi: string | null
   isDeleted: boolean
 }
 
 export interface CreateUserDto {
-  tenDangNhap: string
-  matKhau: string
+  username: string
+  password: string
   email?: string
   soDienThoai?: string
-  hoTen: string
+  fullName: string
   maNhanVien?: string
   chucDanh?: string
-  khoaPhong?: string
-  idVaiTro: number
+  department?: string
+  roleId: number
   idKhoaQuanLy?: number
-  trangThai: boolean
+  status: boolean
 }
 
 export interface UpdateUserDto {
   email?: string
   soDienThoai?: string
-  hoTen: string
+  fullName: string
   maNhanVien?: string
   chucDanh?: string
-  khoaPhong?: string
-  idVaiTro: number
+  department?: string
+  roleId: number
   idKhoaQuanLy?: number
-  trangThai: boolean
+  status: boolean
 }
 
 export interface UserFilterDto {
   pageNumber: number
   pageSize: number
-  idVaiTro?: number
-  trangThai?: boolean
-  khoaPhong?: string
+  roleId?: number
+  status?: boolean
+  department?: string
   searchKeyword?: string
   includeDeleted?: boolean
 }

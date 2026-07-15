@@ -4,26 +4,26 @@ export interface ExamResultDetailDto {
   username: string | null
   fullName: string | null
   maNhanVien?: string | null
-  khoaPhong: string | null
+  department: string | null
   examId: number
-  idDeThi?: number | null
-  maDeThi: string | null
-  tenDeThi: string | null
+  examPaperId?: number | null
+  examPaperCode: string | null
+  examPaperName: string | null
   thoiGianBatDau: string | null
-  thoiGianNop?: string
+  submitTime?: string
   durationMinutes?: number
   durationSeconds?: number
-  tongDiem?: number | null
-  soCauDung: number | null
+  totalScore?: number | null
+  correctAnswers: number | null
   tongSoCau: number | null
-  trangThai: string | null
+  status: string | null
   pass: boolean
   soCauDungToiThieu?: number | null
   soCanhBao: number | null
   soLanThi?: number        // số lần đã thi
   soLanGianLan?: number    // tổng số lần gian lận
   soLanThiLai?: number
-  congBoKetQua?: boolean
+  isResultPublished?: boolean
   soCauDaCham?: number
   tongSoCauTracNghiem?: number
   soCauTracNghiemDaCham?: number
@@ -37,12 +37,12 @@ export interface ExamResultDetailDto {
 export interface AnswerDetailDto {
   cauHoiId: number
   noiDungCauHoi: string | null
-  loaiCauHoi?: string | null
+  questionCategory?: string | null
   idLuaChonDaChon: number | null
   noiDungDapAn: string | null
   cauTraLoiTuLuan: string | null
   isCorrect: boolean
-  diemDatDuoc: number | null
+  scoreObtained: number | null
   idLuaChonDung: number | null
   noiDungDapAnDung: string | null
   chiTietLamBaiId?: number | null
@@ -60,15 +60,15 @@ export interface PendingEssayDto {
   username: string | null
   fullName: string | null
   maNhanVien?: string | null
-  khoaPhong: string | null
-  maDeThi: string | null
-  tenDeThi: string | null
-  thoiGianNop: string | null
-  tongDiem?: number | null
-  soCauDung: number | null
+  department: string | null
+  examPaperCode: string | null
+  examPaperName: string | null
+  submitTime: string | null
+  totalScore?: number | null
+  correctAnswers: number | null
   tongSoCau: number | null
-  trangThai: string | null
+  status: string | null
   soCauTuLuanChuaCham: number
   tongSoCauTuLuan: number
-  tenKyThi?: string | null
+  campaignName?: string | null
 }

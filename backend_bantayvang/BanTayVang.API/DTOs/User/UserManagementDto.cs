@@ -9,16 +9,16 @@ namespace BanTayVang.API.DTOs.User
     {
         public int Id { get; set; }
         public string? MaNhanVien { get; set; }
-        public string? TenDangNhap { get; set; }
-        public string? HoTen { get; set; }
+        public string? Username { get; set; }
+        public string? FullName { get; set; }
         public string? ChucDanh { get; set; }
-        public string? KhoaPhong { get; set; }
-        public int? IdVaiTro { get; set; }
-        public string? TenVaiTro { get; set; }
-        public int? IdKhoaQuanLy { get; set; }
+        public string? Department { get; set; }
+        public int? RoleId { get; set; }
+        public string? RoleName { get; set; }
+        public int? DeptManagerDeptId { get; set; }
         public string? TenKhoaQuanLy { get; set; }
-        public bool? TrangThai { get; set; }
-        public DateTime? NgayTao { get; set; }
+        public bool? Status { get; set; }
+        public DateTime? CreatedAt { get; set; }
         public DateTime? LanDangNhapCuoi { get; set; }
         public bool IsDeleted { get; set; }
         public string? Email { get; set; }
@@ -32,25 +32,25 @@ namespace BanTayVang.API.DTOs.User
     {
         [Required]
         [StringLength(100, MinimumLength = 3)]
-        public string TenDangNhap { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
 
         [Required]
         [StringLength(100, MinimumLength = 6)]
-        public string MatKhau { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
 
         [Required]
         [StringLength(255)]
-        public string HoTen { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
 
         public string? MaNhanVien { get; set; }
         public string? ChucDanh { get; set; }
-        public string? KhoaPhong { get; set; }
+        public string? Department { get; set; }
         public string? Email { get; set; }
         public string? SoDienThoai { get; set; }
-        public int IdVaiTro { get; set; } = 3;
-        /// <summary>Bắt buộc khi IdVaiTro = 5 (DeptManager)</summary>
-        public int? IdKhoaQuanLy { get; set; }
-        public bool TrangThai { get; set; } = true;
+        public int RoleId { get; set; } = 3;
+        /// <summary>Bắt buộc khi RoleId = 5 (DeptManager)</summary>
+        public int? DeptManagerDeptId { get; set; }
+        public bool Status { get; set; } = true;
     }
 
     /// <summary>
@@ -60,16 +60,16 @@ namespace BanTayVang.API.DTOs.User
     {
         [Required]
         [StringLength(255)]
-        public string HoTen { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
 
         public string? MaNhanVien { get; set; }
         public string? ChucDanh { get; set; }
-        public string? KhoaPhong { get; set; }
+        public string? Department { get; set; }
         public string? Email { get; set; }
         public string? SoDienThoai { get; set; }
-        public int IdVaiTro { get; set; }
-        public int? IdKhoaQuanLy { get; set; }
-        public bool TrangThai { get; set; }
+        public int RoleId { get; set; }
+        public int? DeptManagerDeptId { get; set; }
+        public bool Status { get; set; }
     }
 
     /// <summary>
@@ -79,9 +79,9 @@ namespace BanTayVang.API.DTOs.User
     {
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
-        public int? IdVaiTro { get; set; }
-        public bool? TrangThai { get; set; }
-        public string? KhoaPhong { get; set; }
+        public int? RoleId { get; set; }
+        public bool? Status { get; set; }
+        public string? Department { get; set; }
         public string? SearchKeyword { get; set; }
         public bool IncludeDeleted { get; set; } = false;
     }

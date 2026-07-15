@@ -1,9 +1,9 @@
 export interface ExamQuestionDto {
   id: number
-  noiDung: string | null
-  hinhAnh: string | null
+  content: string | null
+  imageUrl: string | null
   thuTuCau: number
-  danhSachLuaChon: ExamChoiceDto[]
+  options: ExamChoiceDto[]
   idLuaChonDaChon: number | null
   idLuaChonDaChonList?: number[]
   cauTraLoiTuLuan: string | null
@@ -13,51 +13,51 @@ export interface ExamQuestionDto {
 
 export interface ExamChoiceDto {
   id: number
-  noiDung: string | null
-  thuTu: number
+  content: string | null
+  orderIndex: number
 }
 
-export interface BaithiDto {
+export interface ExamSubmissionDto {
   id: number
-  idTaiKhoan: number
-  idDeThi: number
-  idKyThi?: number | null
-  trangThai: string | null
-  thoiGianNop: string | null
-  tongDiem: number | null
-  diemSo?: number | null  // computed: (soCauDung/tongSoCau)*10
-  soCauDung: number | null
+  userId: number
+  examPaperId: number
+  examCampaignId?: number | null
+  status: string | null
+  submitTime: string | null
+  totalScore: number | null
+  diemSo?: number | null  // computed: (correctAnswers/tongSoCau)*10
+  correctAnswers: number | null
   tongSoCau: number | null
   tongSoCanhBao: number | null
-  tenDeThi: string | null
-  maDeThi: string | null
-  thoiGianLamBai: number | null
+  examPaperName: string | null
+  examPaperCode: string | null
+  durationMinutes: number | null
   thoiGianBatDau: string | null
   thoiGianConLai: number | null // seconds
-  congBoKetQua?: boolean
+  isResultPublished?: boolean
   pass?: boolean | null
 }
 
 export interface StartExamDto {
-  maDeThi?: string
+  examPaperCode?: string
   kyThiId?: number
 }
 
 export interface SubmitAnswerDto {
-  idBaiThi: number
-  idCauHoi: number
+  examSubmissionId: number
+  questionId: number
   idLuaChonDaChon: number | null
   cauTraLoiTuLuan?: string
   daLuu: boolean
 }
 
 export interface SubmitExamDto {
-  idBaiThi: number
+  examSubmissionId: number
   danhSachCauTraLoi: SubmitAnswerDto[]
 }
 
 export interface CheatingWarningDto {
-  idBaiThi: number
+  examSubmissionId: number
   loaiCanhBao: string
   moTa?: string
 }

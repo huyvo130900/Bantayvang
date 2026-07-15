@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace BanTayVang.API.DTOs.KyThi
+namespace BanTayVang.API.DTOs.ExamCampaign
 {
     public class ExamGenerationConfigDto
     {
@@ -11,7 +11,7 @@ namespace BanTayVang.API.DTOs.KyThi
 
         [Required]
         [Range(1, 200, ErrorMessage = "Số câu hỏi mỗi đề từ 1 đến 200")]
-        public int TongSoCau { get; set; }
+        public int TotalQuestions { get; set; }
 
         [Required]
         public int SoCauMC { get; set; }
@@ -28,7 +28,7 @@ namespace BanTayVang.API.DTOs.KyThi
         [Required]
         public int SoCauHard { get; set; }
 
-        public string? KhoaPhong { get; set; }
+        public string? Department { get; set; }
     }
 
     public class ExamCheckResultDto

@@ -29,11 +29,11 @@ namespace BanTayVang.API.Controllers
             // DeptManager: chỉ thấy thí sinh (role=3) thuộc khoa của mình
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                filter.IdVaiTro = 3; // Student only
+                filter.RoleId = 3; // Student only
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 if (!string.IsNullOrEmpty(myKhoa))
                 {
-                    filter.KhoaPhong = myKhoa;
+                    filter.Department = myKhoa;
                 }
             }
             var result = await _userService.GetAllUsersAsync(filter);

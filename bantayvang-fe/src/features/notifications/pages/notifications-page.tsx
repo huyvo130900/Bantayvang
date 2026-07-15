@@ -83,7 +83,7 @@ export function NotificationsPage() {
 
   const handleCreateNotification = async (data: CreateNotificationDto) => {
     try {
-      if (data.userId || data.khoaPhong) {
+      if (data.userId || data.department) {
         await notificationsApi.create(data)
       } else {
         await notificationsApi.broadcast(data)
@@ -249,10 +249,10 @@ function BroadcastDialog({
   useEffect(() => {
     if (targetType === 'user') {
       setLoadingUsers(true)
-      const params: any = { pageNumber: 1, pageSize: 500, trangThai: true }
-      if (isDeptManager && user?.khoaPhong) {
-        params.khoaPhong = user.khoaPhong
-        params.idVaiTro = 3
+      const params: any = { pageNumber: 1, pageSize: 500, status: true }
+      if (isDeptManager && user?.department) {
+        params.department = user.department
+        params.roleId = 3
       }
       usersApi.list(params)
         .then((res) => {
@@ -260,15 +260,15 @@ function BroadcastDialog({
         })
         .finally(() => setLoadingUsers(false))
     }
-  }, [targetType, isDeptManager, user?.khoaPhong])
+  }, [targetType, isDeptManager, user?.department])
 
   useEffect(() => {
     if (targetType === 'dept') {
       if (isDeptManager) {
-        setSelectedKhoaPhong(user?.khoaPhong || '')
+        setSelectedKhoaPhong(user?.department || '')
       } else {
         setLoadingDepts(true)
-        departmentApi.getAll({ trangThai: true, pageSize: 100 })
+        departmentApi.getAll({ status: true, pageSize: 100 })
           .then((res) => {
             if (res.data.success && res.data.data) {
               setDepartments(res.data.data)
@@ -277,7 +277,7 @@ function BroadcastDialog({
           .finally(() => setLoadingDepts(false))
       }
     }
-  }, [targetType, isDeptManager, user?.khoaPhong])
+  }, [targetType, isDeptManager, user?.department])
 
   const handleSubmit = () => {
     if (!title.trim() || !message.trim()) return
@@ -286,7 +286,7 @@ function BroadcastDialog({
       message: message.trim(),
       type,
       userId: targetType === 'user' && selectedUserId ? selectedUserId : null,
-      khoaPhong: targetType === 'dept' ? selectedKhoaPhong : null,
+      department: targetType === 'dept' ? selectedKhoaPhong : null,
     }
     onSubmit(data)
   }
@@ -346,7 +346,7 @@ function BroadcastDialog({
                 <option value="">-- Chọn người dùng --</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.hoTen || u.tenDangNhap} ({u.khoaPhong || 'N/A'})
+                    {u.fullName || u.username} ({u.department || 'N/A'})
                   </option>
                 ))}
               </select>
@@ -358,7 +358,7 @@ function BroadcastDialog({
               <label className="text-sm font-medium text-gray-700">Chọn khoa nhận</label>
               {isDeptManager ? (
                 <div className="h-10 w-full rounded-md border border-gray-200 bg-gray-50 px-3 flex items-center text-sm font-medium text-gray-700">
-                  {user?.khoaPhong || 'Chưa gán khoa'}
+                  {user?.department || 'Chưa gán khoa'}
                 </div>
               ) : (
                 <select
@@ -369,8 +369,8 @@ function BroadcastDialog({
                 >
                   <option value="">-- Chọn khoa/phòng ban --</option>
                   {departments.map((d) => (
-                    <option key={d.id} value={d.tenKhoa}>
-                      {d.tenKhoa}
+                    <option key={d.id} value={d.departmentName}>
+                      {d.departmentName}
                     </option>
                   ))}
                 </select>

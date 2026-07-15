@@ -57,7 +57,7 @@ export function ResetPasswordDialog({
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="p-4 space-y-4">
           <p className="text-sm text-gray-600">
-            Đặt lại mật khẩu cho: <strong>{user.hoTen || user.tenDangNhap}</strong>
+            Đặt lại mật khẩu cho: <strong>{user.fullName || user.username}</strong>
           </p>
 
           <div className="space-y-1">

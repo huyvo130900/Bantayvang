@@ -5,7 +5,7 @@ namespace BanTayVang.API.DTOs.Exam
     public class StartExamDto
     {
         [Required]
-        public string MaDeThi { get; set; } = string.Empty;
+        public string ExamPaperCode { get; set; } = string.Empty;
         
         public int? KyThiId { get; set; }
         public string? ThietBiUserAgent { get; set; }

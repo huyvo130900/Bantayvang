@@ -2,9 +2,9 @@ namespace BanTayVang.API.DTOs.Question
 {
     public class QuestionFilterDto
     {
-        public int? IdLoaiCauHoi { get; set; }
-        public string? DoKho { get; set; }
-        public string? KhoaPhong { get; set; }
+        public int? QuestionCategoryId { get; set; }
+        public string? Difficulty { get; set; }
+        public string? Department { get; set; }
         public string? SearchKeyword { get; set; }
         public bool? ShowDuplicatesOnly { get; set; }
         public int? KyThiId { get; set; }

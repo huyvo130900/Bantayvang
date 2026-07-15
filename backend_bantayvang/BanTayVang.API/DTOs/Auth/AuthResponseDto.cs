@@ -44,8 +44,8 @@ namespace BanTayVang.API.DTOs.Auth
         public string Role { get; set; } = string.Empty;
         public bool IsActive { get; set; }
         public DateTime LastLoginAt { get; set; }
-        public string? KhoaPhong { get; set; }
-        public int? IdKhoaQuanLy { get; set; }
+        public string? Department { get; set; }
+        public int? DeptManagerDeptId { get; set; }
         public string? TenKhoaQuanLy { get; set; }
     }
 }

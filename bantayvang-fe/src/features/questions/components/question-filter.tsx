@@ -3,8 +3,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, Plus, Upload, Building2, ChevronDown, Check } from 'lucide-react'
 import type { QuestionFilterDto, LoaicauhoiDto } from '../types'
-import type { KyThiDto } from '@/features/ky-thi/types'
-import type { DethiDto } from '@/features/exams/types'
+import type { ExamCampaignDto } from '@/features/ky-thi/types'
+import type { ExamPaperDto } from '@/features/exams/types'
 
 interface QuestionFilterProps {
   filter: QuestionFilterDto
@@ -15,8 +15,8 @@ interface QuestionFilterProps {
   hideKhoaFilter?: boolean
   // Admin truyền vào danh sách khoa động (lấy từ dữ liệu thực tế)
   khoaList?: string[]
-  kyThiList?: KyThiDto[]
-  deThiList?: DethiDto[]
+  kyThiList?: ExamCampaignDto[]
+  deThiList?: ExamPaperDto[]
 }
 
 export function QuestionFilter({
@@ -51,7 +51,7 @@ export function QuestionFilter({
     khoa.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const selectedKhoa = filter.khoaPhong
+  const selectedKhoa = filter.department
 
   return (
     <div className="space-y-3 mb-4">
@@ -107,7 +107,7 @@ export function QuestionFilter({
                   <button
                     type="button"
                     onClick={() => {
-                      onFilterChange({ khoaPhong: undefined, showDuplicatesOnly: false, pageNumber: 1 })
+                      onFilterChange({ department: undefined, showDuplicatesOnly: false, pageNumber: 1 })
                       setIsOpen(false)
                     }}
                     className={`w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-gray-100 transition-colors ${
@@ -124,7 +124,7 @@ export function QuestionFilter({
                       key={khoa}
                       type="button"
                       onClick={() => {
-                        onFilterChange({ khoaPhong: khoa, pageNumber: 1 })
+                        onFilterChange({ department: khoa, pageNumber: 1 })
                         setIsOpen(false)
                       }}
                       className={`w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-gray-100 transition-colors truncate ${
@@ -150,23 +150,23 @@ export function QuestionFilter({
         {/* Lọc theo loại câu hỏi */}
         <select
           className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          value={filter.idLoaiCauHoi ?? ''}
+          value={filter.questionCategoryId ?? ''}
           onChange={(e) =>
-            onFilterChange({ idLoaiCauHoi: e.target.value ? Number(e.target.value) : undefined, pageNumber: 1 })
+            onFilterChange({ questionCategoryId: e.target.value ? Number(e.target.value) : undefined, pageNumber: 1 })
           }
         >
           <option value="">Tất cả loại</option>
           {questionTypes.map((t) => (
-            <option key={t.id} value={t.id}>{t.tenLoai}</option>
+            <option key={t.id} value={t.id}>{t.categoryName}</option>
           ))}
         </select>
 
         {/* Lọc theo mức độ khó */}
         <select
           className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          value={filter.doKho ?? ''}
+          value={filter.difficulty ?? ''}
           onChange={(e) =>
-            onFilterChange({ doKho: e.target.value || undefined, pageNumber: 1 })
+            onFilterChange({ difficulty: e.target.value || undefined, pageNumber: 1 })
           }
         >
           <option value="">Tất cả mức độ</option>
@@ -185,7 +185,7 @@ export function QuestionFilter({
         >
           <option value="">Tất cả kỳ thi</option>
           {kyThiList.map((kt) => (
-            <option key={kt.id} value={kt.id}>{kt.tenKyThi}</option>
+            <option key={kt.id} value={kt.id}>{kt.campaignName}</option>
           ))}
         </select>
 
@@ -201,12 +201,12 @@ export function QuestionFilter({
           {deThiList
             .filter((dt) => !filter.kyThiId || dt.kyThiId === filter.kyThiId)
             .map((dt) => (
-              <option key={dt.id} value={dt.id}>{dt.tenDeThi || dt.maDeThi}</option>
+              <option key={dt.id} value={dt.id}>{dt.examPaperName || dt.examPaperCode}</option>
             ))}
         </select>
 
         {/* Lọc trùng lặp - Chỉ hiển thị khi chọn 1 khoa nhất định */}
-        {!!filter.khoaPhong && (
+        {!!filter.department && (
           <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 bg-gray-50/50 border px-3 h-10 rounded-md hover:bg-gray-100 transition-colors select-none">
             <input
               type="checkbox"

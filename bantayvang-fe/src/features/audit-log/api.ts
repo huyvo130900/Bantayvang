@@ -12,7 +12,7 @@ export interface AuditLogEntry {
   description?: string
   ipAddress?: string
   timestamp?: string
-  khoaPhong?: string
+  department?: string
   action?: string
 }
 

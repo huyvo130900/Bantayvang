@@ -1,7 +1,7 @@
 import apiClient from '@/lib/axios'
 import type { ApiResponse } from '@/types'
 import type {
-  BaithiDto,
+  ExamSubmissionDto,
   ExamQuestionDto,
   StartExamDto,
   SubmitAnswerDto,
@@ -11,7 +11,7 @@ import type {
 
 export const examTakingApi = {
   start: (data: StartExamDto) =>
-    apiClient.post<ApiResponse<BaithiDto>>('/exam/start', data),
+    apiClient.post<ApiResponse<ExamSubmissionDto>>('/exam/start', data),
 
   getQuestions: (baithiId: number) =>
     apiClient.get<ApiResponse<ExamQuestionDto[]>>(`/exam/${baithiId}/questions`),
@@ -20,10 +20,10 @@ export const examTakingApi = {
     apiClient.post<ApiResponse>('/exam/answer', data),
 
   getProgress: (baithiId: number) =>
-    apiClient.get<ApiResponse<BaithiDto>>(`/exam/${baithiId}/progress`),
+    apiClient.get<ApiResponse<ExamSubmissionDto>>(`/exam/${baithiId}/progress`),
 
   submit: (data: SubmitExamDto) =>
-    apiClient.post<ApiResponse<BaithiDto>>('/exam/submit', data),
+    apiClient.post<ApiResponse<ExamSubmissionDto>>('/exam/submit', data),
 
   logWarning: (data: CheatingWarningDto) =>
     apiClient.post<ApiResponse>('/exam/warning', data),
@@ -33,5 +33,5 @@ export const examTakingApi = {
 
   // THÊM MỚI: lấy danh sách bài thi đã hoàn thành của user hiện tại
   getMyResults: () =>
-    apiClient.get<ApiResponse<BaithiDto[]>>('/exam/my-results'),
+    apiClient.get<ApiResponse<ExamSubmissionDto[]>>('/exam/my-results'),
 }

@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 export const createKyThiSchema = z.object({
-  maKyThi: z.string().min(1, 'Mã kỳ thi không được trống').max(50),
-  tenKyThi: z.string().min(1, 'Tên kỳ thi không được trống').max(255),
+  campaignCode: z.string().min(1, 'Mã kỳ thi không được trống').max(50),
+  campaignName: z.string().min(1, 'Tên kỳ thi không được trống').max(255),
   moTa: z.string().max(1000).optional().or(z.literal('')),
   khoaPhongId: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? null : Number(val),
@@ -19,7 +19,7 @@ export const createKyThiSchema = z.object({
     (val) => val === '' || val === null || val === undefined ? null : Number(val),
     z.number().min(1, 'Tổng số câu hỏi mỗi đề phải lớn hơn 0').nullable().optional()
   ),
-  thoiGianLamBai: z.preprocess(
+  durationMinutes: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? null : Number(val),
     z.number().min(1, 'Thời gian làm bài tối thiểu là 1 phút').max(1440, 'Tối đa 1440 phút').nullable().optional()
   ),
@@ -29,8 +29,8 @@ export type CreateKyThiFormData = z.infer<typeof createKyThiSchema>
 
 export const getKyThiSchema = (isEdit: boolean, initialStart?: string | null, initialEnd?: string | null) => {
   return z.object({
-    maKyThi: z.string().min(1, 'Mã kỳ thi không được trống').max(50),
-    tenKyThi: z.string().min(1, 'Tên kỳ thi không được trống').max(255),
+    campaignCode: z.string().min(1, 'Mã kỳ thi không được trống').max(50),
+    campaignName: z.string().min(1, 'Tên kỳ thi không được trống').max(255),
     moTa: z.string().max(1000).optional().or(z.literal('')),
     khoaPhongId: z.preprocess(
       (val) => val === '' || val === null || val === undefined ? null : Number(val),
@@ -47,7 +47,7 @@ export const getKyThiSchema = (isEdit: boolean, initialStart?: string | null, in
       (val) => val === '' || val === null || val === undefined ? null : Number(val),
       z.number().min(1, 'Tổng số câu hỏi mỗi đề phải lớn hơn 0').nullable().optional()
     ),
-    thoiGianLamBai: z.preprocess(
+    durationMinutes: z.preprocess(
       (val) => val === '' || val === null || val === undefined ? null : Number(val),
       z.number().min(1, 'Thời gian làm bài tối thiểu là 1 phút').max(1440, 'Tối đa 1440 phút').nullable().optional()
     ),

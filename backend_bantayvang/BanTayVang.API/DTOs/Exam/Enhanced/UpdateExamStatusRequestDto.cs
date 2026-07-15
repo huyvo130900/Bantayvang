@@ -10,6 +10,6 @@ namespace BanTayVang.API.DTOs.Exam
 
         [Required(ErrorMessage = "Trạng thái là bắt buộc")]
         [RegularExpression("^(Draft|Active|Inactive|Archived|Published)$", ErrorMessage = "Giá trị trạng thái không hợp lệ")]
-        public string TrangThai { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
     }
 }

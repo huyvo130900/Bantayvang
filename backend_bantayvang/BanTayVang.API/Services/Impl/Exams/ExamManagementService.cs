@@ -14,93 +14,93 @@ namespace BanTayVang.API.Services.Impl.Exams
     /// </summary>
     public class ExamManagementService : IExamManagementService
     {
-        private readonly IDethiRepository _dethiRepository;
-        private readonly ICauhoiRepository _cauhoiRepository;
+        private readonly IExamPaperRepository _examPaperRepository;
+        private readonly IQuestionRepository _questionRepository;
         private readonly IExamValidationService _validationService;
         private readonly IMapper _mapper;
         private readonly BanTayVangDbContext _context;
         private readonly ILogger<ExamManagementService> _logger;
 
         public ExamManagementService(
-            IDethiRepository dethiRepository,
-            ICauhoiRepository cauhoiRepository,
+            IExamPaperRepository dethiRepository,
+            IQuestionRepository cauhoiRepository,
             IExamValidationService validationService,
             IMapper mapper,
             BanTayVangDbContext context,
             ILogger<ExamManagementService> logger)
         {
-            _dethiRepository = dethiRepository;
-            _cauhoiRepository = cauhoiRepository;
+            _examPaperRepository = dethiRepository;
+            _questionRepository = cauhoiRepository;
             _validationService = validationService;
             _mapper = mapper;
             _context = context;
             _logger = logger;
         }
 
-        public async Task<BaseResponseDto<DethiDto>> CreateExamAsync(CreateDethiDto createDto, int nguoiTao, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamPaperDto>> CreateExamAsync(CreateExamPaperDto createDto, int createdBy, CancellationToken cancellationToken = default)
         {
             var correlationId = Guid.NewGuid().ToString();
 
             try
             {
-                KyThi? kyThi = null;
+                ExamCampaign? examCampaign = null;
                 if (createDto.KyThiId.HasValue)
                 {
-                    kyThi = await _context.Set<KyThi>()
-                        .Include(k => k.KhoaPhong)
+                    examCampaign = await _context.Set<ExamCampaign>()
+                        .Include(k => k.Department)
                         .FirstOrDefaultAsync(k => k.Id == createDto.KyThiId.Value, cancellationToken);
-                    if (kyThi != null)
+                    if (examCampaign != null)
                     {
-                        createDto.TenDeThi = kyThi.TenKyThi;
-                        createDto.ThoiGianBatDau = kyThi.ThoiGianBatDau;
-                        createDto.KhoaPhong = kyThi.KhoaPhong?.TenKhoa;
+                        createDto.ExamPaperName = examCampaign.CampaignName;
+                        createDto.StartTime = examCampaign.StartTime;
+                        createDto.Department = examCampaign.Department?.DepartmentName;
 
-                        if (kyThi.ThoiGianLamBai.HasValue && kyThi.ThoiGianLamBai.Value > 0)
+                        if (examCampaign.DurationMinutes.HasValue && examCampaign.DurationMinutes.Value > 0)
                         {
-                            createDto.ThoiGianLamBai = kyThi.ThoiGianLamBai.Value;
+                            createDto.DurationMinutes = examCampaign.DurationMinutes.Value;
                         }
                         else 
                         {
-                            createDto.ThoiGianLamBai = 60; // Default if not specified
+                            createDto.DurationMinutes = 60; // Default if not specified
                         }
                     }
                 }
 
-                var permissionValidation = await _validationService.ValidateExamPermissionAsync(0, nguoiTao, "CREATE", cancellationToken);
+                var permissionValidation = await _validationService.ValidateExamPermissionAsync(0, createdBy, "CREATE", cancellationToken);
                 if (!permissionValidation.IsValid)
                 {
-                    _logger.LogWarning("Unauthorized exam creation attempt by user {UserId}", nguoiTao);
-                    return BaseResponseDto<DethiDto>.FailureResult("Access denied", permissionValidation.Errors);
+                    _logger.LogWarning("Unauthorized exam creation attempt by user {UserId}", createdBy);
+                    return BaseResponseDto<ExamPaperDto>.FailureResult("Access denied", permissionValidation.Errors);
                 }
 
                 var validation = await _validationService.ValidateCreateExamAsync(createDto, cancellationToken);
                 if (!validation.IsValid)
                 {
                     var errorMessage = validation.Errors.Any() ? string.Join(", ", validation.Errors) : "Validation failed";
-                    return BaseResponseDto<DethiDto>.FailureResult(errorMessage, validation.Errors);
+                    return BaseResponseDto<ExamPaperDto>.FailureResult(errorMessage, validation.Errors);
                 }
 
-                using var transaction = await _dethiRepository.BeginTransactionAsync();
+                using var transaction = await _examPaperRepository.BeginTransactionAsync();
 
                 try
                 {
-                    var dethi = new Dethi
+                    var examPaper = new ExamPaper
                     {
-                        MaDeThi = createDto.MaDeThi,
-                        TenDeThi = createDto.TenDeThi,
-                        ThoiGianLamBai = createDto.ThoiGianLamBai ?? 60,
-                        ThoiGianBatDau = createDto.ThoiGianBatDau,
-                        TrangThai = createDto.TrangThai,
-                        KhoaPhong = createDto.KhoaPhong,
-                        SoCauDungToiThieu = createDto.SoCauDungToiThieu,
-                        NguoiTao = nguoiTao,
-                        NgayTao = DateTime.UtcNow,
-                        LinkTruyCap = GenerateSecureExamLink(createDto.MaDeThi),
+                        ExamPaperCode = createDto.ExamPaperCode,
+                        ExamPaperName = createDto.ExamPaperName,
+                        DurationMinutes = createDto.DurationMinutes ?? 60,
+                        StartTime = createDto.StartTime,
+                        Status = createDto.Status,
+                        Department = createDto.Department,
+                        MinPassQuestions = createDto.MinPassQuestions,
+                        CreatedBy = createdBy,
+                        CreatedAt = DateTime.UtcNow,
+                        LinkTruyCap = GenerateSecureExamLink(createDto.ExamPaperCode),
                         ChecksumData = CalculateExamChecksum(createDto),
                         KyThiId = createDto.KyThiId
                     };
 
-                    var savedDethi = await _dethiRepository.AddAsync(dethi);
+                    var savedDethi = await _examPaperRepository.AddAsync(examPaper);
 
                     // Xác định danh sách câu hỏi
                     List<int> questionIds = new();
@@ -109,66 +109,66 @@ namespace BanTayVang.API.Services.Impl.Exams
                     {
                         questionIds = createDto.DanhSachIdCauHoi;
                     }
-                    else if (!string.IsNullOrWhiteSpace(createDto.KhoaPhong))
+                    else if (!string.IsNullOrWhiteSpace(createDto.Department))
                     {
                         // Lấy TẤT CẢ câu hỏi của khoa từ ngân hàng
-                        var allQuestionsRaw = await _cauhoiRepository.GetByKhoaPhongAsync(createDto.KhoaPhong);
+                        var allQuestionsRaw = await _questionRepository.GetByKhoaPhongAsync(createDto.Department);
                         var allQuestions = allQuestionsRaw
-                            .GroupBy(q => q.NoiDung?.Trim().ToLower() ?? "")
+                            .GroupBy(q => q.Content?.Trim().ToLower() ?? "")
                             .Select(g => g.First())
                             .ToList();
 
-                        // Lưu metadata: KhoaPhong vào đề thi
-                        // Câu hỏi sẽ KHÔNG lưu vào DethiCauhoi ngay - sẽ random khi thi sinh bắt đầu thi
+                        // Lưu metadata: Department vào đề thi
+                        // Câu hỏi sẽ KHÔNG lưu vào ExamPaperQuestion ngay - sẽ random khi thi sinh bắt đầu thi
                         // Thay vào đó ta lưu tất cả câu hỏi của khoa vào pool
                         var random = new Random();
-                        var selectedQuestions = kyThi != null && kyThi.TongSoCauHoi.HasValue && kyThi.TongSoCauHoi.Value < allQuestions.Count
-                            ? allQuestions.OrderBy(_ => random.Next()).Take(kyThi.TongSoCauHoi.Value).ToList()
+                        var selectedQuestions = examCampaign != null && examCampaign.TotalQuestions.HasValue && examCampaign.TotalQuestions.Value < allQuestions.Count
+                            ? allQuestions.OrderBy(_ => random.Next()).Take(examCampaign.TotalQuestions.Value).ToList()
                             : allQuestions;
 
                         questionIds = selectedQuestions.Select(q => q.Id).ToList();
 
                         // Lưu config vào ChecksumData
-                        savedDethi.ChecksumData = $"KHOA:{createDto.KhoaPhong}|SO_CAU:{(kyThi != null && kyThi.TongSoCauHoi.HasValue ? kyThi.TongSoCauHoi.Value : allQuestions.Count)}|POOL:{allQuestions.Count}";
-                        savedDethi.TongDiem = questionIds.Count;
+                        savedDethi.ChecksumData = $"KHOA:{createDto.Department}|SO_CAU:{(examCampaign != null && examCampaign.TotalQuestions.HasValue ? examCampaign.TotalQuestions.Value : allQuestions.Count)}|POOL:{allQuestions.Count}";
+                        savedDethi.TotalScore = questionIds.Count;
                     }
 
-                    if (kyThi != null && kyThi.TongSoCauHoi.HasValue && questionIds.Count != kyThi.TongSoCauHoi.Value)
+                    if (examCampaign != null && examCampaign.TotalQuestions.HasValue && questionIds.Count != examCampaign.TotalQuestions.Value)
                     {
                         await transaction.RollbackAsync(cancellationToken);
-                        var errorMsg = questionIds.Count < kyThi.TongSoCauHoi.Value
-                            ? $"Số lượng câu hỏi chưa đủ, còn thiếu {kyThi.TongSoCauHoi.Value - questionIds.Count} câu hỏi"
-                            : $"Số lượng câu hỏi vượt quá yêu cầu, thừa {questionIds.Count - kyThi.TongSoCauHoi.Value} câu hỏi";
-                        return BaseResponseDto<DethiDto>.FailureResult(errorMsg);
+                        var errorMsg = questionIds.Count < examCampaign.TotalQuestions.Value
+                            ? $"Số lượng câu hỏi chưa đủ, còn thiếu {examCampaign.TotalQuestions.Value - questionIds.Count} câu hỏi"
+                            : $"Số lượng câu hỏi vượt quá yêu cầu, thừa {questionIds.Count - examCampaign.TotalQuestions.Value} câu hỏi";
+                        return BaseResponseDto<ExamPaperDto>.FailureResult(errorMsg);
                     }
 
                     if (questionIds.Any())
                     {
-                        var addResult = await _dethiRepository.AddQuestionsToExamAsync(savedDethi.Id, questionIds);
+                        var addResult = await _examPaperRepository.AddQuestionsToExamAsync(savedDethi.Id, questionIds);
                         if (!addResult)
                             throw new InvalidOperationException("Failed to add questions to exam");
 
-                        savedDethi.TongDiem = questionIds.Count;
-                        await _dethiRepository.UpdateAsync(savedDethi);
+                        savedDethi.TotalScore = questionIds.Count;
+                        await _examPaperRepository.UpdateAsync(savedDethi);
                     }
 
-                    // Validate: SoCauDungToiThieu cannot exceed total questions
-                    if (createDto.SoCauDungToiThieu.HasValue && createDto.SoCauDungToiThieu.Value > questionIds.Count)
+                    // Validate: MinPassQuestions cannot exceed total questions
+                    if (createDto.MinPassQuestions.HasValue && createDto.MinPassQuestions.Value > questionIds.Count)
                     {
                         await transaction.RollbackAsync(cancellationToken);
-                        return BaseResponseDto<DethiDto>.FailureResult(
-                            $"Số câu đúng tối thiểu ({createDto.SoCauDungToiThieu.Value}) không được lớn hơn tổng số câu hỏi của đề thi ({questionIds.Count})");
+                        return BaseResponseDto<ExamPaperDto>.FailureResult(
+                            $"Số câu đúng tối thiểu ({createDto.MinPassQuestions.Value}) không được lớn hơn tổng số câu hỏi của đề thi ({questionIds.Count})");
                     }
 
                     await transaction.CommitAsync(cancellationToken);
 
-                    var result = _mapper.Map<DethiDto>(savedDethi);
-                    result.SoCauHoi = questionIds.Count;
+                    var result = _mapper.Map<ExamPaperDto>(savedDethi);
+                    result.TotalQuestions = questionIds.Count;
 
-                    _logger.LogInformation("Exam created: {ExamId}, Code: {Code}, Questions: {Count}, KhoaPhong: {KhoaPhong}",
-                        savedDethi.Id, savedDethi.MaDeThi, questionIds.Count, createDto.KhoaPhong);
+                    _logger.LogInformation("Exam created: {ExamId}, Code: {Code}, Questions: {Count}, Department: {Department}",
+                        savedDethi.Id, savedDethi.ExamPaperCode, questionIds.Count, createDto.Department);
 
-                    return BaseResponseDto<DethiDto>.SuccessResult(result, "Tạo đề thi thành công");
+                    return BaseResponseDto<ExamPaperDto>.SuccessResult(result, "Tạo đề thi thành công");
                 }
                 catch
                 {
@@ -178,128 +178,128 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating exam for user {UserId}", nguoiTao);
-                return BaseResponseDto<DethiDto>.FailureResult("Có lỗi xảy ra khi tạo đề thi");
+                _logger.LogError(ex, "Error creating exam for user {UserId}", createdBy);
+                return BaseResponseDto<ExamPaperDto>.FailureResult("Có lỗi xảy ra khi tạo đề thi");
             }
         }
 
-        public async Task<BaseResponseDto<DethiDto>> GetExamByCodeAsync(string maDeThi, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamPaperDto>> GetExamByCodeAsync(string examPaperCode, CancellationToken cancellationToken = default)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(maDeThi) || maDeThi.Length > 50)
-                    return BaseResponseDto<DethiDto>.FailureResult("Invalid exam code");
+                if (string.IsNullOrWhiteSpace(examPaperCode) || examPaperCode.Length > 50)
+                    return BaseResponseDto<ExamPaperDto>.FailureResult("Invalid exam code");
 
-                var dethi = await _dethiRepository.GetByMaDeThiAsync(maDeThi, cancellationToken);
-                if (dethi == null)
-                    return BaseResponseDto<DethiDto>.FailureResult("Exam not found");
+                var examPaper = await _examPaperRepository.GetByMaDeThiAsync(examPaperCode, cancellationToken);
+                if (examPaper == null)
+                    return BaseResponseDto<ExamPaperDto>.FailureResult("Exam not found");
 
-                var result = _mapper.Map<DethiDto>(dethi);
-                return BaseResponseDto<DethiDto>.SuccessResult(result, "Success");
+                var result = _mapper.Map<ExamPaperDto>(examPaper);
+                return BaseResponseDto<ExamPaperDto>.SuccessResult(result, "Success");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving exam by code {ExamCode}", maDeThi);
-                return BaseResponseDto<DethiDto>.FailureResult("An error occurred");
+                _logger.LogError(ex, "Error retrieving exam by code {ExamCode}", examPaperCode);
+                return BaseResponseDto<ExamPaperDto>.FailureResult("An error occurred");
             }
         }
 
-        public async Task<BaseResponseDto<List<DethiDto>>> GetActiveExamsAsync(CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<List<ExamPaperDto>>> GetActiveExamsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                var exams = await _dethiRepository.GetActiveExamsAsync(cancellationToken);
-                var result = _mapper.Map<List<DethiDto>>(exams);
-                return BaseResponseDto<List<DethiDto>>.SuccessResult(result, "Success");
+                var exams = await _examPaperRepository.GetActiveExamsAsync(cancellationToken);
+                var result = _mapper.Map<List<ExamPaperDto>>(exams);
+                return BaseResponseDto<List<ExamPaperDto>>.SuccessResult(result, "Success");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving active exams");
-                return BaseResponseDto<List<DethiDto>>.FailureResult("An error occurred", new List<string> { ex.Message });
+                return BaseResponseDto<List<ExamPaperDto>>.FailureResult("An error occurred", new List<string> { ex.Message });
             }
         }
 
-        public async Task<BaseResponseDto<List<DethiDto>>> GetAllExamsAsync(string? trangThai = null, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<List<ExamPaperDto>>> GetAllExamsAsync(string? status = null, CancellationToken cancellationToken = default)
         {
             try
             {
-                var exams = await _dethiRepository.GetAllExamsAsync(trangThai, cancellationToken);
-                var dtos = exams.Select(e => _mapper.Map<DethiDto>(e)).ToList();
-                return new BaseResponseDto<List<DethiDto>> { Success = true, Data = dtos };
+                var exams = await _examPaperRepository.GetAllExamsAsync(status, cancellationToken);
+                var dtos = exams.Select(e => _mapper.Map<ExamPaperDto>(e)).ToList();
+                return new BaseResponseDto<List<ExamPaperDto>> { Success = true, Data = dtos };
             }
             catch (Exception ex)
             {
-                return new BaseResponseDto<List<DethiDto>> { Success = false, Message = ex.Message };
+                return new BaseResponseDto<List<ExamPaperDto>> { Success = false, Message = ex.Message };
             }
         }
 
-        public async Task<BaseResponseDto<DethiDto>> UpdateExamAsync(int examId, UpdateDethiDto updateDto, int nguoiCapNhat, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamPaperDto>> UpdateExamAsync(int examId, UpdateExamPaperDto updateDto, int updatedBy, CancellationToken cancellationToken = default)
         {
             try
             {
-                KyThi? kyThi = null;
+                ExamCampaign? examCampaign = null;
                 if (updateDto.KyThiId.HasValue)
                 {
-                    kyThi = await _context.Set<KyThi>()
-                        .Include(k => k.KhoaPhong)
+                    examCampaign = await _context.Set<ExamCampaign>()
+                        .Include(k => k.Department)
                         .FirstOrDefaultAsync(k => k.Id == updateDto.KyThiId.Value, cancellationToken);
-                    if (kyThi != null)
+                    if (examCampaign != null)
                     {
-                        updateDto.TenDeThi = kyThi.TenKyThi;
-                        updateDto.ThoiGianBatDau = kyThi.ThoiGianBatDau;
+                        updateDto.ExamPaperName = examCampaign.CampaignName;
+                        updateDto.StartTime = examCampaign.StartTime;
 
-                        if (kyThi.ThoiGianLamBai.HasValue && kyThi.ThoiGianLamBai.Value > 0)
+                        if (examCampaign.DurationMinutes.HasValue && examCampaign.DurationMinutes.Value > 0)
                         {
-                            updateDto.ThoiGianLamBai = kyThi.ThoiGianLamBai.Value;
+                            updateDto.DurationMinutes = examCampaign.DurationMinutes.Value;
                         }
                     }
                 }
 
-                var permissionValidation = await _validationService.ValidateExamPermissionAsync(examId, nguoiCapNhat, "UPDATE", cancellationToken);
+                var permissionValidation = await _validationService.ValidateExamPermissionAsync(examId, updatedBy, "UPDATE", cancellationToken);
                 if (!permissionValidation.IsValid)
-                    return BaseResponseDto<DethiDto>.FailureResult("Access denied", permissionValidation.Errors);
+                    return BaseResponseDto<ExamPaperDto>.FailureResult("Access denied", permissionValidation.Errors);
 
-                using var transaction = await _dethiRepository.BeginTransactionAsync();
+                using var transaction = await _examPaperRepository.BeginTransactionAsync();
 
                 try
                 {
-                    var existingExam = await _dethiRepository.GetByIdAsync(examId, cancellationToken);
+                    var existingExam = await _examPaperRepository.GetByIdAsync(examId, cancellationToken);
                     if (existingExam == null)
-                        return BaseResponseDto<DethiDto>.FailureResult("Exam not found");
+                        return BaseResponseDto<ExamPaperDto>.FailureResult("Exam not found");
 
-                    existingExam.MaDeThi = updateDto.MaDeThi;
-                    existingExam.TenDeThi = updateDto.TenDeThi;
-                    existingExam.ThoiGianLamBai = updateDto.ThoiGianLamBai ?? existingExam.ThoiGianLamBai ?? 60;
-                    existingExam.ThoiGianBatDau = updateDto.ThoiGianBatDau;
-                    existingExam.TrangThai = updateDto.TrangThai;
+                    existingExam.ExamPaperCode = updateDto.ExamPaperCode;
+                    existingExam.ExamPaperName = updateDto.ExamPaperName;
+                    existingExam.DurationMinutes = updateDto.DurationMinutes ?? existingExam.DurationMinutes ?? 60;
+                    existingExam.StartTime = updateDto.StartTime;
+                    existingExam.Status = updateDto.Status;
                     existingExam.KyThiId = updateDto.KyThiId;
-                    if (kyThi != null)
+                    if (examCampaign != null)
                     {
-                        existingExam.KhoaPhong = kyThi.KhoaPhong?.TenKhoa;
+                        existingExam.Department = examCampaign.Department?.DepartmentName;
                     }
-                    existingExam.NguoiCapNhat = nguoiCapNhat;
-                    existingExam.NgayCapNhat = DateTime.UtcNow;
+                    existingExam.UpdatedBy = updatedBy;
+                    existingExam.UpdatedAt = DateTime.UtcNow;
 
                     if (updateDto.DanhSachIdCauHoi.Any())
                     {
-                        if (kyThi != null && kyThi.TongSoCauHoi.HasValue && updateDto.DanhSachIdCauHoi.Count != kyThi.TongSoCauHoi.Value)
+                        if (examCampaign != null && examCampaign.TotalQuestions.HasValue && updateDto.DanhSachIdCauHoi.Count != examCampaign.TotalQuestions.Value)
                         {
                             await transaction.RollbackAsync(cancellationToken);
-                            var errorMsg = updateDto.DanhSachIdCauHoi.Count < kyThi.TongSoCauHoi.Value
-                                ? $"Số lượng câu hỏi chưa đủ, còn thiếu {kyThi.TongSoCauHoi.Value - updateDto.DanhSachIdCauHoi.Count} câu hỏi"
-                                : $"Số lượng câu hỏi vượt quá yêu cầu, thừa {updateDto.DanhSachIdCauHoi.Count - kyThi.TongSoCauHoi.Value} câu hỏi";
-                            return BaseResponseDto<DethiDto>.FailureResult(errorMsg);
+                            var errorMsg = updateDto.DanhSachIdCauHoi.Count < examCampaign.TotalQuestions.Value
+                                ? $"Số lượng câu hỏi chưa đủ, còn thiếu {examCampaign.TotalQuestions.Value - updateDto.DanhSachIdCauHoi.Count} câu hỏi"
+                                : $"Số lượng câu hỏi vượt quá yêu cầu, thừa {updateDto.DanhSachIdCauHoi.Count - examCampaign.TotalQuestions.Value} câu hỏi";
+                            return BaseResponseDto<ExamPaperDto>.FailureResult(errorMsg);
                         }
 
-                        await _dethiRepository.UpdateExamQuestionsAsync(examId, updateDto.DanhSachIdCauHoi);
-                        existingExam.TongDiem = updateDto.DanhSachIdCauHoi.Count;
+                        await _examPaperRepository.UpdateExamQuestionsAsync(examId, updateDto.DanhSachIdCauHoi);
+                        existingExam.TotalScore = updateDto.DanhSachIdCauHoi.Count;
                     }
 
-                    await _dethiRepository.UpdateAsync(existingExam);
+                    await _examPaperRepository.UpdateAsync(existingExam);
                     await transaction.CommitAsync(cancellationToken);
 
-                    var result = _mapper.Map<DethiDto>(existingExam);
-                    return BaseResponseDto<DethiDto>.SuccessResult(result, "Cập nhật thành công");
+                    var result = _mapper.Map<ExamPaperDto>(existingExam);
+                    return BaseResponseDto<ExamPaperDto>.SuccessResult(result, "Cập nhật thành công");
                 }
                 catch
                 {
@@ -310,34 +310,34 @@ namespace BanTayVang.API.Services.Impl.Exams
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating exam {ExamId}", examId);
-                return BaseResponseDto<DethiDto>.FailureResult("Có lỗi xảy ra");
+                return BaseResponseDto<ExamPaperDto>.FailureResult("Có lỗi xảy ra");
             }
         }
 
-        public async Task<BaseResponseDto<DethiDto>> UpdateExamStatusAsync(int examId, string trangThai, int nguoiCapNhat, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamPaperDto>> UpdateExamStatusAsync(int examId, string status, int updatedBy, CancellationToken cancellationToken = default)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(trangThai) || !System.Text.RegularExpressions.Regex.IsMatch(trangThai, "^(Draft|Active|Inactive|Archived)$"))
-                    return BaseResponseDto<DethiDto>.FailureResult("Invalid status value");
+                if (string.IsNullOrWhiteSpace(status) || !System.Text.RegularExpressions.Regex.IsMatch(status, "^(Draft|Active|Inactive|Archived)$"))
+                    return BaseResponseDto<ExamPaperDto>.FailureResult("Invalid status value");
 
-                var exam = await _dethiRepository.GetByIdAsync(examId, cancellationToken);
+                var exam = await _examPaperRepository.GetByIdAsync(examId, cancellationToken);
                 if (exam == null)
-                    return BaseResponseDto<DethiDto>.FailureResult("Exam not found");
+                    return BaseResponseDto<ExamPaperDto>.FailureResult("Exam not found");
 
-                exam.TrangThai = trangThai;
-                exam.NguoiCapNhat = nguoiCapNhat;
-                exam.NgayCapNhat = DateTime.UtcNow;
+                exam.Status = status;
+                exam.UpdatedBy = updatedBy;
+                exam.UpdatedAt = DateTime.UtcNow;
 
-                await _dethiRepository.UpdateAsync(exam);
+                await _examPaperRepository.UpdateAsync(exam);
 
-                var result = _mapper.Map<DethiDto>(exam);
-                return BaseResponseDto<DethiDto>.SuccessResult(result, "Cập nhật trạng thái thành công");
+                var result = _mapper.Map<ExamPaperDto>(exam);
+                return BaseResponseDto<ExamPaperDto>.SuccessResult(result, "Cập nhật trạng thái thành công");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating exam status {ExamId}", examId);
-                return BaseResponseDto<DethiDto>.FailureResult("Có lỗi xảy ra");
+                return BaseResponseDto<ExamPaperDto>.FailureResult("Có lỗi xảy ra");
             }
         }
 
@@ -345,7 +345,7 @@ namespace BanTayVang.API.Services.Impl.Exams
         {
             try
             {
-                var deleted = await _dethiRepository.DeleteAsync(examId);
+                var deleted = await _examPaperRepository.DeleteAsync(examId);
                 if (!deleted)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy đề thi" };
                 return new BaseResponseDto { Success = true, Message = "Đã xóa đề thi" };
@@ -356,18 +356,18 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
         }
 
-        public async Task<BaseResponseDto> DeactivateExamAsync(int examId, int nguoiCapNhat, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto> DeactivateExamAsync(int examId, int updatedBy, CancellationToken cancellationToken = default)
         {
             try
             {
-                var exam = await _dethiRepository.GetByIdAsync(examId, cancellationToken);
+                var exam = await _examPaperRepository.GetByIdAsync(examId, cancellationToken);
                 if (exam == null)
                     return BaseResponseDto.FailureResult("Exam not found");
 
-                exam.TrangThai = "Inactive";
-                exam.NguoiCapNhat = nguoiCapNhat;
-                exam.NgayCapNhat = DateTime.UtcNow;
-                await _dethiRepository.UpdateAsync(exam);
+                exam.Status = "Inactive";
+                exam.UpdatedBy = updatedBy;
+                exam.UpdatedAt = DateTime.UtcNow;
+                await _examPaperRepository.UpdateAsync(exam);
                 return BaseResponseDto.SuccessResult("Exam deactivated successfully");
             }
             catch (Exception ex)
@@ -386,9 +386,9 @@ namespace BanTayVang.API.Services.Impl.Exams
             return $"/exam/{examCode}?t={timestamp}&token={secureToken}";
         }
 
-        private static string CalculateExamChecksum(CreateDethiDto createDto)
+        private static string CalculateExamChecksum(CreateExamPaperDto createDto)
         {
-            var data = $"{createDto.MaDeThi}|{createDto.TenDeThi}|{createDto.ThoiGianLamBai ?? 60}|{createDto.KhoaPhong}";
+            var data = $"{createDto.ExamPaperCode}|{createDto.ExamPaperName}|{createDto.DurationMinutes ?? 60}|{createDto.Department}";
             using var sha256 = System.Security.Cryptography.SHA256.Create();
             var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(data));
             return Convert.ToBase64String(hash);

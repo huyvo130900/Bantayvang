@@ -7,7 +7,6 @@ namespace BanTayVang.API.Models
     /// Exam assignment - assign users to specific exams
     /// OWASP A01: Access Control - only assigned users can take the exam
     /// </summary>
-    [Table("PHANCONG_THI")]
     public class ExamAssignment
     {
         [Key]
@@ -33,9 +32,9 @@ namespace BanTayVang.API.Models
         public string? Note { get; set; }
 
         [ForeignKey("ExamId")]
-        public virtual Dethi? Exam { get; set; }
+        public virtual ExamPaper? Exam { get; set; }
 
         [ForeignKey("UserId")]
-        public virtual Taikhoan? User { get; set; }
+        public virtual User? User { get; set; }
     }
 }

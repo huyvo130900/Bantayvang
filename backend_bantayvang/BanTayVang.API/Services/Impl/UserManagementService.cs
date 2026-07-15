@@ -12,13 +12,13 @@ namespace BanTayVang.API.Services.Impl
 {
     public class UserManagementService : IUserManagementService
     {
-        private readonly ITaikhoanRepository _userRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IPasswordService _passwordService;
         private readonly BanTayVangDbContext _context;
         private readonly ILogger<UserManagementService> _logger;
 
         public UserManagementService(
-            ITaikhoanRepository userRepository,
+            IUserRepository userRepository,
             IPasswordService passwordService,
             BanTayVangDbContext context,
             ILogger<UserManagementService> logger)
@@ -34,30 +34,30 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var query = filter.IncludeDeleted 
-                    ? _context.Taikhoans.IgnoreQueryFilters().Where(u => u.IsDeleted).AsQueryable() 
-                    : _context.Taikhoans.AsQueryable();
+                    ? _context.Users.IgnoreQueryFilters().Where(u => u.IsDeleted).AsQueryable() 
+                    : _context.Users.AsQueryable();
 
-                if (filter.IdVaiTro.HasValue)
-                    query = query.Where(u => u.IdVaiTro == filter.IdVaiTro);
+                if (filter.RoleId.HasValue)
+                    query = query.Where(u => u.RoleId == filter.RoleId);
 
-                if (filter.TrangThai.HasValue)
-                    query = query.Where(u => u.TrangThai == filter.TrangThai);
+                if (filter.Status.HasValue)
+                    query = query.Where(u => u.Status == filter.Status);
 
-                if (!string.IsNullOrEmpty(filter.KhoaPhong))
-                    query = query.Where(u => u.KhoaPhong == filter.KhoaPhong);
+                if (!string.IsNullOrEmpty(filter.Department))
+                    query = query.Where(u => u.Department == filter.Department);
 
                 if (!string.IsNullOrEmpty(filter.SearchKeyword))
                 {
                     var keyword = filter.SearchKeyword.ToLower();
                     query = query.Where(u => 
-                        (u.TenDangNhap ?? "").ToLower().Contains(keyword) ||
-                        (u.HoTen ?? "").ToLower().Contains(keyword));
+                        (u.Username ?? "").ToLower().Contains(keyword) ||
+                        (u.FullName ?? "").ToLower().Contains(keyword));
                 }
 
                 var pagedUsers = query
                     .Skip((filter.PageNumber - 1) * filter.PageSize)
                     .Take(filter.PageSize)
-                    .Include(u => u.KhoaQuanLy)
+                    .Include(u => u.ManagedDepartment)
                     .ToList()
                     .Select(u => MapToDto(u))
                     .ToList();
@@ -85,7 +85,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var user = await _context.Taikhoans.IgnoreQueryFilters().Include(u => u.KhoaQuanLy).FirstOrDefaultAsync(u => u.Id == id);
+                var user = await _context.Users.IgnoreQueryFilters().Include(u => u.ManagedDepartment).FirstOrDefaultAsync(u => u.Id == id);
                 if (user == null)
                     return new BaseResponseDto<UserDto> { Success = false, Message = "Không tìm thấy người dùng" };
 
@@ -107,63 +107,63 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var existing = await _context.Taikhoans.IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(u => u.TenDangNhap == createDto.TenDangNhap || u.MaNhanVien == createDto.TenDangNhap);
+                var existing = await _context.Users.IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(u => u.Username == createDto.Username || u.MaNhanVien == createDto.Username);
                 if (existing != null)
                     return new BaseResponseDto<UserDto> { Success = false, Message = "Tên đăng nhập đã tồn tại trong hệ thống (bao gồm cả thùng rác)" };
 
                 if (!string.IsNullOrWhiteSpace(createDto.MaNhanVien))
                 {
-                    var existingByEmpCode = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.MaNhanVien == createDto.MaNhanVien);
+                    var existingByEmpCode = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.MaNhanVien == createDto.MaNhanVien);
                     if (existingByEmpCode != null)
                         return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại trong hệ thống (bao gồm cả thùng rác)" };
                 }
 
                 // Validate department manager assignment
-                if (createDto.IdVaiTro == 5 && createDto.IdKhoaQuanLy.HasValue)
+                if (createDto.RoleId == 5 && createDto.DeptManagerDeptId.HasValue)
                 {
-                    var khoa = await _context.KhoaPhongs.FindAsync(createDto.IdKhoaQuanLy.Value);
+                    var khoa = await _context.Departments.FindAsync(createDto.DeptManagerDeptId.Value);
                     if (khoa != null && khoa.DeptManagerId.HasValue)
                     {
                         return new BaseResponseDto<UserDto> { Success = false, Message = "Khoa này đã có người quản lý. Không thể tạo thêm." };
                     }
                 }
 
-                var user = new Taikhoan
+                var user = new User
                 {
-                    TenDangNhap = createDto.TenDangNhap,
-                    MatKhau = _passwordService.HashPassword(createDto.MatKhau),
-                    HoTen = createDto.HoTen,
+                    Username = createDto.Username,
+                    Password = _passwordService.HashPassword(createDto.Password),
+                    FullName = createDto.FullName,
                     MaNhanVien = createDto.MaNhanVien,
                     ChucDanh = createDto.ChucDanh,
-                    KhoaPhong = createDto.KhoaPhong,
-                    IdVaiTro = createDto.IdVaiTro,
-                    TrangThai = createDto.TrangThai,
-                    NgayTao = DateTime.Now,
-                    IdKhoaQuanLy = createDto.IdVaiTro == 5 ? createDto.IdKhoaQuanLy : null,
+                    Department = createDto.Department,
+                    RoleId = createDto.RoleId,
+                    Status = createDto.Status,
+                    CreatedAt = DateTime.Now,
+                    DeptManagerDeptId = createDto.RoleId == 5 ? createDto.DeptManagerDeptId : null,
                     Email = createDto.Email,
                     SoDienThoai = createDto.SoDienThoai
                 };
 
                 // Add to role mapping table to maintain database integrity
-                user.TaikhoanVaitros.Add(new TaikhoanVaitro
+                user.UserRoles.Add(new UserRole
                 {
-                    IdVaiTro = createDto.IdVaiTro
+                    RoleId = createDto.RoleId
                 });
 
                 var saved = await _userRepository.AddAsync(user);
 
-                // Auto-assign DeptManager to KhoaPhong and sync KhoaPhong string from Khoa name
-                if (createDto.IdVaiTro == 5 && createDto.IdKhoaQuanLy.HasValue)
+                // Auto-assign DeptManager to Department and sync Department string from Khoa name
+                if (createDto.RoleId == 5 && createDto.DeptManagerDeptId.HasValue)
                 {
-                    var khoa = await _context.KhoaPhongs.FindAsync(createDto.IdKhoaQuanLy.Value);
+                    var khoa = await _context.Departments.FindAsync(createDto.DeptManagerDeptId.Value);
                     if (khoa != null)
                     {
                         // Update DeptManagerId on the department
                         khoa.DeptManagerId = saved.Id;
-                        khoa.NgayCapNhat = DateTime.Now;
-                        // Sync KhoaPhong string on user for JWT claim
-                        saved.KhoaPhong = khoa.TenKhoa;
+                        khoa.UpdatedAt = DateTime.Now;
+                        // Sync Department string on user for JWT claim
+                        saved.Department = khoa.DepartmentName;
                         await _context.SaveChangesAsync();
                     }
                 }
@@ -192,15 +192,15 @@ namespace BanTayVang.API.Services.Impl
 
                 if (!string.IsNullOrWhiteSpace(updateDto.MaNhanVien))
                 {
-                    var existingByEmpCode = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.MaNhanVien == updateDto.MaNhanVien && u.Id != id);
+                    var existingByEmpCode = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.MaNhanVien == updateDto.MaNhanVien && u.Id != id);
                     if (existingByEmpCode != null)
                         return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại trong hệ thống (bao gồm cả thùng rác)" };
                 }
 
                 // Validate new department manager assignment before proceeding
-                if (updateDto.IdVaiTro == 5 && updateDto.IdKhoaQuanLy.HasValue)
+                if (updateDto.RoleId == 5 && updateDto.DeptManagerDeptId.HasValue)
                 {
-                    var khoa = await _context.KhoaPhongs.FindAsync(updateDto.IdKhoaQuanLy.Value);
+                    var khoa = await _context.Departments.FindAsync(updateDto.DeptManagerDeptId.Value);
                     if (khoa != null && khoa.DeptManagerId.HasValue && khoa.DeptManagerId.Value != user.Id)
                     {
                         return new BaseResponseDto<UserDto> { Success = false, Message = "Khoa này đã có người quản lý. Không thể gán thêm." };
@@ -208,54 +208,54 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 // Clear old department manager mapping if they were previously managing a department
-                if (user.IdVaiTro == 5 && user.IdKhoaQuanLy.HasValue)
+                if (user.RoleId == 5 && user.DeptManagerDeptId.HasValue)
                 {
-                    var oldKhoa = await _context.KhoaPhongs.FindAsync(user.IdKhoaQuanLy.Value);
+                    var oldKhoa = await _context.Departments.FindAsync(user.DeptManagerDeptId.Value);
                     if (oldKhoa != null && oldKhoa.DeptManagerId == user.Id)
                     {
                         oldKhoa.DeptManagerId = null;
-                        oldKhoa.NgayCapNhat = DateTime.Now;
+                        oldKhoa.UpdatedAt = DateTime.Now;
                     }
                 }
 
                 // Update role mapping if role changed
-                if (user.IdVaiTro != updateDto.IdVaiTro)
+                if (user.RoleId != updateDto.RoleId)
                 {
-                    var oldRoleMappings = _context.TaikhoanVaitros.Where(tv => tv.IdTaiKhoan == user.Id);
-                    _context.TaikhoanVaitros.RemoveRange(oldRoleMappings);
+                    var oldRoleMappings = _context.UserRoles.Where(tv => tv.UserId == user.Id);
+                    _context.UserRoles.RemoveRange(oldRoleMappings);
 
-                    user.TaikhoanVaitros.Add(new TaikhoanVaitro
+                    user.UserRoles.Add(new UserRole
                     {
-                        IdVaiTro = updateDto.IdVaiTro
+                        RoleId = updateDto.RoleId
                     });
                 }
 
-                user.HoTen = updateDto.HoTen;
+                user.FullName = updateDto.FullName;
                 user.MaNhanVien = updateDto.MaNhanVien;
                 user.ChucDanh = updateDto.ChucDanh;
-                user.KhoaPhong = updateDto.KhoaPhong;
-                user.IdVaiTro = updateDto.IdVaiTro;
-                user.TrangThai = updateDto.TrangThai;
-                user.NgayCapNhat = DateTime.Now;
+                user.Department = updateDto.Department;
+                user.RoleId = updateDto.RoleId;
+                user.Status = updateDto.Status;
+                user.UpdatedAt = DateTime.Now;
                 user.Email = updateDto.Email;
                 user.SoDienThoai = updateDto.SoDienThoai;
 
                 // Handle new department manager assignment
-                if (updateDto.IdVaiTro == 5 && updateDto.IdKhoaQuanLy.HasValue)
+                if (updateDto.RoleId == 5 && updateDto.DeptManagerDeptId.HasValue)
                 {
-                    user.IdKhoaQuanLy = updateDto.IdKhoaQuanLy.Value;
-                    var khoa = await _context.KhoaPhongs.FindAsync(updateDto.IdKhoaQuanLy.Value);
+                    user.DeptManagerDeptId = updateDto.DeptManagerDeptId.Value;
+                    var khoa = await _context.Departments.FindAsync(updateDto.DeptManagerDeptId.Value);
                     if (khoa != null)
                     {
                         khoa.DeptManagerId = user.Id;
-                        khoa.NgayCapNhat = DateTime.Now;
+                        khoa.UpdatedAt = DateTime.Now;
                         // Sync string description for JWT claim
-                        user.KhoaPhong = khoa.TenKhoa;
+                        user.Department = khoa.DepartmentName;
                     }
                 }
                 else
                 {
-                    user.IdKhoaQuanLy = null;
+                    user.DeptManagerDeptId = null;
                 }
 
                 await _userRepository.UpdateAsync(user);
@@ -282,19 +282,19 @@ namespace BanTayVang.API.Services.Impl
                 if (user == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
 
-                user.TrangThai = false;
-                user.NgayCapNhat = DateTime.Now;
+                user.Status = false;
+                user.UpdatedAt = DateTime.Now;
 
                 // Clear department manager mapping if they are being deactivated/deleted
-                if (user.IdVaiTro == 5 && user.IdKhoaQuanLy.HasValue)
+                if (user.RoleId == 5 && user.DeptManagerDeptId.HasValue)
                 {
-                    var khoa = await _context.KhoaPhongs.FindAsync(user.IdKhoaQuanLy.Value);
+                    var khoa = await _context.Departments.FindAsync(user.DeptManagerDeptId.Value);
                     if (khoa != null && khoa.DeptManagerId == user.Id)
                     {
                         khoa.DeptManagerId = null;
-                        khoa.NgayCapNhat = DateTime.Now;
+                        khoa.UpdatedAt = DateTime.Now;
                     }
-                    user.IdKhoaQuanLy = null;
+                    user.DeptManagerDeptId = null;
                 }
 
                 await _userRepository.UpdateAsync(user);
@@ -316,8 +316,8 @@ namespace BanTayVang.API.Services.Impl
                 if (user == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
 
-                user.TrangThai = true;
-                user.NgayCapNhat = DateTime.Now;
+                user.Status = true;
+                user.UpdatedAt = DateTime.Now;
                 await _userRepository.UpdateAsync(user);
 
                 return new BaseResponseDto { Success = true, Message = "Đã kích hoạt tài khoản" };
@@ -340,8 +340,8 @@ namespace BanTayVang.API.Services.Impl
                 if (user == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
 
-                user.MatKhau = _passwordService.HashPassword(newPassword);
-                user.NgayCapNhat = DateTime.Now;
+                user.Password = _passwordService.HashPassword(newPassword);
+                user.UpdatedAt = DateTime.Now;
                 await _userRepository.UpdateAsync(user);
 
                 return new BaseResponseDto { Success = true, Message = "Đã đặt lại mật khẩu" };
@@ -365,7 +365,7 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 // 2. Không cho xóa Admin cuối cùng của hệ thống (tránh khóa quyền truy cập vĩnh viễn)
-                if (target.IdVaiTro == 1)
+                if (target.RoleId == 1)
                 {
                     var admins = await _userRepository.GetByRoleAsync(1);
                     var otherAdminsCount = admins.Count(a => a.Id != id);
@@ -376,31 +376,31 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 // 3. Nếu là DeptManager, giải phóng liên kết khôa/phòng trước khi xóa mềm
-                if (target.IdVaiTro == 5 && target.IdKhoaQuanLy.HasValue)
+                if (target.RoleId == 5 && target.DeptManagerDeptId.HasValue)
                 {
-                    var khoa = await _context.KhoaPhongs.FindAsync(target.IdKhoaQuanLy.Value);
+                    var khoa = await _context.Departments.FindAsync(target.DeptManagerDeptId.Value);
                     if (khoa != null && khoa.DeptManagerId == target.Id)
                     {
                         khoa.DeptManagerId = null;
-                        khoa.NgayCapNhat = DateTime.Now;
+                        khoa.UpdatedAt = DateTime.Now;
                     }
-                    target.IdKhoaQuanLy = null;
+                    target.DeptManagerDeptId = null;
                 }
 
                 // 4. Thực hiện Soft Delete
                 target.IsDeleted = true;
-                target.TrangThai = false;
+                target.Status = false;
 
                 // Xóa token đăng nhập qua DbContext (chưa SaveChanges)
                 var tokens = _context.RefreshTokens.Where(t => t.UserId == id);
                 _context.RefreshTokens.RemoveRange(tokens);
                 var sessions = _context.UserSessions.Where(s => s.UserId == id);
                 _context.UserSessions.RemoveRange(sessions);
-                var loginSessions = _context.Phiendangnhaps.Where(s => s.IdTaiKhoan == id);
+                var loginSessions = _context.Phiendangnhaps.Where(s => s.UserId == id);
                 _context.Phiendangnhaps.RemoveRange(loginSessions);
 
                 // Update trực tiếp qua DbContext để chỉ cần 1 lần SaveChanges
-                _context.Taikhoans.Update(target);
+                _context.Users.Update(target);
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseDto { Success = true, Message = "Đã đưa người dùng vào thùng rác" };
@@ -416,14 +416,14 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var target = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
+                var target = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
                 if (target == null)
                 {
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
                 }
 
                 target.IsDeleted = false;
-                target.TrangThai = true;
+                target.Status = true;
                 await _userRepository.UpdateAsync(target);
 
                 return new BaseResponseDto { Success = true, Message = "Đã khôi phục người dùng thành công" };
@@ -439,15 +439,15 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var target = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
+                var target = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
                 if (target == null)
                 {
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
                 }
 
-                if (target.IdVaiTro == 1)
+                if (target.RoleId == 1)
                 {
-                    var otherAdminsCount = await _context.Taikhoans.IgnoreQueryFilters().CountAsync(a => a.IdVaiTro == 1 && a.Id != id);
+                    var otherAdminsCount = await _context.Users.IgnoreQueryFilters().CountAsync(a => a.RoleId == 1 && a.Id != id);
                     if (otherAdminsCount == 0)
                     {
                         return new BaseResponseDto { Success = false, Message = "Không thể xóa Admin cuối cùng trong hệ thống" };
@@ -455,7 +455,7 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 // 3. Sử dụng raw SQL để xóa tận gốc các dữ liệu liên kết trước (Cascade Delete bằng tay)
-                // Các bảng như LOGTHAOTAC có thể cấu hình SET_NULL nhưng xóa sạch cho an toàn.
+                // Các bảng như AuditLogs có thể cấu hình SET_NULL nhưng xóa sạch cho an toàn.
                 // SET XACT_ABORT ON + TRY/CATCH/ROLLBACK đảm bảo toàn bộ script là 1 khối atomic:
                 // nếu bất kỳ câu lệnh nào lỗi (vd: vướng 1 FK chưa lường tới), mọi thay đổi trước đó
                 // sẽ được rollback thay vì bị COMMIT dở dang gây "mồ côi" dữ liệu.
@@ -465,34 +465,34 @@ namespace BanTayVang.API.Services.Impl
                         BEGIN TRANSACTION;
 
                         -- Xóa cảnh báo gian lận và log liên quan đến bài thi
-                        DELETE FROM CANHBAOGIANLAN WHERE IdBaiThi IN (SELECT Id FROM BAITHI WHERE IdTaiKhoan = {0});
-                        DELETE FROM LOGTHAOTAC WHERE IdBaiThi IN (SELECT Id FROM BAITHI WHERE IdTaiKhoan = {0});
+                        DELETE FROM CheatWarnings WHERE ExamSubmissionId IN (SELECT Id FROM ExamSubmissions WHERE UserId = {0});
+                        DELETE FROM AuditLogs WHERE ExamSubmissionId IN (SELECT Id FROM ExamSubmissions WHERE UserId = {0});
 
-                        -- Xóa lịch sử thi (anti-cheat), có FK NOT NULL tới TAIKHOAN - nếu bảng tồn tại
+                        -- Xóa lịch sử thi (anti-cheat), có FK NOT NULL tới USER - nếu bảng tồn tại
                         IF OBJECT_ID('dbo.LICHSU_THI', 'U') IS NOT NULL
                             DELETE FROM LICHSU_THI WHERE IdThiSinh = {0};
 
                         -- Xóa chi tiết làm bài thi
-                        DELETE FROM CHITIETLAMBAI WHERE IdBaiThi IN (SELECT Id FROM BAITHI WHERE IdTaiKhoan = {0});
+                        DELETE FROM SubmissionDetails WHERE ExamSubmissionId IN (SELECT Id FROM ExamSubmissions WHERE UserId = {0});
                         -- Xóa bài thi
-                        DELETE FROM BAITHI WHERE IdTaiKhoan = {0};
-                        -- Gỡ trưởng khoa (chuyển NULL) để KHOA_PHONG không mồ côi quản lý
-                        UPDATE KHOA_PHONG SET DeptManagerId = NULL WHERE DeptManagerId = {0};
+                        DELETE FROM ExamSubmissions WHERE UserId = {0};
+                        -- Gỡ trưởng khoa (chuyển NULL) để ExamRegistrations không mồ côi quản lý
+                        UPDATE ExamRegistrations SET DeptManagerId = NULL WHERE DeptManagerId = {0};
                         -- Gỡ người duyệt trong DANG_KY_THI (NguoiDuyetId không có FK constraint nhưng cần set NULL để tránh orphan data)
                         UPDATE DANG_KY_THI SET NguoiDuyetId = NULL WHERE NguoiDuyetId = {0};
                         -- Xóa phân công thi
                         DELETE FROM PHANCONG_THI WHERE UserId = {0};
                         -- Xóa tài khoản vai trò
-                        DELETE FROM TAIKHOAN_VAITRO WHERE IdTaiKhoan = {0};
+                        DELETE FROM TAIKHOAN_VAITRO WHERE UserId = {0};
                         -- Xóa các bảng liên quan phiên đăng nhập, JWT, Thông báo
-                        DELETE FROM PHIENDANGNHAP WHERE IdTaiKhoan = {0};
+                        DELETE FROM PHIENDANGNHAP WHERE UserId = {0};
                         DELETE FROM PHIEN_NGUOIDUNG WHERE UserId = {0};
                         DELETE FROM TOKEN_LAM_MOI WHERE UserId = {0};
                         DELETE FROM THONGBAO WHERE UserId = {0};
-                        DELETE FROM LOGTHAOTAC WHERE IdTaiKhoan = {0};
+                        DELETE FROM AuditLogs WHERE UserId = {0};
 
                         -- Xóa tài khoản chính
-                        DELETE FROM TAIKHOAN WHERE Id = {0};
+                        DELETE FROM USER WHERE Id = {0};
 
                         COMMIT TRANSACTION;
                     END TRY
@@ -523,7 +523,7 @@ namespace BanTayVang.API.Services.Impl
                     return new BaseResponseDto { Success = false, Message = "Không có người dùng nào được chọn" };
                 }
 
-                var targetUsers = await _context.Taikhoans.Where(t => ids.Contains(t.Id)).ToListAsync();
+                var targetUsers = await _context.Users.Where(t => ids.Contains(t.Id)).ToListAsync();
                 if (targetUsers.Count == 0)
                 {
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng nào hợp lệ" };
@@ -533,10 +533,10 @@ namespace BanTayVang.API.Services.Impl
                 foreach (var user in targetUsers)
                 {
                     // Skip admin
-                    if (user.IdVaiTro == 1) continue;
+                    if (user.RoleId == 1) continue;
 
                     user.IsDeleted = true;
-                    user.TrangThai = false; // Cũng vô hiệu hóa luôn
+                    user.Status = false; // Cũng vô hiệu hóa luôn
                     count++;
                 }
 
@@ -551,22 +551,22 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        private static UserDto MapToDto(Taikhoan u)
+        private static UserDto MapToDto(User u)
         {
             return new UserDto
             {
                 Id = u.Id,
                 MaNhanVien = u.MaNhanVien,
-                TenDangNhap = u.TenDangNhap,
-                HoTen = u.HoTen,
+                Username = u.Username,
+                FullName = u.FullName,
                 ChucDanh = u.ChucDanh,
-                KhoaPhong = u.KhoaPhong,
-                IdVaiTro = u.IdVaiTro,
-                TenVaiTro = GetRoleName(u.IdVaiTro),
-                IdKhoaQuanLy = u.IdKhoaQuanLy,
-                TenKhoaQuanLy = u.KhoaQuanLy?.TenKhoa,
-                TrangThai = u.TrangThai,
-                NgayTao = u.NgayTao,
+                Department = u.Department,
+                RoleId = u.RoleId,
+                RoleName = GetRoleName(u.RoleId),
+                DeptManagerDeptId = u.DeptManagerDeptId,
+                TenKhoaQuanLy = u.ManagedDepartment?.DepartmentName,
+                Status = u.Status,
+                CreatedAt = u.CreatedAt,
                 LanDangNhapCuoi = u.LanDangNhapCuoi,
                 IsDeleted = u.IsDeleted,
                 Email = u.Email,
@@ -695,7 +695,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 using var stream = file.OpenReadStream();
-                var rawRows = new List<(int Row, string MaNhanVien, string MatKhau, string HoTen, string ChucDanh, string KhoaPhong, string VaiTroStr, string SoDienThoai, string Email)>();
+                var rawRows = new List<(int Row, string MaNhanVien, string Password, string FullName, string ChucDanh, string Department, string VaiTroStr, string SoDienThoai, string Email)>();
 
                 if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                 {
@@ -760,10 +760,10 @@ namespace BanTayVang.API.Services.Impl
                         rawRows.Add((
                             Row: row,
                             MaNhanVien: colTaiKhoan >= 0 && colTaiKhoan < csv.Parser.Count ? csv.GetField(colTaiKhoan)?.Trim() ?? string.Empty : string.Empty,
-                            MatKhau: colMatKhau >= 0 && colMatKhau < csv.Parser.Count ? csv.GetField(colMatKhau)?.Trim() ?? string.Empty : string.Empty,
-                            HoTen: colHoTen >= 0 && colHoTen < csv.Parser.Count ? csv.GetField(colHoTen)?.Trim() ?? string.Empty : string.Empty,
+                            Password: colMatKhau >= 0 && colMatKhau < csv.Parser.Count ? csv.GetField(colMatKhau)?.Trim() ?? string.Empty : string.Empty,
+                            FullName: colHoTen >= 0 && colHoTen < csv.Parser.Count ? csv.GetField(colHoTen)?.Trim() ?? string.Empty : string.Empty,
                             ChucDanh: colChucDanh >= 0 && colChucDanh < csv.Parser.Count ? csv.GetField(colChucDanh)?.Trim() ?? string.Empty : string.Empty,
-                            KhoaPhong: colKhoaPhong >= 0 && colKhoaPhong < csv.Parser.Count ? csv.GetField(colKhoaPhong)?.Trim() ?? string.Empty : string.Empty,
+                            Department: colKhoaPhong >= 0 && colKhoaPhong < csv.Parser.Count ? csv.GetField(colKhoaPhong)?.Trim() ?? string.Empty : string.Empty,
                             VaiTroStr: colVaiTro >= 0 && colVaiTro < csv.Parser.Count ? csv.GetField(colVaiTro)?.Trim() ?? string.Empty : string.Empty,
                             SoDienThoai: colSoDienThoai >= 0 && colSoDienThoai < csv.Parser.Count ? csv.GetField(colSoDienThoai)?.Trim() ?? string.Empty : string.Empty,
                             Email: colEmail >= 0 && colEmail < csv.Parser.Count ? csv.GetField(colEmail)?.Trim() ?? string.Empty : string.Empty
@@ -824,10 +824,10 @@ namespace BanTayVang.API.Services.Impl
                         rawRows.Add((
                             Row: row,
                             MaNhanVien: colTaiKhoan > 0 ? ws.Cell(row, colTaiKhoan).GetString().Trim() : string.Empty,
-                            MatKhau: colMatKhau > 0 ? ws.Cell(row, colMatKhau).GetString().Trim() : string.Empty,
-                            HoTen: colHoTen > 0 ? ws.Cell(row, colHoTen).GetString().Trim() : string.Empty,
+                            Password: colMatKhau > 0 ? ws.Cell(row, colMatKhau).GetString().Trim() : string.Empty,
+                            FullName: colHoTen > 0 ? ws.Cell(row, colHoTen).GetString().Trim() : string.Empty,
                             ChucDanh: colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty,
-                            KhoaPhong: colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty,
+                            Department: colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty,
                             VaiTroStr: colVaiTro > 0 ? ws.Cell(row, colVaiTro).GetString().Trim() : string.Empty,
                             SoDienThoai: colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty,
                             Email: colEmail > 0 ? ws.Cell(row, colEmail).GetString().Trim() : string.Empty
@@ -841,20 +841,20 @@ namespace BanTayVang.API.Services.Impl
                 {
                     int row = r.Row;
                     var maNhanVien = r.MaNhanVien;
-                    var matKhau = r.MatKhau;
-                    var hoTen = r.HoTen;
+                    var password = r.Password;
+                    var fullName = r.FullName;
                     var chucDanh = r.ChucDanh;
-                    var khoaPhong = r.KhoaPhong;
+                    var department = r.Department;
                     var vaiTroStr = r.VaiTroStr;
                     var soDienThoai = r.SoDienThoai;
                     var email = r.Email;
 
                     // If all columns are empty, skip row
                     if (string.IsNullOrWhiteSpace(maNhanVien) &&
-                        string.IsNullOrWhiteSpace(matKhau) &&
-                        string.IsNullOrWhiteSpace(hoTen) &&
+                        string.IsNullOrWhiteSpace(password) &&
+                        string.IsNullOrWhiteSpace(fullName) &&
                         string.IsNullOrWhiteSpace(chucDanh) &&
-                        string.IsNullOrWhiteSpace(khoaPhong) &&
+                        string.IsNullOrWhiteSpace(department) &&
                         string.IsNullOrWhiteSpace(vaiTroStr) &&
                         string.IsNullOrWhiteSpace(soDienThoai) &&
                         string.IsNullOrWhiteSpace(email))
@@ -863,9 +863,9 @@ namespace BanTayVang.API.Services.Impl
                     }
 
                     // Default password to "123456" if not provided
-                    if (string.IsNullOrWhiteSpace(matKhau))
+                    if (string.IsNullOrWhiteSpace(password))
                     {
-                        matKhau = "123456";
+                        password = "123456";
                     }
 
                     // Validations
@@ -875,15 +875,15 @@ namespace BanTayVang.API.Services.Impl
                     {
                         rowErrors.Add("Mã nhân viên (tài khoản) không được để trống");
                     }
-                    if (string.IsNullOrWhiteSpace(matKhau))
+                    if (string.IsNullOrWhiteSpace(password))
                     {
                         rowErrors.Add("Mật khẩu không được để trống");
                     }
-                    else if (matKhau.Length < 6)
+                    else if (password.Length < 6)
                     {
                         rowErrors.Add("Mật khẩu phải từ 6 ký tự trở lên");
                     }
-                    if (string.IsNullOrWhiteSpace(hoTen))
+                    if (string.IsNullOrWhiteSpace(fullName))
                     {
                         rowErrors.Add("Họ tên không được để trống");
                     }
@@ -902,9 +902,9 @@ namespace BanTayVang.API.Services.Impl
                         continue;
                     }
 
-                    // Check if maNhanVien / TenDangNhap already exists
-                    var existingUserByUsername = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.TenDangNhap == maNhanVien);
-                    var existingUserByEmpCode = await _context.Taikhoans.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.MaNhanVien == maNhanVien);
+                    // Check if maNhanVien / Username already exists
+                    var existingUserByUsername = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Username == maNhanVien);
+                    var existingUserByEmpCode = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.MaNhanVien == maNhanVien);
                     if (existingUserByUsername != null || existingUserByEmpCode != null)
                     {
                         resultDto.Failed++;
@@ -913,67 +913,67 @@ namespace BanTayVang.API.Services.Impl
                     }
 
                     // Determine role ID
-                    int idVaiTro = 3; // Default is Student (Thí sinh)
+                    int roleId = 3; // Default is Student (Thí sinh)
                     if (!string.IsNullOrWhiteSpace(vaiTroStr))
                     {
                         var normalizedRole = RemoveSign4Vietnamese(vaiTroStr).ToLowerInvariant();
                         if (normalizedRole == "1" || normalizedRole.Contains("quan tri") || normalizedRole.Contains("admin"))
                         {
-                            idVaiTro = 1; // Admin
+                            roleId = 1; // Admin
                         }
                         else if (normalizedRole == "2" || normalizedRole.Contains("quan ly") || normalizedRole.Contains("dept") || normalizedRole.Contains("manager"))
                         {
-                            idVaiTro = 5; // DeptManager
+                            roleId = 5; // DeptManager
                         }
                         else if (normalizedRole == "3" || normalizedRole.Contains("thi sinh") || normalizedRole.Contains("student") || normalizedRole.Contains("hoc vien") || normalizedRole.Contains("sinh vien"))
                         {
-                            idVaiTro = 3; // Student
+                            roleId = 3; // Student
                         }
                         else
                         {
                             // Unrecognized role defaults to Student (Thí sinh) as requested
-                            idVaiTro = 3;
+                            roleId = 3;
                         }
                     }
 
                     // Set chucDanh to null/empty if left empty
                     string? finalChucDanh = string.IsNullOrWhiteSpace(chucDanh) ? null : chucDanh;
-                    string? finalKhoaPhong = string.IsNullOrWhiteSpace(khoaPhong) ? null : khoaPhong;
+                    string? finalKhoaPhong = string.IsNullOrWhiteSpace(department) ? null : department;
 
-                    // Auto-assign DeptManager to KhoaPhong
+                    // Auto-assign DeptManager to Department
                     int? idKhoaQuanLy = null;
-                    if (idVaiTro == 5 && !string.IsNullOrEmpty(finalKhoaPhong))
+                    if (roleId == 5 && !string.IsNullOrEmpty(finalKhoaPhong))
                     {
-                        var khoa = await _context.KhoaPhongs.FirstOrDefaultAsync(k => k.TenKhoa == finalKhoaPhong);
+                        var khoa = await _context.Departments.FirstOrDefaultAsync(k => k.DepartmentName == finalKhoaPhong);
                         if (khoa != null)
                         {
                             idKhoaQuanLy = khoa.Id;
                         }
                     }
 
-                    var user = new Taikhoan
+                    var user = new User
                     {
-                        TenDangNhap = maNhanVien,
+                        Username = maNhanVien,
                         MaNhanVien = maNhanVien,
-                        MatKhau = _passwordService.HashPassword(matKhau),
-                        HoTen = hoTen,
+                        Password = _passwordService.HashPassword(password),
+                        FullName = fullName,
                         ChucDanh = finalChucDanh,
-                        KhoaPhong = finalKhoaPhong,
-                        IdVaiTro = idVaiTro,
-                        IdKhoaQuanLy = idKhoaQuanLy,
-                        TrangThai = true,
-                        NgayTao = DateTime.Now,
+                        Department = finalKhoaPhong,
+                        RoleId = roleId,
+                        DeptManagerDeptId = idKhoaQuanLy,
+                        Status = true,
+                        CreatedAt = DateTime.Now,
                         SoDienThoai = string.IsNullOrWhiteSpace(soDienThoai) ? null : soDienThoai,
                         Email = string.IsNullOrWhiteSpace(email) ? null : email
                     };
 
                     // Add to role mapping table to maintain database integrity
-                    user.TaikhoanVaitros.Add(new TaikhoanVaitro
+                    user.UserRoles.Add(new UserRole
                     {
-                        IdVaiTro = idVaiTro
+                        RoleId = roleId
                     });
 
-                    _context.Taikhoans.Add(user);
+                    _context.Users.Add(user);
                     processedUsernames.Add(maNhanVien);
                     resultDto.Success++;
                 }

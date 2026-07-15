@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { usersApi } from '@/features/users/api'
 import type { UserDto } from '@/features/users/types'
-import type { DethiDto } from '../types'
+import type { ExamPaperDto } from '../types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X, Search, Check } from 'lucide-react'
 
 interface AssignUsersDialogProps {
   open: boolean
-  exam: DethiDto | null
+  exam: ExamPaperDto | null
   onClose: () => void
   onSubmit: (examId: number, userIds: number[], note?: string) => void
   isLoading: boolean
@@ -35,8 +35,8 @@ export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: 
       const response = await usersApi.list({
         pageNumber: 1,
         pageSize: 100,
-        idVaiTro: 3, // Students only
-        trangThai: true,
+        roleId: 3, // Students only
+        status: true,
         searchKeyword: searchKeyword || undefined,
       })
       if (response.data.success && response.data.data) {
@@ -67,7 +67,7 @@ export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: 
         <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-lg font-semibold">Phân công thí sinh</h2>
-            <p className="text-sm text-gray-500">{exam.tenDeThi}</p>
+            <p className="text-sm text-gray-500">{exam.examPaperName}</p>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -115,8 +115,8 @@ export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: 
                     {selectedIds.includes(user.id) && <Check className="h-3 w-3" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{user.hoTen || user.tenDangNhap}</p>
-                    <p className="text-xs text-gray-400">{user.khoaPhong} • {user.maNhanVien}</p>
+                    <p className="text-sm font-medium">{user.fullName || user.username}</p>
+                    <p className="text-xs text-gray-400">{user.department} • {user.maNhanVien}</p>
                   </div>
                 </div>
               ))

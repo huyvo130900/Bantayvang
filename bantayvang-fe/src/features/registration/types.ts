@@ -1,6 +1,6 @@
-export interface DangKyThiDto {
+export interface ExamRegistrationDto {
   id: number;
-  hoTen: string;
+  fullName: string;
   cccd: string;
   soDienThoai: string;
   email?: string;
@@ -9,17 +9,17 @@ export interface DangKyThiDto {
   khoaPhongId?: number;
   tenKhoaPhong?: string;
   mucDichThi?: string;
-  trangThai: string;
+  status: string;
   ngayDangKy: string;
   ghiChu?: string;
 }
 
-export interface CreateDangKyThiDto {
-  hoTen: string;
+export interface CreateExamRegistrationDto {
+  fullName: string;
   cccd: string;
   soDienThoai: string;
   email?: string;
-  matKhau: string;
+  password: string;
   donViCongTac?: string;
   chuyenNganh?: string;
   khoaPhongId?: number;

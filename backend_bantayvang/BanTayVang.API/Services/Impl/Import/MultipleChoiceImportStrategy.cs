@@ -7,23 +7,23 @@ namespace BanTayVang.API.Services.Impl.Import
 {
     public class MultipleChoiceImportStrategy : IQuestionImportStrategy
     {
-        private readonly ICauhoiRepository _cauhoiRepository;
+        private readonly IQuestionRepository _questionRepository;
 
-        public MultipleChoiceImportStrategy(ICauhoiRepository cauhoiRepository)
+        public MultipleChoiceImportStrategy(IQuestionRepository cauhoiRepository)
         {
-            _cauhoiRepository = cauhoiRepository;
+            _questionRepository = cauhoiRepository;
         }
 
         public string QuestionTypeName => "Trắc nghiệm";
 
-        public async Task<List<Cauhoi>> ParseAndValidateAsync(
+        public async Task<List<Question>> ParseAndValidateAsync(
             IXLWorksheet worksheet, 
-            int nguoiTao, 
-            string khoaPhong, 
+            int createdBy, 
+            string department, 
             List<string> errors,
             bool isExamImport = false)
         {
-            var parsedQuestions = new List<Cauhoi>();
+            var parsedQuestions = new List<Question>();
             var rows = worksheet.RowsUsed().Skip(1); // Bỏ qua header
             int rowNumber = 1;
             var seenContents = new HashSet<string>();
@@ -34,22 +34,22 @@ namespace BanTayVang.API.Services.Impl.Import
                 try
                 {
                     // 1. Nội dung câu hỏi (Cột 1)
-                    var noiDung = row.Cell(1).GetString().Trim();
-                    if (string.IsNullOrWhiteSpace(noiDung))
+                    var content = row.Cell(1).GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(content))
                         continue;
 
                     // 4. Đọc các lựa chọn A, B, C, D (Cột 2 -> 5)
-                    var choices = new List<Luachon>();
+                    var choices = new List<QuestionOption>();
                     for (int i = 0; i < 4; i++)
                     {
                         var choiceContent = row.Cell(2 + i).GetString().Trim();
                         if (!string.IsNullOrWhiteSpace(choiceContent))
                         {
-                            choices.Add(new Luachon 
+                            choices.Add(new QuestionOption 
                             { 
-                                NoiDung = choiceContent, 
-                                ThuTu = i + 1, 
-                                LaDapAnDung = false 
+                                Content = choiceContent, 
+                                OrderIndex = i + 1, 
+                                IsCorrect = false 
                             });
                         }
                     }
@@ -73,52 +73,52 @@ namespace BanTayVang.API.Services.Impl.Import
                         errors.Add($"Dòng {rowNumber}: Đáp án đúng không hợp lệ. Vui lòng nhập A, B, C, hoặc D.");
                         continue;
                     }
-                    choices[correctIndex - 1].LaDapAnDung = true;
+                    choices[correctIndex - 1].IsCorrect = true;
 
                     // 5.5 Độ khó (Cột 7)
-                    string doKho = "1"; // Mặc định là Dễ (1)
+                    string difficulty = "1"; // Mặc định là Dễ (1)
                     if (!isExamImport)
                     {
                         var doKhoValStr = row.Cell(7).GetString().Trim().ToLowerInvariant();
-                        if (doKhoValStr == "3" || doKhoValStr == "k" || doKhoValStr.Contains("khó") || doKhoValStr.Contains("kho")) doKho = "3";
-                        else if (doKhoValStr == "2" || doKhoValStr == "tb" || doKhoValStr.Contains("trung bình") || doKhoValStr.Contains("trung binh")) doKho = "2";
-                        else if (doKhoValStr == "1" || doKhoValStr.Contains("dễ") || doKhoValStr.Contains("de")) doKho = "1";
+                        if (doKhoValStr == "3" || doKhoValStr == "k" || doKhoValStr.Contains("khó") || doKhoValStr.Contains("kho")) difficulty = "3";
+                        else if (doKhoValStr == "2" || doKhoValStr == "tb" || doKhoValStr.Contains("trung bình") || doKhoValStr.Contains("trung binh")) difficulty = "2";
+                        else if (doKhoValStr == "1" || doKhoValStr.Contains("dễ") || doKhoValStr.Contains("de")) difficulty = "1";
                     }
 
                     // 6. Kiểm tra trùng lặp
-                    var noiDungChuan = noiDung.ToLower();
+                    var noiDungChuan = content.ToLower();
                     
                     // Kiểm tra trùng lặp trong cùng file
                     if (!seenContents.Add(noiDungChuan))
                     {
-                        errors.Add($"Dòng {rowNumber}: Câu hỏi trùng lặp trong cùng file Excel — \"{noiDung}\" — bỏ qua.");
+                        errors.Add($"Dòng {rowNumber}: Câu hỏi trùng lặp trong cùng file Excel — \"{content}\" — bỏ qua.");
                         continue;
                     }
 
                     // Kiểm tra trùng lặp với CSDL (chỉ kiểm tra nếu không phải "Không thuộc ngân hàng")
-                    if (khoaPhong != "Không thuộc ngân hàng")
+                    if (department != "Không thuộc ngân hàng")
                     {
-                        var existingQuestion = await _cauhoiRepository.FindDuplicateAsync(noiDungChuan, khoaPhong);
+                        var existingQuestion = await _questionRepository.FindDuplicateAsync(noiDungChuan, department);
                         if (existingQuestion != null)
                         {
-                            errors.Add($"Dòng {rowNumber}: Câu hỏi đã tồn tại trong CSDL (Id: {existingQuestion.Id}) — \"{noiDung}\"");
+                            errors.Add($"Dòng {rowNumber}: Câu hỏi đã tồn tại trong CSDL (Id: {existingQuestion.Id}) — \"{content}\"");
                             continue;
                         }
                     }
 
                     // 7. Tạo thực thể câu hỏi
-                    var cauhoi = new Cauhoi
+                    var question = new Question
                     {
-                        NoiDung = noiDung,
-                        DoKho = doKho,
-                        NguoiTao = nguoiTao,
-                        NgayTao = DateTime.Now,
+                        Content = content,
+                        Difficulty = difficulty,
+                        CreatedBy = createdBy,
+                        CreatedAt = DateTime.Now,
                         DaXoa = false,
-                        KhoaPhong = khoaPhong,
-                        Luachons = choices
+                        Department = department,
+                        QuestionOptions = choices
                     };
 
-                    parsedQuestions.Add(cauhoi);
+                    parsedQuestions.Add(question);
                 }
                 catch (Exception ex)
                 {

@@ -7,10 +7,10 @@ namespace BanTayVang.API.Services.Interfaces.Import
     {
         string QuestionTypeName { get; }
         
-        Task<List<Cauhoi>> ParseAndValidateAsync(
+        Task<List<Question>> ParseAndValidateAsync(
             IXLWorksheet worksheet, 
-            int nguoiTao, 
-            string khoaPhong, 
+            int createdBy, 
+            string department, 
             List<string> errors,
             bool isExamImport = false);
             

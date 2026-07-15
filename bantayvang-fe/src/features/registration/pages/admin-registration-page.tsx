@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Check, X } from 'lucide-react'
 import { registrationApi } from '../api'
-import type { DangKyThiDto } from '../types'
+import type { ExamRegistrationDto } from '../types'
 
 export function AdminRegistrationPage() {
-  const [registrations, setRegistrations] = useState<DangKyThiDto[]>([])
+  const [registrations, setRegistrations] = useState<ExamRegistrationDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
@@ -96,7 +96,7 @@ export function AdminRegistrationPage() {
                 ) : (
                   registrations.map((reg) => (
                     <tr key={reg.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-900">{reg.hoTen}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{reg.fullName}</td>
                       <td className="px-4 py-3">
                         <div className="text-sm">{reg.cccd}</div>
                         <div className="text-xs text-muted-foreground">{reg.soDienThoai}</div>
