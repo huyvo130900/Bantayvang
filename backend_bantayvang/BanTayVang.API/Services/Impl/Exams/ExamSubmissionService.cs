@@ -109,17 +109,17 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // OWASP A03: Injection - Sanitize input data
-                var chitiet = new SubmissionDetail
+                var detail = new SubmissionDetail
                 {
                     ExamSubmissionId = answerDto.ExamSubmissionId,
                     QuestionId = answerDto.QuestionId,
                     SelectedOptionId = answerDto.SelectedOptionId,
-                    CauTraLoiTuLuan = SanitizeTextInput(answerDto.CauTraLoiTuLuan),
-                    ThoiGianTraLoi = DateTime.Now,
-                    DaLuu = answerDto.DaLuu
+                    EssayAnswer = SanitizeTextInput(answerDto.EssayAnswer),
+                    AnswerTime = DateTime.Now,
+                    IsSaved = answerDto.IsSaved
                 };
 
-                await _submissionDetailRepository.SaveAnswerAsync(chitiet);
+                await _submissionDetailRepository.SaveAnswerAsync(detail);
 
                 await _securityService.LogSecurityEventAsync("ANSWER_SAVED",
                     $"User {userId} saved answer for question {answerDto.QuestionId} in session {answerDto.ExamSubmissionId}",
@@ -210,17 +210,17 @@ namespace BanTayVang.API.Services.Impl.Exams
                                 continue; // Bỏ qua đáp án không hợp lệ nhưng không làm dừng cả bài thi
                             }
 
-                            var chitiet = new SubmissionDetail
+                            var detail = new SubmissionDetail
                             {
                                 ExamSubmissionId = answer.ExamSubmissionId,
                                 QuestionId = answer.QuestionId,
                                 SelectedOptionId = answer.SelectedOptionId,
-                                CauTraLoiTuLuan = SanitizeTextInput(answer.CauTraLoiTuLuan),
-                                ThoiGianTraLoi = DateTime.Now,
-                                DaLuu = true
+                                EssayAnswer = SanitizeTextInput(answer.EssayAnswer),
+                                AnswerTime = DateTime.Now,
+                                IsSaved = true
                             };
 
-                            await _submissionDetailRepository.AddAsync(chitiet);
+                            await _submissionDetailRepository.AddAsync(detail);
                         }
                     }
 
@@ -344,7 +344,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // Validate text input length (OWASP A04: Insecure Design)
-                if (!string.IsNullOrEmpty(answerDto.CauTraLoiTuLuan) && answerDto.CauTraLoiTuLuan.Length > 5000)
+                if (!string.IsNullOrEmpty(answerDto.EssayAnswer) && answerDto.EssayAnswer.Length > 5000)
                 {
                     return new BaseResponseDto<bool>
                     {
@@ -366,7 +366,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // Check for malicious content (basic XSS prevention)
-                if (ContainsMaliciousContent(answerDto.CauTraLoiTuLuan))
+                if (ContainsMaliciousContent(answerDto.EssayAnswer))
                 {
                     return new BaseResponseDto<bool>
                     {
@@ -409,7 +409,7 @@ namespace BanTayVang.API.Services.Impl.Exams
 
             foreach (var group in answersByQuestion)
             {
-                var question = group.First().IdCauHoiNavigation;
+                var question = group.First().Question;
                 if (question == null) continue;
 
                 var correctChoiceIds = question.QuestionOptions
@@ -417,8 +417,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                     .Select(l => l.Id)
                     .ToHashSet();
 
-                var categoryName = question.IdLoaiCauHoiNavigation?.CategoryName;
-                var moTa = question.IdLoaiCauHoiNavigation?.Description;
+                var categoryName = question.QuestionCategory?.CategoryName;
+                var description = question.QuestionCategory?.Description;
                 var isEssay = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL" || correctChoiceIds.Count == 0;
 
                 if (isEssay)

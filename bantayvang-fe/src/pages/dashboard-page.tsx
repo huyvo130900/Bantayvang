@@ -447,10 +447,10 @@ function StudentDashboard() {
             {doneWithResults.map((ky) => {
               const r = getKyThiResult(ky)
               const diem = r?.totalScore ?? 0
-              const congBo = r?.isResultPublished ?? false
+              const isPublished = r?.isResultPublished ?? false
               const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
-              const hetHan = end !== null && end <= now
-              const isResultPublished = hetHan || congBo
+              const isExpired = end !== null && end <= now
+              const isResultPublished = isExpired || isPublished
               const examSubmissionId = r?.id
               return (
                 <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
@@ -491,7 +491,7 @@ function StudentDashboard() {
                           <Eye className="h-3.5 w-3.5" />
                           Xem kết quả
                         </button>
-                        {!hetHan ? (
+                        {!isExpired ? (
                           <button
                             onClick={() => navigate('/exam-waiting')}
                             className="inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors w-full sm:w-auto"

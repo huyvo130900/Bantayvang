@@ -396,8 +396,8 @@ namespace BanTayVang.API.Services.Impl
                 _context.RefreshTokens.RemoveRange(tokens);
                 var sessions = _context.UserSessions.Where(s => s.UserId == id);
                 _context.UserSessions.RemoveRange(sessions);
-                var loginSessions = _context.Phiendangnhaps.Where(s => s.UserId == id);
-                _context.Phiendangnhaps.RemoveRange(loginSessions);
+                var loginSessions = _context.LoginSessions.Where(s => s.UserId == id);
+                _context.LoginSessions.RemoveRange(loginSessions);
 
                 // Update trực tiếp qua DbContext để chỉ cần 1 lần SaveChanges
                 _context.Users.Update(target);

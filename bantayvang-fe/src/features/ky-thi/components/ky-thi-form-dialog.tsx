@@ -54,7 +54,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
 
   const form = useForm<CreateKyThiFormData>({
     resolver: zodResolver(getKyThiSchema(isEdit, examCampaign?.thoiGianBatDau, examCampaign?.thoiGianKetThuc)) as any,
-    defaultValues: { campaignCode: '', campaignName: '', moTa: '', departmentId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any, durationMinutes: '' as any },
+    defaultValues: { campaignCode: '', campaignName: '', description: '', departmentId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any, durationMinutes: '' as any },
   })
 
   // Programmatically register custom fields
@@ -90,7 +90,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
       form.reset({
         campaignCode: examCampaign.campaignCode || '',
         campaignName: examCampaign.campaignName || '',
-        moTa: examCampaign.moTa || '',
+        description: examCampaign.description || '',
         departmentId: examCampaign.departmentId || '' as any,
         thoiGianBatDau: toLocalInputString(examCampaign.thoiGianBatDau),
         thoiGianKetThuc: toLocalInputString(examCampaign.thoiGianKetThuc),
@@ -105,7 +105,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
         form.reset({
           campaignCode: generateKyThiCode(),
           campaignName: '',
-          moTa: '',
+          description: '',
           departmentId: currentUser?.idKhoaQuanLy || '' as any,
           thoiGianBatDau: '',
           thoiGianKetThuc: '',
@@ -119,7 +119,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
         form.reset({
           campaignCode: generateKyThiCode(),
           campaignName: '',
-          moTa: '',
+          description: '',
           departmentId: '' as any,
           thoiGianBatDau: '',
           thoiGianKetThuc: '',
@@ -142,7 +142,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
   const filteredDepts = departments.filter(d => {
     if (searchTerm === selectedDeptName) return true
     return d.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-           d.maKhoa.toLowerCase().includes(searchTerm.toLowerCase())
+           d.deptCode.toLowerCase().includes(searchTerm.toLowerCase())
   })
 
   const showAllDeptsOption = searchTerm === '' || searchTerm === selectedDeptName || 'tất cả các khoa'.includes(searchTerm.toLowerCase())
@@ -226,7 +226,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
                           setIsDropdownOpen(false)
                         }}
                       >
-                        <span>{d.departmentName} ({d.maKhoa})</span>
+                        <span>{d.departmentName} ({d.deptCode})</span>
                         {selectedDeptId === d.id && <Check className="h-4 w-4 text-blue-600" />}
                       </div>
                     ))
@@ -244,7 +244,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
 
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Mô tả</label>
-            <textarea {...form.register('moTa')} rows={2} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Mô tả kỳ thi..." />
+            <textarea {...form.register('description')} rows={2} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Mô tả kỳ thi..." />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

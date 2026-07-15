@@ -216,7 +216,7 @@ namespace BanTayVang.API.Services.Impl
                         ImageUrl = createDto.ImageUrl,
                         CreatedBy = createdBy,
                         CreatedAt = DateTime.Now,
-                        DaXoa = false,
+                        IsDeleted = false,
                         Department = createDto.Department
                     };
 
@@ -412,7 +412,7 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 // Soft delete - mark as deleted instead of hard delete
-                question.DaXoa = true;
+                question.IsDeleted = true;
                 question.UpdatedBy = updatedBy;
                 question.UpdatedAt = DateTime.Now;
 

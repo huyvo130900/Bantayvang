@@ -118,8 +118,8 @@ namespace BanTayVang.API.Services.Impl
                         }
 
                         // Redact scores if not published
-                        var congBo = examSubmission.CongBoRieng || (a.Exam?.IsResultPublished ?? false);
-                        if (!congBo)
+                        var isPublished = examSubmission.CongBoRieng || (a.Exam?.IsResultPublished ?? false);
+                        if (!isPublished)
                         {
                             diemSo = null;
                             correctAnswers = null;

@@ -25,7 +25,7 @@ export const gradingApi = {
     apiClient.get(`/grading/exam/${examId}/ranking/export?top=${top}`, { responseType: 'blob' }),
 
   getByKyThi: (examCampaignId: number) =>
-    apiClient.get<ApiResponse<ExamResultDetailDto[]>>(`/grading/by-kythi/${examCampaignId}`),
+    apiClient.get<ApiResponse<ExamResultDetailDto[]>>(`/grading/by-campaign/${examCampaignId}`),
 
   // ✨ MỚI: Công bố điểm cho từng thí sinh
   publishSingle: (baiThiId: number) =>

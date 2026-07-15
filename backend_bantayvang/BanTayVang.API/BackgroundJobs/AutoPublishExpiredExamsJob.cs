@@ -61,12 +61,12 @@ namespace BanTayVang.API.BackgroundJobs
 
             // Lấy các Đề thi đang hoạt động có Kỳ thi liên kết đã hết hạn, chưa công bố
             var candidates = await db.ExamPapers
-                .Include(d => d.KyThiNavigation)
+                .Include(d => d.ExamCampaign)
                 .Where(d => d.IsResultPublished == false
                          && d.ExamCampaignId != null
-                         && d.KyThiNavigation != null
-                         && d.KyThiNavigation.EndTime != null
-                         && d.KyThiNavigation.EndTime <= now)
+                         && d.ExamCampaign != null
+                         && d.ExamCampaign.EndTime != null
+                         && d.ExamCampaign.EndTime <= now)
                 .ToListAsync(ct);
 
             int published = 0;
@@ -82,7 +82,7 @@ namespace BanTayVang.API.BackgroundJobs
 
                 // Công bố điểm cho đề thi này
                 examPaper.IsResultPublished = true;
-                examPaper.ThoiGianCongBo = now;
+                examPaper.PublishedAt = now;
                 published++;
 
                 _logger.LogInformation(

@@ -177,8 +177,8 @@ export function ExamWaitingPage() {
                             {ky.thoiGianKetThuc && ` → ${formatDate(ky.thoiGianKetThuc)}`}
                           </span>
                         )}
-                        {ky.moTa && (
-                          <span className="text-xs text-gray-400 italic">{ky.moTa}</span>
+                        {ky.description && (
+                          <span className="text-xs text-gray-400 italic">{ky.description}</span>
                         )}
                       </div>
                     </div>

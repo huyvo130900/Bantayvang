@@ -59,5 +59,5 @@ export interface SubmitExamDto {
 export interface CheatingWarningDto {
   examSubmissionId: number
   warningType: string
-  moTa?: string
+  description?: string
 }

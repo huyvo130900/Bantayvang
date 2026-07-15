@@ -22,5 +22,5 @@ public partial class CheatWarning
 
     public string? CorrelationId { get; set; }
 
-    public virtual ExamSubmission? IdBaiThiNavigation { get; set; }
+    public virtual ExamSubmission? ExamSubmission { get; set; }
 }

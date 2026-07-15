@@ -13,7 +13,7 @@ namespace BanTayVang.API.Models
 
         [Required]
         [StringLength(50)]
-        public string MaKhoa { get; set; } = string.Empty;
+        public string DeptCode { get; set; } = string.Empty;
 
         [Required]
         [StringLength(255)]

@@ -339,7 +339,7 @@ export function ResultsByKyThiPage() {
   const loadResults = async (examCampaignId: number) => {
     setLoading(true)
     try {
-      const res = await apiClient.get(`/Grading/by-kythi/${examCampaignId}`)
+      const res = await apiClient.get(`/Grading/by-campaign/${examCampaignId}`)
       const data: ThiSinhResult[] = res.data?.data || []
       setResults(data)
       // Build visibility map: examPaperId -> isResultPublished

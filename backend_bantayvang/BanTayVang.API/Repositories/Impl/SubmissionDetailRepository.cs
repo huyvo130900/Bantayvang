@@ -13,11 +13,11 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<List<SubmissionDetail>> GetByBaiThiAsync(int examSubmissionId)
         {
             return await _dbSet
-                .Include(c => c.IdCauHoiNavigation)
+                .Include(c => c.Question)
                     .ThenInclude(ch => ch!.QuestionOptions)
-                .Include(c => c.IdCauHoiNavigation)
-                    .ThenInclude(ch => ch!.IdLoaiCauHoiNavigation)
-                .Include(c => c.IdLuaChonDaChonNavigation)
+                .Include(c => c.Question)
+                    .ThenInclude(ch => ch!.QuestionCategory)
+                .Include(c => c.SelectedOption)
                 .Where(c => c.ExamSubmissionId == examSubmissionId)
                 .ToListAsync();
         }
@@ -28,27 +28,27 @@ namespace BanTayVang.API.Repositories.Impl
                 .FirstOrDefaultAsync(c => c.ExamSubmissionId == examSubmissionId && c.QuestionId == questionId);
         }
 
-        public async Task<bool> SaveAnswerAsync(SubmissionDetail chitiet)
+        public async Task<bool> SaveAnswerAsync(SubmissionDetail detail)
         {
             try
             {
-                var existing = await GetAnswerAsync(chitiet.ExamSubmissionId!.Value, chitiet.QuestionId!.Value);
+                var existing = await GetAnswerAsync(detail.ExamSubmissionId!.Value, detail.QuestionId!.Value);
                 
                 if (existing != null)
                 {
                     // Update existing answer
-                    existing.SelectedOptionId = chitiet.SelectedOptionId;
-                    existing.CauTraLoiTuLuan = chitiet.CauTraLoiTuLuan;
-                    existing.ThoiGianTraLoi = chitiet.ThoiGianTraLoi;
-                    existing.DaLuu = chitiet.DaLuu;
-                    existing.ScoreObtained = chitiet.ScoreObtained;
+                    existing.SelectedOptionId = detail.SelectedOptionId;
+                    existing.EssayAnswer = detail.EssayAnswer;
+                    existing.AnswerTime = detail.AnswerTime;
+                    existing.IsSaved = detail.IsSaved;
+                    existing.ScoreObtained = detail.ScoreObtained;
                     
                     await UpdateAsync(existing);
                 }
                 else
                 {
                     // Add new answer
-                    await AddAsync(chitiet);
+                    await AddAsync(detail);
                 }
                 
                 return true;
@@ -75,11 +75,11 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<int> CountCorrectAnswersAsync(int examSubmissionId)
         {
             var answers = await _dbSet
-                .Include(c => c.IdLuaChonDaChonNavigation)
+                .Include(c => c.SelectedOption)
                 .Where(c => c.ExamSubmissionId == examSubmissionId && c.SelectedOptionId.HasValue)
                 .ToListAsync();
 
-            return answers.Count(a => a.IdLuaChonDaChonNavigation?.IsCorrect == true);
+            return answers.Count(a => a.SelectedOption?.IsCorrect == true);
         }
     }
 }

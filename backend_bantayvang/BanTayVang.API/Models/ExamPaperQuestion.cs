@@ -13,7 +13,7 @@ public partial class ExamPaperQuestion
 
     public double? TrongSo { get; set; }
 
-    public virtual Question? IdCauHoiNavigation { get; set; }
+    public virtual Question? Question { get; set; }
 
-    public virtual ExamPaper? IdDeThiNavigation { get; set; }
+    public virtual ExamPaper? ExamPaper { get; set; }
 }

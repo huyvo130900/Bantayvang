@@ -1,8 +1,8 @@
 export interface DepartmentDto {
   id: number
-  maKhoa: string
+  deptCode: string
   departmentName: string
-  moTa?: string
+  description?: string
   status: boolean
   deptManagerId?: number
   tenQuanLy?: string
@@ -11,15 +11,15 @@ export interface DepartmentDto {
 }
 
 export interface CreateDepartmentDto {
-  maKhoa: string
+  deptCode: string
   departmentName: string
-  moTa?: string
+  description?: string
   status: boolean
 }
 
 export interface UpdateDepartmentDto {
   departmentName: string
-  moTa?: string
+  description?: string
   status: boolean
 }
 

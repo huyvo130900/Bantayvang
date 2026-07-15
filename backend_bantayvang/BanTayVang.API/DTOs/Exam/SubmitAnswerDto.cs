@@ -11,7 +11,7 @@ namespace BanTayVang.API.DTOs.Exam
         public int QuestionId { get; set; }
         
         public int? SelectedOptionId { get; set; } // Cho câu trắc nghiệm
-        public string? CauTraLoiTuLuan { get; set; } // Cho câu tự luận
-        public bool DaLuu { get; set; } = true;
+        public string? EssayAnswer { get; set; } // Cho câu tự luận
+        public bool IsSaved { get; set; } = true;
     }
 }

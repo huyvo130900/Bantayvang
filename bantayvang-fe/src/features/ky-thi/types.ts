@@ -2,7 +2,7 @@ export interface ExamCampaignDto {
   id: number
   campaignCode: string | null
   campaignName: string | null
-  moTa: string | null
+  description: string | null
   departmentId: number | null
   departmentName: string | null
   status: string | null
@@ -38,7 +38,7 @@ export interface ExamCheckResult {
 export interface CreateKyThiDto {
   campaignCode: string
   campaignName: string
-  moTa?: string
+  description?: string
   departmentId?: number | null
   thoiGianBatDau?: string | null
   thoiGianKetThuc?: string | null

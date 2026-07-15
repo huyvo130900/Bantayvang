@@ -6,7 +6,7 @@ namespace BanTayVang.API.Repositories.Interfaces
     {
         Task<List<SubmissionDetail>> GetByBaiThiAsync(int examSubmissionId);
         Task<SubmissionDetail?> GetAnswerAsync(int examSubmissionId, int questionId);
-        Task<bool> SaveAnswerAsync(SubmissionDetail chitiet);
+        Task<bool> SaveAnswerAsync(SubmissionDetail detail);
         Task DeleteAnswersByQuestionAsync(int examSubmissionId, int questionId);
         Task<int> CountCorrectAnswersAsync(int examSubmissionId);
     }

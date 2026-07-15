@@ -52,7 +52,7 @@ namespace BanTayVang.API.DTOs.Grading
         public string? QuestionCategory { get; set; }
         public int? SelectedOptionId { get; set; }
         public string? NoiDungDapAn { get; set; }
-        public string? CauTraLoiTuLuan { get; set; }
+        public string? EssayAnswer { get; set; }
         public bool IsCorrect { get; set; }
         public double? ScoreObtained { get; set; }
         public int? IdLuaChonDung { get; set; }

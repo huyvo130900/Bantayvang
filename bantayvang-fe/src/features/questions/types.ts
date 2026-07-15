@@ -58,7 +58,7 @@ export interface QuestionFilterDto {
 export interface LoaicauhoiDto {
   id: number
   categoryName: string | null
-  moTa: string | null
+  description: string | null
   totalQuestions?: number
 }
 
@@ -66,5 +66,5 @@ export interface LoaicauhoiDto {
 
 export interface CreateLoaicauhoiDto {
   categoryName: string
-  moTa?: string
+  description?: string
 }

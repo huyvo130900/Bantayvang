@@ -43,7 +43,7 @@ namespace BanTayVang.API.Repositories.Impl
         {
             return await _dbSet
                 .Include(d => d.ExamPaperQuestions)
-                    .ThenInclude(dc => dc.IdCauHoiNavigation)
+                    .ThenInclude(dc => dc.Question)
                         .ThenInclude(c => c!.QuestionOptions)
                 .FirstOrDefaultAsync(d => d.Id == id);
         }

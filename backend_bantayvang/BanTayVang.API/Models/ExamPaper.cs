@@ -46,10 +46,10 @@ public partial class ExamPaper
     /// <summary>
     /// Thời điểm công bố kết quả
     /// </summary>
-    public DateTime? ThoiGianCongBo { get; set; }
+    public DateTime? PublishedAt { get; set; }
 
     public int? ExamCampaignId { get; set; }
-    public virtual ExamCampaign? KyThiNavigation { get; set; }
+    public virtual ExamCampaign? ExamCampaign { get; set; }
 
     /// <summary>
     /// Số câu đúng tối thiểu để đạt cho đề thi này (override riêng, không phụ thuộc vào ExamCampaign)

@@ -15,7 +15,7 @@ export function DepartmentsPage() {
   // Form tạo/sửa khoa
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<DepartmentDto | null>(null)
-  const [form, setForm] = useState({ maKhoa: '', departmentName: '', moTa: '', status: true })
+  const [form, setForm] = useState({ deptCode: '', departmentName: '', description: '', status: true })
 
   // Dialog gán quản lý
   const [assignTarget, setAssignTarget] = useState<DepartmentDto | null>(null)
@@ -70,10 +70,10 @@ export function DepartmentsPage() {
     if (!form.departmentName.trim()) { setError('Vui lòng nhập tên khoa'); return }
     try {
       if (editing) {
-        await departmentApi.update(editing.id, { departmentName: form.departmentName, moTa: form.moTa, status: form.status })
+        await departmentApi.update(editing.id, { departmentName: form.departmentName, description: form.description, status: form.status })
         setSuccess('Cập nhật khoa thành công')
       } else {
-        if (!form.maKhoa.trim()) { setError('Vui lòng nhập mã khoa'); return }
+        if (!form.deptCode.trim()) { setError('Vui lòng nhập mã khoa'); return }
         await departmentApi.create(form)
         setSuccess('Tạo khoa thành công')
       }
@@ -87,7 +87,7 @@ export function DepartmentsPage() {
 
   const handleEdit = (d: DepartmentDto) => {
     setEditing(d)
-    setForm({ maKhoa: d.maKhoa, departmentName: d.departmentName, moTa: d.moTa || '', status: d.status })
+    setForm({ deptCode: d.deptCode, departmentName: d.departmentName, description: d.description || '', status: d.status })
     setShowForm(true)
   }
 
@@ -221,7 +221,7 @@ export function DepartmentsPage() {
             className="hidden"
             onChange={handleImportFile}
           />
-          <Button onClick={() => { setEditing(null); setForm({ maKhoa: '', departmentName: '', moTa: '', status: true }); setShowForm(true) }}>
+          <Button onClick={() => { setEditing(null); setForm({ deptCode: '', departmentName: '', description: '', status: true }); setShowForm(true) }}>
             <Plus className="h-4 w-4 mr-2" /> Thêm Khoa
           </Button>
         </div>
@@ -257,7 +257,7 @@ export function DepartmentsPage() {
               {!editing && (
                 <div>
                   <label className="text-sm font-medium text-gray-700">Mã Khoa *</label>
-                  <Input value={form.maKhoa} onChange={e => setForm(f => ({ ...f, maKhoa: e.target.value.toUpperCase() }))}
+                  <Input value={form.deptCode} onChange={e => setForm(f => ({ ...f, deptCode: e.target.value.toUpperCase() }))}
                     placeholder="VD: KHOA_NOI" className="mt-1 font-mono" />
                   <p className="text-xs text-gray-400 mt-1">Mã khoa không thể thay đổi sau khi tạo</p>
                 </div>
@@ -269,7 +269,7 @@ export function DepartmentsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Mô tả</label>
-                <Input value={form.moTa} onChange={e => setForm(f => ({ ...f, moTa: e.target.value }))}
+                <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="Mô tả khoa..." className="mt-1" />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -368,7 +368,7 @@ export function DepartmentsPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Building2 className="h-4 w-4 text-blue-500 shrink-0" />
-                      <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{d.maKhoa}</span>
+                      <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{d.deptCode}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 font-medium">{d.departmentName}</td>

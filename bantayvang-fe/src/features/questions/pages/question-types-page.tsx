@@ -13,7 +13,7 @@ export function QuestionTypesPage() {
   // Modal Form State
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<LoaicauhoiDto | null>(null)
-  const [form, setForm] = useState({ categoryName: '', moTa: '' })
+  const [form, setForm] = useState({ categoryName: '', description: '' })
 
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -60,7 +60,7 @@ export function QuestionTypesPage() {
       if (editing) {
         const res = await questionsApi.updateQuestionType(editing.id, {
           categoryName: form.categoryName.trim(),
-          moTa: form.moTa.trim(),
+          description: form.description.trim(),
         })
         if (res.data.success) {
           setSuccess('Cập nhật loại câu hỏi thành công')
@@ -73,12 +73,12 @@ export function QuestionTypesPage() {
       } else {
         const res = await questionsApi.createQuestionType({
           categoryName: form.categoryName.trim(),
-          moTa: form.moTa.trim(),
+          description: form.description.trim(),
         })
         if (res.data.success) {
           setSuccess('Tạo loại câu hỏi thành công')
           setShowForm(false)
-          setForm({ categoryName: '', moTa: '' })
+          setForm({ categoryName: '', description: '' })
           load()
         } else {
           setError(res.data.message || 'Tạo mới thất bại')
@@ -92,7 +92,7 @@ export function QuestionTypesPage() {
 
   const handleEdit = (t: LoaicauhoiDto) => {
     setEditing(t)
-    setForm({ categoryName: t.categoryName || '', moTa: t.moTa || '' })
+    setForm({ categoryName: t.categoryName || '', description: t.description || '' })
     setShowForm(true)
   }
 
@@ -122,7 +122,7 @@ export function QuestionTypesPage() {
   const filteredTypes = types.filter(
     (t) =>
       t.categoryName?.toLowerCase().includes(search.toLowerCase()) ||
-      t.moTa?.toLowerCase().includes(search.toLowerCase())
+      t.description?.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -139,7 +139,7 @@ export function QuestionTypesPage() {
           <Button
             onClick={() => {
               setEditing(null)
-              setForm({ categoryName: '', moTa: '' })
+              setForm({ categoryName: '', description: '' })
               setShowForm(true)
             }}
           >
@@ -204,8 +204,8 @@ export function QuestionTypesPage() {
                         <span className="font-semibold text-gray-800">{t.categoryName}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-500 max-w-md truncate" title={t.moTa || ''}>
-                      {t.moTa || '—'}
+                    <td className="px-6 py-4 text-gray-500 max-w-md truncate" title={t.description || ''}>
+                      {t.description || '—'}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
@@ -251,8 +251,8 @@ export function QuestionTypesPage() {
               <div>
                 <label className="text-sm font-medium text-gray-700">Mô tả</label>
                 <textarea
-                  value={form.moTa}
-                  onChange={(e) => setForm((f) => ({ ...f, moTa: e.target.value }))}
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   placeholder="Mô tả chi tiết về loại câu hỏi..."
                   rows={3}
                   className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"

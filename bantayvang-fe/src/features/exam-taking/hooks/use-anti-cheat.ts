@@ -33,7 +33,7 @@ export function useAntiCheat({ examSubmissionId, enabled, onForceSubmit }: UseAn
       await examTakingApi.logWarning({
         examSubmissionId: baithiIdRef.current,
         warningType: type,
-        moTa: description,
+        description: description,
       })
     } catch {
       // Silent fail - don't disrupt exam

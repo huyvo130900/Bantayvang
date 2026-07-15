@@ -279,8 +279,8 @@ namespace BanTayVang.API.Controllers
                     ExamSubmissionId = dto.ExamSubmissionId,
                     QuestionId = dto.QuestionId,
                     SelectedOptionId = null,
-                    CauTraLoiTuLuan = dto.CauTraLoiTuLuan,
-                    DaLuu = dto.DaLuu
+                    EssayAnswer = dto.EssayAnswer,
+                    IsSaved = dto.IsSaved
                 };
                 lastResult = await _examService.SaveAnswerAsync(answerDto, userId);
             }
@@ -293,8 +293,8 @@ namespace BanTayVang.API.Controllers
                         ExamSubmissionId = dto.ExamSubmissionId,
                         QuestionId = dto.QuestionId,
                         SelectedOptionId = choiceId,
-                        CauTraLoiTuLuan = dto.CauTraLoiTuLuan,
-                        DaLuu = dto.DaLuu
+                        EssayAnswer = dto.EssayAnswer,
+                        IsSaved = dto.IsSaved
                     };
                     lastResult = await _examService.SaveAnswerAsync(answerDto, userId);
                 }

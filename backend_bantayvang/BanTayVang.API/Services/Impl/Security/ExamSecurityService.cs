@@ -65,7 +65,7 @@ namespace BanTayVang.API.Services.Impl.Security
             }
         }
 
-        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string moTa, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string description, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -85,18 +85,18 @@ namespace BanTayVang.API.Services.Impl.Security
                     await _examSubmissionRepository.UpdateAsync(examSubmission);
                 }
 
-                var canhbao = new CheatWarning
+                var warning = new CheatWarning
                 {
                     ExamSubmissionId = examSubmissionId,
                     WarningType = warningType,
-                    Description = moTa,
+                    Description = description,
                     ActionTime = DateTime.Now,
                     SoLanViPham = 1,
                     MucDoNghiemTrong = "Medium",
                     CorrelationId = correlationId
                 };
 
-                await _cheatWarningRepository.AddAsync(canhbao);
+                await _cheatWarningRepository.AddAsync(warning);
 
                 _logger.LogWarning("Suspicious activity logged: {Type} for exam session {ExamSessionId}. CorrelationId: {CorrelationId}", 
                     warningType, examSubmissionId, correlationId);

@@ -4,6 +4,7 @@ using BanTayVang.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BanTayVang.API.Migrations
 {
     [DbContext(typeof(BanTayVangDbContext))]
-    partial class BanTayVangDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260715014147_AddNavigationAndColumnRenames")]
+    partial class AddNavigationAndColumnRenames
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

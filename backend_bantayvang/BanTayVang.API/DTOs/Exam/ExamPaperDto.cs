@@ -17,7 +17,7 @@ namespace BanTayVang.API.DTOs.Exam
         public int TotalQuestions { get; set; }
 
         public bool IsResultPublished { get; set; } = false;
-        public DateTime? ThoiGianCongBo { get; set; }
+        public DateTime? PublishedAt { get; set; }
         public int? ExamCampaignId { get; set; }
 
         /// <summary>

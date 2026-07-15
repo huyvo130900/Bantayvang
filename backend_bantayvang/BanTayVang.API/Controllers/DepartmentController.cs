@@ -43,7 +43,7 @@ namespace BanTayVang.API.Controllers
                     query = query.Where(k => k.Status == status);
 
                 if (!string.IsNullOrEmpty(search))
-                    query = query.Where(k => k.DepartmentName.Contains(search) || k.MaKhoa.Contains(search));
+                    query = query.Where(k => k.DepartmentName.Contains(search) || k.DeptCode.Contains(search));
 
                 var total = await query.CountAsync();
                 var items = await query
@@ -53,7 +53,7 @@ namespace BanTayVang.API.Controllers
                     .Select(k => new DepartmentDto
                     {
                         Id = k.Id,
-                        MaKhoa = k.MaKhoa,
+                        DeptCode = k.DeptCode,
                         DepartmentName = k.DepartmentName,
                         Description = k.Description,
                         Status = k.Status,
@@ -98,7 +98,7 @@ namespace BanTayVang.API.Controllers
                 Success = true,
                 Data = new DepartmentDto
                 {
-                    Id = khoa.Id, MaKhoa = khoa.MaKhoa, DepartmentName = khoa.DepartmentName,
+                    Id = khoa.Id, DeptCode = khoa.DeptCode, DepartmentName = khoa.DepartmentName,
                     Description = khoa.Description, Status = khoa.Status,
                     DeptManagerId = khoa.DeptManagerId,
                     TenQuanLy = khoa.DeptManager?.FullName,
@@ -142,7 +142,7 @@ namespace BanTayVang.API.Controllers
 
                 // 1. Đếm câu hỏi của khoa (theo Department string, không bị xóa)
                 var tongSoCauHoi = await _context.Questions
-                    .CountAsync(c => c.Department == departmentName && c.DaXoa != true);
+                    .CountAsync(c => c.Department == departmentName && c.IsDeleted != true);
 
                 // 2. Lấy danh sách kỳ thi của khoa
                 var kyThiList = await _context.ExamCampaigns
@@ -261,13 +261,13 @@ namespace BanTayVang.API.Controllers
         {
             try
             {
-                var existing = await _context.Departments.AnyAsync(k => k.MaKhoa == dto.MaKhoa);
+                var existing = await _context.Departments.AnyAsync(k => k.DeptCode == dto.DeptCode);
                 if (existing)
-                    return BadRequest(BaseResponseDto<DepartmentDto>.FailureResult($"Mã khoa '{dto.MaKhoa}' đã tồn tại"));
+                    return BadRequest(BaseResponseDto<DepartmentDto>.FailureResult($"Mã khoa '{dto.DeptCode}' đã tồn tại"));
 
                 var khoa = new Department
                 {
-                    MaKhoa = dto.MaKhoa,
+                    DeptCode = dto.DeptCode,
                     DepartmentName = dto.DepartmentName,
                     Description = dto.Description,
                     Status = dto.Status,
@@ -281,7 +281,7 @@ namespace BanTayVang.API.Controllers
                 {
                     Success = true,
                     Message = "Tạo khoa thành công",
-                    Data = new DepartmentDto { Id = khoa.Id, MaKhoa = khoa.MaKhoa, DepartmentName = khoa.DepartmentName, CreatedAt = khoa.CreatedAt }
+                    Data = new DepartmentDto { Id = khoa.Id, DeptCode = khoa.DeptCode, DepartmentName = khoa.DepartmentName, CreatedAt = khoa.CreatedAt }
                 });
             }
             catch (Exception ex)
@@ -413,12 +413,12 @@ namespace BanTayVang.API.Controllers
                 if (dto.IsResultPublished)
                 {
                     var hasUngraded = await _context.SubmissionDetails
-                        .AnyAsync(c => c.IdBaiThiNavigation != null 
-                                    && c.IdBaiThiNavigation.ExamPaperId == deThiId 
-                                    && c.IdBaiThiNavigation.Status == "Completed"
-                                    && c.IdCauHoiNavigation != null
-                                    && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null
-                                    && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan")
+                        .AnyAsync(c => c.ExamSubmission != null 
+                                    && c.ExamSubmission.ExamPaperId == deThiId 
+                                    && c.ExamSubmission.Status == "Completed"
+                                    && c.Question != null
+                                    && c.Question.QuestionCategory != null
+                                    && (c.Question.QuestionCategory.CategoryName == "Tự luận" || c.Question.QuestionCategory.CategoryName == "TuLuan")
                                     && c.ScoreObtained == null);
                     if (hasUngraded)
                     {
@@ -427,7 +427,7 @@ namespace BanTayVang.API.Controllers
                 }
 
                 examPaper.IsResultPublished = dto.IsResultPublished;
-                examPaper.ThoiGianCongBo = dto.IsResultPublished ? DateTime.Now : null;
+                examPaper.PublishedAt = dto.IsResultPublished ? DateTime.Now : null;
 
                 await _context.SaveChangesAsync();
 
@@ -528,7 +528,7 @@ namespace BanTayVang.API.Controllers
         {
             public int Row { get; set; }
             public string DepartmentName { get; set; } = string.Empty;
-            public string MaKhoa { get; set; } = string.Empty;
+            public string DeptCode { get; set; } = string.Empty;
             public string Status { get; set; } = string.Empty;
             public string Description { get; set; } = string.Empty;
         }
@@ -645,7 +645,7 @@ namespace BanTayVang.API.Controllers
                         {
                             Row = csvRowNumber,
                             DepartmentName = ten,
-                            MaKhoa = ma,
+                            DeptCode = ma,
                             Status = tt,
                             Description = mt
                         });
@@ -761,7 +761,7 @@ namespace BanTayVang.API.Controllers
                         {
                             Row = i + 2,
                             DepartmentName = ten,
-                            MaKhoa = ma,
+                            DeptCode = ma,
                             Status = tt,
                             Description = mt
                         });
@@ -770,14 +770,14 @@ namespace BanTayVang.API.Controllers
 
                 // Load existing departments into memory to avoid duplicate checking
                 var existingDepartments = await _context.Departments.ToListAsync();
-                var existingMaKhoas = new HashSet<string>(existingDepartments.Select(k => k.MaKhoa), StringComparer.OrdinalIgnoreCase);
+                var existingMaKhoas = new HashSet<string>(existingDepartments.Select(k => k.DeptCode), StringComparer.OrdinalIgnoreCase);
                 var existingTenKhoas = new HashSet<string>(existingDepartments.Select(k => k.DepartmentName), StringComparer.OrdinalIgnoreCase);
 
                 foreach (var rec in records)
                 {
                     string departmentName = rec.DepartmentName;
-                    string maKhoa = rec.MaKhoa.ToUpper();
-                    string moTa = rec.Description;
+                    string deptCode = rec.DeptCode.ToUpper();
+                    string description = rec.Description;
                     string trangThaiStr = rec.Status;
 
                     bool status = string.IsNullOrWhiteSpace(trangThaiStr) || 
@@ -795,54 +795,54 @@ namespace BanTayVang.API.Controllers
                         continue;
                     }
 
-                    bool isAutoGenerateMaKhoa = string.IsNullOrEmpty(maKhoa);
+                    bool isAutoGenerateMaKhoa = string.IsNullOrEmpty(deptCode);
                     if (isAutoGenerateMaKhoa)
                     {
-                        maKhoa = GenerateMaKhoa(departmentName);
-                        if (string.IsNullOrEmpty(maKhoa))
+                        deptCode = GenerateMaKhoa(departmentName);
+                        if (string.IsNullOrEmpty(deptCode))
                         {
                             skipped++;
                             errors.Add($"Dòng {rec.Row}: Tên Khoa không hợp lệ để tạo Mã Khoa");
                             continue;
                         }
 
-                        // Ensure MaKhoa is unique
+                        // Ensure DeptCode is unique
                         int suffix = 1;
-                        string baseMaKhoa = maKhoa;
-                        while (existingMaKhoas.Contains(maKhoa))
+                        string baseMaKhoa = deptCode;
+                        while (existingMaKhoas.Contains(deptCode))
                         {
                             string suffixStr = $"_{suffix}";
                             if (baseMaKhoa.Length + suffixStr.Length > 50)
                             {
-                                maKhoa = baseMaKhoa.Substring(0, 50 - suffixStr.Length) + suffixStr;
+                                deptCode = baseMaKhoa.Substring(0, 50 - suffixStr.Length) + suffixStr;
                             }
                             else
                             {
-                                maKhoa = baseMaKhoa + suffixStr;
+                                deptCode = baseMaKhoa + suffixStr;
                             }
                             suffix++;
                         }
                     }
                     else
                     {
-                        if (existingMaKhoas.Contains(maKhoa))
+                        if (existingMaKhoas.Contains(deptCode))
                         {
                             skipped++;
-                            errors.Add($"Dòng {rec.Row}: Mã khoa '{maKhoa}' đã tồn tại — bỏ qua");
+                            errors.Add($"Dòng {rec.Row}: Mã khoa '{deptCode}' đã tồn tại — bỏ qua");
                             continue;
                         }
                     }
 
                     _context.Departments.Add(new Department
                     {
-                        MaKhoa = maKhoa,
+                        DeptCode = deptCode,
                         DepartmentName = departmentName,
                         Status = status,
-                        Description = string.IsNullOrWhiteSpace(moTa) ? null : moTa,
+                        Description = string.IsNullOrWhiteSpace(description) ? null : description,
                         CreatedAt = DateTime.Now,
                     });
 
-                    existingMaKhoas.Add(maKhoa);
+                    existingMaKhoas.Add(deptCode);
                     existingTenKhoas.Add(departmentName);
                     created++;
                 }

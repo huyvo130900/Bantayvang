@@ -266,9 +266,9 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
 
                 // OWASP A03: Injection Prevention for essay answers
-                if (!string.IsNullOrEmpty(answerDto.CauTraLoiTuLuan))
+                if (!string.IsNullOrEmpty(answerDto.EssayAnswer))
                 {
-                    if (ContainsSqlInjection(answerDto.CauTraLoiTuLuan))
+                    if (ContainsSqlInjection(answerDto.EssayAnswer))
                     {
                         errors.Add("Answer contains invalid content");
                         _logger.LogWarning("SQL injection attempt in answer submission by user {UserId}", userId);
@@ -276,7 +276,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                     }
 
                     // OWASP A04: Validate answer length
-                    if (answerDto.CauTraLoiTuLuan.Length > 5000)
+                    if (answerDto.EssayAnswer.Length > 5000)
                     {
                         errors.Add("Answer is too long (maximum 5000 characters)");
                     }

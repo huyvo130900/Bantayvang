@@ -114,7 +114,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
   const filteredDepts = departments.filter(d => {
     if (searchTerm === selectedKhoaPhong) return true
     return d.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           d.maKhoa.toLowerCase().includes(searchTerm.toLowerCase())
+           d.deptCode.toLowerCase().includes(searchTerm.toLowerCase())
   })
 
   return (
@@ -206,7 +206,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
                           setIsDropdownOpen(false)
                         }}
                       >
-                        <span>{d.departmentName} ({d.maKhoa})</span>
+                        <span>{d.departmentName} ({d.deptCode})</span>
                         {selectedKhoaPhong === d.departmentName && <Check className="h-4 w-4 text-blue-600" />}
                       </div>
                     ))
@@ -260,7 +260,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
               >
                 <option value="">— Chọn khoa —</option>
                 {departments.map(d => (
-                  <option key={d.id} value={d.id}>{d.departmentName} ({d.maKhoa})</option>
+                  <option key={d.id} value={d.id}>{d.departmentName} ({d.deptCode})</option>
                 ))}
               </select>
               <p className="text-xs text-blue-600 mt-1">Quản lý Khoa chỉ thấy dữ liệu của khoa được gán</p>

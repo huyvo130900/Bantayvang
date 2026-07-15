@@ -32,7 +32,7 @@ namespace BanTayVang.API.Services.Interfaces
         Task<BaseResponseDto<List<ExamSubmissionDto>>> GetMyResultsAsync(int userId);
 
         // Chống gian lận
-        Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string moTa);
+        Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string description);
         Task<BaseResponseDto<int>> GetWarningCountAsync(int examSubmissionId);
     }
 }

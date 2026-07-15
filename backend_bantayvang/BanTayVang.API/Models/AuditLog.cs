@@ -25,7 +25,7 @@ public partial class AuditLog
     public string? LoaiThaoTac { get; set; }
 
     /// <summary>Chi tiết thao tác (ghi chú)</summary>
-    public string? ChiTiet { get; set; }
+    public string? Detail { get; set; }
 
     public DateTime? ActionTime { get; set; }
 
@@ -39,6 +39,6 @@ public partial class AuditLog
     /// <summary>Khoa/Phòng của người thực hiện</summary>
     public string? Department { get; set; }
 
-    public virtual ExamSubmission? IdBaiThiNavigation { get; set; }
+    public virtual ExamSubmission? ExamSubmission { get; set; }
     public virtual User? User { get; set; }
 }

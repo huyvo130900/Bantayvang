@@ -143,7 +143,7 @@ namespace BanTayVang.API.Services.Impl
                     .GroupBy(b => b.ExamPaperCode ?? b.ExamPaperId?.ToString())
                     .Select(g => g.First())
                     .Select(b => {
-                        var congBo = b.CongBoRieng || (b.IdDeThiNavigation?.IsResultPublished ?? false);
+                        var isPublished = b.CongBoRieng || (b.ExamPaper?.IsResultPublished ?? false);
                         return new ExamSubmissionDto
                         {
                             Id = b.Id,
@@ -151,16 +151,16 @@ namespace BanTayVang.API.Services.Impl
                             ExamPaperId = b.ExamPaperId ?? 0,
                             Status = b.Status,
                             SubmitTime = b.SubmitTime,
-                            TotalScore = congBo ? (b.TotalQuestions > 0
+                            TotalScore = isPublished ? (b.TotalQuestions > 0
                                 ? Math.Round((b.CorrectAnswers ?? 0) * 10.0 / b.TotalQuestions!.Value, 2)
                                 : b.TotalScore) : null,
-                            CorrectAnswers = congBo ? b.CorrectAnswers : null,
+                            CorrectAnswers = isPublished ? b.CorrectAnswers : null,
                             TotalQuestions = b.TotalQuestions,
-                            ExamPaperName = b.IdDeThiNavigation?.ExamPaperName,
-                            ExamPaperCode = b.ExamPaperCode ?? b.IdDeThiNavigation?.ExamPaperCode,
+                            ExamPaperName = b.ExamPaper?.ExamPaperName,
+                            ExamPaperCode = b.ExamPaperCode ?? b.ExamPaper?.ExamPaperCode,
                             StartTime = b.StartTime,
-                            IsResultPublished = congBo,
-                            Pass = congBo ? (b.TotalQuestions > 0
+                            IsResultPublished = isPublished,
+                            Pass = isPublished ? (b.TotalQuestions > 0
                                 ? (b.CorrectAnswers ?? 0) * 10.0 / b.TotalQuestions!.Value >= 5
                                 : (b.TotalScore ?? 0) >= 5) : false,
                         };
@@ -189,12 +189,12 @@ namespace BanTayVang.API.Services.Impl
 
         #region Security Operations (Enhanced with OWASP compliance)
 
-        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string moTa)
+        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string description)
         {
             try
             {
                 _logger.LogWarning("Suspicious activity detected - Session: {SessionId}, Type: {Type}, Description: {Description}",
-                    examSubmissionId, warningType, moTa);
+                    examSubmissionId, warningType, description);
 
                 var examSubmission = await _examSubmissionRepository.GetByIdAsync(examSubmissionId);
                 if (examSubmission != null)
@@ -220,20 +220,20 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 // OWASP A09: Security Logging - Enhanced security event logging
-                var canhbao = new CheatWarning
+                var warning = new CheatWarning
                 {
                     ExamSubmissionId = examSubmissionId,
                     WarningType = warningType,
-                    Description = SanitizeInput(moTa), // OWASP A03: Injection prevention
+                    Description = SanitizeInput(description), // OWASP A03: Injection prevention
                     ActionTime = DateTime.Now
                 };
 
-                await _cheatWarningRepository.AddAsync(canhbao);
+                await _cheatWarningRepository.AddAsync(warning);
 
                 // Log to security service for centralized monitoring
                 await _securityService.LogSecurityEventAsync(
                     $"SUSPICIOUS_ACTIVITY_{warningType}",
-                    moTa,
+                    description,
                     null, // Will be extracted from session
                     DetermineSeverityLevel(warningType));
 
@@ -329,9 +329,9 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var examPaper = await _context.ExamPapers
-                    .Include(d => d.KyThiNavigation)
+                    .Include(d => d.ExamCampaign)
                     .Include(d => d.ExamPaperQuestions)
-                        .ThenInclude(dc => dc.IdCauHoiNavigation)
+                        .ThenInclude(dc => dc.Question)
                             .ThenInclude(c => c.QuestionOptions)
                     .FirstOrDefaultAsync(d => d.Id == examId);
 
@@ -355,11 +355,11 @@ namespace BanTayVang.API.Services.Impl
                         .OrderBy(_ => rng.Next())
                         .Select(dc => new QuestionPreviewDto
                         {
-                            Id = dc.IdCauHoiNavigation?.Id ?? 0,
-                            Content = dc.IdCauHoiNavigation?.Content,
+                            Id = dc.Question?.Id ?? 0,
+                            Content = dc.Question?.Content,
                             ChuDe = null,
                             // Shuffle thứ tự đáp án
-                            QuestionOptions = dc.IdCauHoiNavigation?.QuestionOptions
+                            QuestionOptions = dc.Question?.QuestionOptions
                                 .OrderBy(_ => rng.Next())
                                 .Select(lc => new ChoicePreviewDto
                                 {
@@ -375,7 +375,7 @@ namespace BanTayVang.API.Services.Impl
                 {
                     var allPoolQuestions = await _context.Questions
                         .Include(c => c.QuestionOptions)
-                        .Where(c => c.Department == examPaper.Department && c.DaXoa != true)
+                        .Where(c => c.Department == examPaper.Department && c.IsDeleted != true)
                         .ToListAsync();
 
                     // Shuffle ngẫu nhiên mỗi lần preview (dùng lại rng ở trên), lọc trùng lặp theo nội dung câu hỏi
@@ -383,7 +383,7 @@ namespace BanTayVang.API.Services.Impl
                         .GroupBy(q => q.Content?.Trim().ToLower() ?? "")
                         .Select(g => g.First())
                         .OrderBy(_ => rng.Next())
-                        .Take(examPaper.KyThiNavigation?.TotalQuestions ?? 10)
+                        .Take(examPaper.ExamCampaign?.TotalQuestions ?? 10)
                         .ToList();
 
                     preview.Questions = poolQuestions.Select(c => new QuestionPreviewDto

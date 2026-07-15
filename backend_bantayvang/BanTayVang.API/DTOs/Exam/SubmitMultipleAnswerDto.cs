@@ -8,7 +8,7 @@ namespace BanTayVang.API.DTOs.Exam
         public int ExamSubmissionId { get; set; }
         public int QuestionId { get; set; }
         public List<int> SelectedOptionId { get; set; } = new();
-        public string? CauTraLoiTuLuan { get; set; }
-        public bool DaLuu { get; set; }
+        public string? EssayAnswer { get; set; }
+        public bool IsSaved { get; set; }
     }
 }

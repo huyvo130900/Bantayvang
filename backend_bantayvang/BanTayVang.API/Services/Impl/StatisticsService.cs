@@ -24,7 +24,7 @@ namespace BanTayVang.API.Services.Impl
                 {
                     TotalUsers = await _context.Users.CountAsync(),
                     ActiveUsers = await _context.Users.CountAsync(u => u.Status == true),
-                    TotalQuestions = await _context.Questions.CountAsync(c => c.DaXoa != true),
+                    TotalQuestions = await _context.Questions.CountAsync(c => c.IsDeleted != true),
                     TotalExams = await _context.ExamPapers.CountAsync(),
                     ActiveExams = await _context.ExamPapers.CountAsync(d => d.Status == "Active"),
                     TotalSubmissions = await _context.ExamSubmissions.CountAsync(),
@@ -46,16 +46,16 @@ namespace BanTayVang.API.Services.Impl
                     .Where(b => b.Status == "Completed")
                     .OrderByDescending(b => b.SubmitTime)
                     .Take(10)
-                    .Include(b => b.IdTaiKhoanNavigation)
-                    .Include(b => b.IdDeThiNavigation)
+                    .Include(b => b.User)
+                    .Include(b => b.ExamPaper)
                     .ToListAsync();
 
                 dashboard.RecentActivities = recentExams.Select(b => new RecentActivityDto
                 {
                     ActivityType = "EXAM_COMPLETED",
-                    Description = $"Hoàn thành đề thi {b.IdDeThiNavigation?.ExamPaperCode} - Điểm: {b.TotalScore}",
+                    Description = $"Hoàn thành đề thi {b.ExamPaper?.ExamPaperCode} - Điểm: {b.TotalScore}",
                     Timestamp = b.SubmitTime ?? DateTime.Now,
-                    Username = b.IdTaiKhoanNavigation?.Username
+                    Username = b.User?.Username
                 }).ToList();
 
                 return new BaseResponseDto<DashboardDto>
@@ -86,7 +86,7 @@ namespace BanTayVang.API.Services.Impl
                     return new BaseResponseDto<ExamStatisticsDto> { Success = false, Message = "Không tìm thấy kỳ thi" };
 
                 var submissions = await _context.ExamSubmissions
-                    .Include(b => b.IdDeThiNavigation)
+                    .Include(b => b.ExamPaper)
                     .Where(b => b.ExamCampaignId == examCampaignId)
                     .ToListAsync();
 
@@ -113,7 +113,7 @@ namespace BanTayVang.API.Services.Impl
                 var failCount = 0;
                 foreach (var b in latestCompletedSubmissions)
                 {
-                    var threshold = examCampaign.MinPassQuestions ?? b.IdDeThiNavigation?.MinPassQuestions;
+                    var threshold = examCampaign.MinPassQuestions ?? b.ExamPaper?.MinPassQuestions;
                     bool isPass;
                     if (threshold.HasValue)
                     {
@@ -180,13 +180,13 @@ namespace BanTayVang.API.Services.Impl
             {
                 var history = await _context.ExamSubmissions
                     .Where(b => b.UserId == userId)
-                    .Include(b => b.IdDeThiNavigation)
+                    .Include(b => b.ExamPaper)
                     .OrderByDescending(b => b.StartTime ?? b.SubmitTime)
                     .Select(b => new UserExamHistoryDto
                     {
                         ExamSubmissionId = b.Id,
-                        ExamPaperCode = b.IdDeThiNavigation!.ExamPaperCode,
-                        ExamPaperName = b.IdDeThiNavigation.ExamPaperName,
+                        ExamPaperCode = b.ExamPaper!.ExamPaperCode,
+                        ExamPaperName = b.ExamPaper.ExamPaperName,
                         StartTime = b.StartTime,
                         SubmitTime = b.SubmitTime,
                         Status = b.Status,
@@ -223,14 +223,14 @@ namespace BanTayVang.API.Services.Impl
                 var performers = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
                     .Where(b => b.Status == "Completed" && b.TotalScore != null && b.UserId != null)
-                    .Include(b => b.IdTaiKhoanNavigation)
+                    .Include(b => b.User)
                     .GroupBy(b => b.UserId)
                     .Select(g => new TopPerformerDto
                     {
                         UserId = g.Key!.Value,
-                        Username = g.First().IdTaiKhoanNavigation!.Username,
-                        FullName = g.First().IdTaiKhoanNavigation!.FullName,
-                        Department = g.First().IdTaiKhoanNavigation!.Department,
+                        Username = g.First().User!.Username,
+                        FullName = g.First().User!.FullName,
+                        Department = g.First().User!.Department,
                         ExamsTaken = g.Count(),
                         AverageScore = g.Average(b => b.TotalScore!.Value),
                         HighestScore = g.Max(b => b.TotalScore!.Value)

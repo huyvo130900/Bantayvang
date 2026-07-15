@@ -128,7 +128,7 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                     // Lấy toàn bộ câu hỏi, loại trùng lặp theo QuestionId
                     var allQuestions = (dethiWithQuestions?.ExamPaperQuestions ?? new List<ExamPaperQuestion>())
-                        .Where(dc => dc.QuestionId.HasValue && dc.IdCauHoiNavigation != null)
+                        .Where(dc => dc.QuestionId.HasValue && dc.Question != null)
                         .GroupBy(dc => dc.QuestionId!.Value)
                         .Select(g => g.First())
                         .ToList();
@@ -176,9 +176,9 @@ namespace BanTayVang.API.Services.Impl.Exams
                             ExamSubmissionId = examSubmission.Id,
                             QuestionId = selectedQuestions[i].QuestionId,
                             SelectedOptionId = null,
-                            CauTraLoiTuLuan = null,
-                            ThoiGianTraLoi = null,
-                            DaLuu = false,
+                            EssayAnswer = null,
+                            AnswerTime = null,
+                            IsSaved = false,
                             ScoreObtained = null
                         };
                         await _submissionDetailRepository.AddAsync(placeholder);
@@ -295,7 +295,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     }
 
                     var allDethiCauhois = examPaper.ExamPaperQuestions
-                        .Where(dc => dc.QuestionId.HasValue && dc.IdCauHoiNavigation != null)
+                        .Where(dc => dc.QuestionId.HasValue && dc.Question != null)
                         .GroupBy(dc => dc.QuestionId!.Value)
                         .Select(g => g.First())
                         .ToList();
@@ -308,7 +308,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     int thuTuFallback = 1;
                     foreach (var examPaperQuestion in shuffled)
                     {
-                        var question = examPaperQuestion.IdCauHoiNavigation!;
+                        var question = examPaperQuestion.Question!;
                         var choiceRandom = new Random(examSubmissionId * 1000 + question.Id);
                         var shuffledChoices = question.QuestionOptions
                             .OrderBy(_ => choiceRandom.Next())
@@ -338,7 +338,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     var dethiCauhoisMap = examPaper.ExamPaperQuestions
                         .Where(dc => dc.QuestionId.HasValue && cauhoiIds.Contains(dc.QuestionId.Value))
                         .GroupBy(dc => dc.QuestionId!.Value)
-                        .ToDictionary(g => g.Key, g => g.First().IdCauHoiNavigation);
+                        .ToDictionary(g => g.Key, g => g.First().Question);
 
                     int orderIndex = 1;
                     foreach (var ct in orderedChitiets)
@@ -378,8 +378,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                             Options = shuffledChoices,
                             SelectedOptionId = selectedChoiceIds.Count > 0 ? (int?)selectedChoiceIds[0] : null,
                             IdLuaChonDaChonList = selectedChoiceIds,
-                            CauTraLoiTuLuan = SanitizeHtmlContent(questionChitiets.First().CauTraLoiTuLuan),
-                            DaLuu = questionChitiets.Any(c => c.DaLuu ?? false),
+                            EssayAnswer = SanitizeHtmlContent(questionChitiets.First().EssayAnswer),
+                            IsSaved = questionChitiets.Any(c => c.IsSaved ?? false),
                             ChoPhepChonNhieu = question.QuestionOptions.Count(l => l.IsCorrect == true) > 1
                         };
 
@@ -433,12 +433,12 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 var result = _mapper.Map<ExamSubmissionDto>(examSubmission);
-                result.ExamPaperName = examSubmission.IdDeThiNavigation?.ExamPaperName;
-                result.DurationMinutes = examSubmission.IdDeThiNavigation?.DurationMinutes;
-                result.StartTime = examSubmission.IdDeThiNavigation?.StartTime;
+                result.ExamPaperName = examSubmission.ExamPaper?.ExamPaperName;
+                result.DurationMinutes = examSubmission.ExamPaper?.DurationMinutes;
+                result.StartTime = examSubmission.ExamPaper?.StartTime;
 
                 // Calculate remaining time
-                result.ThoiGianConLai = CalculateRemainingTime(examSubmission.IdDeThiNavigation, examSubmission.StartTime);
+                result.ThoiGianConLai = CalculateRemainingTime(examSubmission.ExamPaper, examSubmission.StartTime);
 
                 return new BaseResponseDto<ExamSubmissionDto>
                 {

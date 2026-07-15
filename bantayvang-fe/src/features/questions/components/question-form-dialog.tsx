@@ -47,7 +47,7 @@ export function QuestionFormDialog({
   const khoaPhongValue = form.watch('department')
   const questionCategoryId = form.watch('questionCategoryId')
   const selectedType = questionTypes.find((t) => t.id === questionCategoryId)
-  const isEssay = selectedType?.categoryName?.toLowerCase().includes('tự luận') || selectedType?.categoryName?.toLowerCase().includes('tu luan') || selectedType?.moTa?.toLowerCase().includes('tự luận') || selectedType?.moTa?.toLowerCase().includes('tu luan')
+  const isEssay = selectedType?.categoryName?.toLowerCase().includes('tự luận') || selectedType?.categoryName?.toLowerCase().includes('tu luan') || selectedType?.description?.toLowerCase().includes('tự luận') || selectedType?.description?.toLowerCase().includes('tu luan')
 
   useEffect(() => {
     if (isEssay) {

@@ -18,7 +18,7 @@ namespace BanTayVang.API.Repositories.Impl
 
         public async Task<int> GetQuestionCountAsync(int loaiId)
         {
-            return await _context.Questions.CountAsync(c => c.QuestionCategoryId == loaiId && c.DaXoa != true);
+            return await _context.Questions.CountAsync(c => c.QuestionCategoryId == loaiId && c.IsDeleted != true);
         }
     }
 }

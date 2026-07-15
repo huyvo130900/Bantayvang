@@ -23,17 +23,17 @@ namespace BanTayVang.API.Services.Impl
             {
                 var examSubmission = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
-                    .Include(b => b.IdTaiKhoanNavigation)
-                    .Include(b => b.IdDeThiNavigation)
-                    .Include(b => b.KyThiNavigation)
+                    .Include(b => b.User)
+                    .Include(b => b.ExamPaper)
+                    .Include(b => b.ExamCampaign)
                     .Include(b => b.SubmissionDetails)
-                        .ThenInclude(c => c.IdCauHoiNavigation)
+                        .ThenInclude(c => c.Question)
                             .ThenInclude(ch => ch!.QuestionOptions)
                     .Include(b => b.SubmissionDetails)
-                        .ThenInclude(c => c.IdCauHoiNavigation)
-                            .ThenInclude(ch => ch!.IdLoaiCauHoiNavigation)
+                        .ThenInclude(c => c.Question)
+                            .ThenInclude(ch => ch!.QuestionCategory)
                     .Include(b => b.SubmissionDetails)
-                        .ThenInclude(c => c.IdLuaChonDaChonNavigation)
+                        .ThenInclude(c => c.SelectedOption)
                     .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
                 if (examSubmission == null)
@@ -79,9 +79,9 @@ namespace BanTayVang.API.Services.Impl
                 var allBaithis = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
                     .Where(b => b.ExamPaperId == examId && b.Status == "Completed")
-                    .Include(b => b.IdTaiKhoanNavigation)
-                    .Include(b => b.IdDeThiNavigation)
-                    .Include(b => b.KyThiNavigation)
+                    .Include(b => b.User)
+                    .Include(b => b.ExamPaper)
+                    .Include(b => b.ExamCampaign)
                     .OrderByDescending(b => b.SubmitTime)
                     .ToListAsync();
 
@@ -116,11 +116,11 @@ namespace BanTayVang.API.Services.Impl
                         .Select(c => new {
                             c.ExamSubmissionId,
                             IsGraded = c.ScoreObtained != null,
-                            IsEssay = c.IdCauHoiNavigation != null 
-                                && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null 
-                                && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" 
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan"
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL")
+                            IsEssay = c.Question != null 
+                                && c.Question.QuestionCategory != null 
+                                && (c.Question.QuestionCategory.CategoryName == "Tự luận" 
+                                    || c.Question.QuestionCategory.CategoryName == "TuLuan"
+                                    || c.Question.QuestionCategory.CategoryName == "TL")
                         })
                         .ToListAsync();
 
@@ -181,11 +181,11 @@ namespace BanTayVang.API.Services.Impl
             {
                 var examSubmission = await _context.ExamSubmissions
                     .Include(b => b.SubmissionDetails)
-                        .ThenInclude(c => c.IdCauHoiNavigation)
+                        .ThenInclude(c => c.Question)
                             .ThenInclude(ch => ch!.QuestionOptions)
                     .Include(b => b.SubmissionDetails)
-                        .ThenInclude(c => c.IdCauHoiNavigation)
-                            .ThenInclude(ch => ch!.IdLoaiCauHoiNavigation)
+                        .ThenInclude(c => c.Question)
+                            .ThenInclude(ch => ch!.QuestionCategory)
                     .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
                 if (examSubmission == null)
@@ -201,7 +201,7 @@ namespace BanTayVang.API.Services.Impl
 
                 foreach (var group in answersByQuestion)
                 {
-                    var question = group.First().IdCauHoiNavigation;
+                    var question = group.First().Question;
                     if (question == null) continue;
 
                     var correctChoiceIds = question.QuestionOptions
@@ -209,8 +209,8 @@ namespace BanTayVang.API.Services.Impl
                         .Select(l => l.Id)
                         .ToHashSet();
 
-                    var categoryName = question.IdLoaiCauHoiNavigation?.CategoryName;
-                            var moTa = question.IdLoaiCauHoiNavigation?.Description;
+                    var categoryName = question.QuestionCategory?.CategoryName;
+                            var description = question.QuestionCategory?.Description;
                     var isEssay = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL" || correctChoiceIds.Count == 0;
 
                     if (isEssay)
@@ -277,28 +277,28 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var chitiet = await _context.SubmissionDetails
-                    .Include(c => c.IdBaiThiNavigation)
-                    .Include(c => c.IdCauHoiNavigation)
+                var detail = await _context.SubmissionDetails
+                    .Include(c => c.ExamSubmission)
+                    .Include(c => c.Question)
                     .FirstOrDefaultAsync(c => c.Id == dto.ChiTietLamBaiId);
 
-                if (chitiet == null)
+                if (detail == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy chi tiết bài làm" };
 
                 // Đánh dấu Đúng/Sai: ScoreObtained = 1 nếu đúng, = 0 nếu sai, = null nếu chấm lại
-                chitiet.ScoreObtained = dto.IsCorrect.HasValue ? (dto.IsCorrect.Value ? 1.0 : 0.0) : (double?)null;
+                detail.ScoreObtained = dto.IsCorrect.HasValue ? (dto.IsCorrect.Value ? 1.0 : 0.0) : (double?)null;
                 if (!string.IsNullOrEmpty(dto.NhanXet))
-                    chitiet.CauTraLoiTuLuan = chitiet.CauTraLoiTuLuan; // giữ nguyên nội dung
+                    detail.EssayAnswer = detail.EssayAnswer; // giữ nguyên nội dung
 
                 await _context.SaveChangesAsync();
 
                 // Tính lại tổng số câu đúng cho bài thi
-                if (chitiet.ExamSubmissionId.HasValue)
+                if (detail.ExamSubmissionId.HasValue)
                 {
                     var examSubmission = await _context.ExamSubmissions
                         .Include(b => b.SubmissionDetails)
-                            .ThenInclude(c => c.IdCauHoiNavigation)
-                        .FirstOrDefaultAsync(b => b.Id == chitiet.ExamSubmissionId.Value);
+                            .ThenInclude(c => c.Question)
+                        .FirstOrDefaultAsync(b => b.Id == detail.ExamSubmissionId.Value);
                     
                     if (examSubmission != null)
                     {
@@ -306,8 +306,8 @@ namespace BanTayVang.API.Services.Impl
                         int correctAnswers = 0;
                         foreach (var ct in examSubmission.SubmissionDetails)
                         {
-                            var categoryName = ct.IdCauHoiNavigation?.IdLoaiCauHoiNavigation?.CategoryName;
-                            var moTa = ct.IdCauHoiNavigation?.IdLoaiCauHoiNavigation?.Description;
+                            var categoryName = ct.Question?.QuestionCategory?.CategoryName;
+                            var description = ct.Question?.QuestionCategory?.Description;
                             bool isTuLuan = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL";
                             if (isTuLuan)
                             {
@@ -341,9 +341,9 @@ namespace BanTayVang.API.Services.Impl
                 var examSubmissions = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
                     .Where(b => b.ExamPaperId == examId && b.Status == "Completed")
-                    .Include(b => b.IdTaiKhoanNavigation)
-                    .Include(b => b.IdDeThiNavigation)
-                    .Include(b => b.KyThiNavigation)
+                    .Include(b => b.User)
+                    .Include(b => b.ExamPaper)
+                    .Include(b => b.ExamCampaign)
                     .OrderByDescending(b => b.TotalScore)
                     .ThenBy(b => b.SubmitTime) // tie-break by submission time
                     .Take(top)
@@ -421,14 +421,14 @@ namespace BanTayVang.API.Services.Impl
             {
                 ExamSubmissionId = examSubmission.Id,
                 UserId = examSubmission.UserId,
-                Username = examSubmission.IdTaiKhoanNavigation?.Username,
-                FullName = examSubmission.IdTaiKhoanNavigation?.FullName,
-                EmployeeCode = examSubmission.IdTaiKhoanNavigation?.EmployeeCode,
-                Department = examSubmission.IdTaiKhoanNavigation?.Department,
+                Username = examSubmission.User?.Username,
+                FullName = examSubmission.User?.FullName,
+                EmployeeCode = examSubmission.User?.EmployeeCode,
+                Department = examSubmission.User?.Department,
                 ExamId = examSubmission.ExamPaperId ?? 0,
                 ExamPaperId = examSubmission.ExamPaperId,
-                ExamPaperCode = examSubmission.IdDeThiNavigation?.ExamPaperCode,
-                ExamPaperName = examSubmission.IdDeThiNavigation?.ExamPaperName,
+                ExamPaperCode = examSubmission.ExamPaper?.ExamPaperCode,
+                ExamPaperName = examSubmission.ExamPaper?.ExamPaperName,
                 StartTime = examSubmission.StartTime,
                 SubmitTime = examSubmission.SubmitTime,
                 DurationMinutes = durationMinutes,
@@ -439,14 +439,14 @@ namespace BanTayVang.API.Services.Impl
                 CorrectAnswers = examSubmission.CorrectAnswers,
                 TotalQuestions = examSubmission.TotalQuestions,
                 Status = examSubmission.Status,
-                Pass = examSubmission.KyThiNavigation?.MinPassQuestions != null 
-                    ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.KyThiNavigation.MinPassQuestions.Value 
-                    : (examSubmission.IdDeThiNavigation?.MinPassQuestions != null 
-                        ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.IdDeThiNavigation.MinPassQuestions.Value 
+                Pass = examSubmission.ExamCampaign?.MinPassQuestions != null 
+                    ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamCampaign.MinPassQuestions.Value 
+                    : (examSubmission.ExamPaper?.MinPassQuestions != null 
+                        ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamPaper.MinPassQuestions.Value 
                         : true),
-                MinPassQuestions = examSubmission.KyThiNavigation?.MinPassQuestions ?? examSubmission.IdDeThiNavigation?.MinPassQuestions,
+                MinPassQuestions = examSubmission.ExamCampaign?.MinPassQuestions ?? examSubmission.ExamPaper?.MinPassQuestions,
                 SoCanhBao = examSubmission.TongSoCanhBao,
-                IsResultPublished = examSubmission.CongBoRieng || (examSubmission.IdDeThiNavigation?.IsResultPublished ?? false),
+                IsResultPublished = examSubmission.CongBoRieng || (examSubmission.ExamPaper?.IsResultPublished ?? false),
                 Answers = new List<AnswerDetailDto>()
             };
 
@@ -461,11 +461,11 @@ namespace BanTayVang.API.Services.Impl
 
             foreach (var group in answersByQuestion)
             {
-                var question = group.First().IdCauHoiNavigation;
+                var question = group.First().Question;
                 if (question == null) continue;
 
-                var categoryName = question.IdLoaiCauHoiNavigation?.CategoryName;
-                            var moTa = question.IdLoaiCauHoiNavigation?.Description;
+                var categoryName = question.QuestionCategory?.CategoryName;
+                            var description = question.QuestionCategory?.Description;
                 bool isEssay = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL";
 
                 if (isEssay)
@@ -503,9 +503,9 @@ namespace BanTayVang.API.Services.Impl
 
                 // Tạo chuỗi hiển thị cho các lựa chọn của thí sinh
                 var userChoiceTexts = group
-                    .Where(c => c.SelectedOptionId.HasValue && c.IdLuaChonDaChonNavigation != null)
-                    .OrderBy(c => c.IdLuaChonDaChonNavigation!.OrderIndex)
-                    .Select(c => c.IdLuaChonDaChonNavigation!.Content)
+                    .Where(c => c.SelectedOptionId.HasValue && c.SelectedOption != null)
+                    .OrderBy(c => c.SelectedOption!.OrderIndex)
+                    .Select(c => c.SelectedOption!.Content)
                     .ToList();
                 var userChoiceText = userChoiceTexts.Any() ? string.Join(", ", userChoiceTexts) : "";
 
@@ -524,10 +524,10 @@ namespace BanTayVang.API.Services.Impl
                 {
                     QuestionId = question.Id,
                     NoiDungCauHoi = question.Content,
-                    QuestionCategory = question.IdLoaiCauHoiNavigation?.CategoryName,
+                    QuestionCategory = question.QuestionCategory?.CategoryName,
                     SelectedOptionId = firstCt.SelectedOptionId, // Fallback
-                    NoiDungDapAn = isEssay ? firstCt.CauTraLoiTuLuan : userChoiceText,
-                    CauTraLoiTuLuan = firstCt.CauTraLoiTuLuan,
+                    NoiDungDapAn = isEssay ? firstCt.EssayAnswer : userChoiceText,
+                    EssayAnswer = firstCt.EssayAnswer,
                     IsCorrect = isFullyCorrect,
                     ScoreObtained = group.All(c => c.ScoreObtained == null) ? (double?)null : group.Sum(c => c.ScoreObtained ?? 0),
                     IdLuaChonDung = firstCorrectChoice?.Id, // Fallback
@@ -557,13 +557,13 @@ namespace BanTayVang.API.Services.Impl
             {
                 ExamSubmissionId = examSubmission.Id,
                 UserId = examSubmission.UserId,
-                Username = examSubmission.IdTaiKhoanNavigation?.Username,
-                FullName = examSubmission.IdTaiKhoanNavigation?.FullName,
-                EmployeeCode = examSubmission.IdTaiKhoanNavigation?.EmployeeCode,
-                Department = examSubmission.IdTaiKhoanNavigation?.Department,
+                Username = examSubmission.User?.Username,
+                FullName = examSubmission.User?.FullName,
+                EmployeeCode = examSubmission.User?.EmployeeCode,
+                Department = examSubmission.User?.Department,
                 ExamId = examSubmission.ExamPaperId ?? 0,
-                ExamPaperCode = examSubmission.ExamPaperCode ?? examSubmission.IdDeThiNavigation?.ExamPaperCode,
-                ExamPaperName = examSubmission.IdDeThiNavigation?.ExamPaperName,
+                ExamPaperCode = examSubmission.ExamPaperCode ?? examSubmission.ExamPaper?.ExamPaperCode,
+                ExamPaperName = examSubmission.ExamPaper?.ExamPaperName,
                 StartTime = examSubmission.StartTime,
                 SubmitTime = examSubmission.SubmitTime,
                 DurationMinutes = duration,
@@ -573,14 +573,14 @@ namespace BanTayVang.API.Services.Impl
                 CorrectAnswers = examSubmission.CorrectAnswers,
                 TotalQuestions = examSubmission.TotalQuestions,
                 Status = examSubmission.Status,
-                Pass = examSubmission.KyThiNavigation?.MinPassQuestions != null 
-                    ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.KyThiNavigation.MinPassQuestions.Value 
-                    : (examSubmission.IdDeThiNavigation?.MinPassQuestions != null 
-                        ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.IdDeThiNavigation.MinPassQuestions.Value 
+                Pass = examSubmission.ExamCampaign?.MinPassQuestions != null 
+                    ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamCampaign.MinPassQuestions.Value 
+                    : (examSubmission.ExamPaper?.MinPassQuestions != null 
+                        ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamPaper.MinPassQuestions.Value 
                         : true),
-                MinPassQuestions = examSubmission.KyThiNavigation?.MinPassQuestions ?? examSubmission.IdDeThiNavigation?.MinPassQuestions,
+                MinPassQuestions = examSubmission.ExamCampaign?.MinPassQuestions ?? examSubmission.ExamPaper?.MinPassQuestions,
                 SoCanhBao = examSubmission.TongSoCanhBao,
-                IsResultPublished = examSubmission.CongBoRieng || (examSubmission.IdDeThiNavigation?.IsResultPublished ?? false),
+                IsResultPublished = examSubmission.CongBoRieng || (examSubmission.ExamPaper?.IsResultPublished ?? false),
                 DanhGiaKhoa = examSubmission.DanhGiaKhoa,
             };
         }
@@ -620,9 +620,9 @@ namespace BanTayVang.API.Services.Impl
             {
                 var examSubmissions = await _context.ExamSubmissions
                     .IgnoreQueryFilters()
-                    .Include(b => b.IdTaiKhoanNavigation)
-                    .Include(b => b.IdDeThiNavigation)
-                    .Include(b => b.KyThiNavigation)
+                    .Include(b => b.User)
+                    .Include(b => b.ExamPaper)
+                    .Include(b => b.ExamCampaign)
                     .Where(b => b.ExamCampaignId == examCampaignId)
                     .OrderByDescending(b => b.TotalScore)
                     .ToListAsync();
@@ -666,11 +666,11 @@ namespace BanTayVang.API.Services.Impl
                         .Select(c => new {
                             c.ExamSubmissionId,
                             IsGraded = c.ScoreObtained != null,
-                            IsEssay = c.IdCauHoiNavigation != null 
-                                && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null 
-                                && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" 
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan"
-                                    || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL")
+                            IsEssay = c.Question != null 
+                                && c.Question.QuestionCategory != null 
+                                && (c.Question.QuestionCategory.CategoryName == "Tự luận" 
+                                    || c.Question.QuestionCategory.CategoryName == "TuLuan"
+                                    || c.Question.QuestionCategory.CategoryName == "TL")
                         })
                         .ToListAsync();
 
@@ -716,13 +716,13 @@ namespace BanTayVang.API.Services.Impl
                     {
                         ExamSubmissionId = b.Id,
                         ExamPaperId = b.ExamPaperId,
-                        Username = b.IdTaiKhoanNavigation?.Username,
-                        FullName = b.IdTaiKhoanNavigation?.FullName,
-                        EmployeeCode = b.IdTaiKhoanNavigation?.EmployeeCode,
-                        Department = b.IdTaiKhoanNavigation?.Department,
+                        Username = b.User?.Username,
+                        FullName = b.User?.FullName,
+                        EmployeeCode = b.User?.EmployeeCode,
+                        Department = b.User?.Department,
                         ExamId = b.ExamPaperId ?? 0,
                         ExamPaperCode = b.ExamPaperCode,
-                        ExamPaperName = b.IdDeThiNavigation?.ExamPaperName,
+                        ExamPaperName = b.ExamPaper?.ExamPaperName,
                         StartTime = b.StartTime,
                         SubmitTime = b.SubmitTime,
                         DurationMinutes = duration,
@@ -732,14 +732,14 @@ namespace BanTayVang.API.Services.Impl
                         CorrectAnswers = b.CorrectAnswers,
                         TotalQuestions = b.TotalQuestions,
                         Status = b.Status,
-                        Pass = b.KyThiNavigation?.MinPassQuestions != null 
-                            ? (b.CorrectAnswers ?? 0) >= b.KyThiNavigation.MinPassQuestions.Value 
-                            : (b.IdDeThiNavigation?.MinPassQuestions != null 
-                                ? (b.CorrectAnswers ?? 0) >= b.IdDeThiNavigation.MinPassQuestions.Value 
+                        Pass = b.ExamCampaign?.MinPassQuestions != null 
+                            ? (b.CorrectAnswers ?? 0) >= b.ExamCampaign.MinPassQuestions.Value 
+                            : (b.ExamPaper?.MinPassQuestions != null 
+                                ? (b.CorrectAnswers ?? 0) >= b.ExamPaper.MinPassQuestions.Value 
                                 : true),
-                        MinPassQuestions = b.KyThiNavigation?.MinPassQuestions ?? b.IdDeThiNavigation?.MinPassQuestions,
+                        MinPassQuestions = b.ExamCampaign?.MinPassQuestions ?? b.ExamPaper?.MinPassQuestions,
                         SoCanhBao = b.TongSoCanhBao,
-                        IsResultPublished = b.CongBoRieng || (b.IdDeThiNavigation?.IsResultPublished ?? false),
+                        IsResultPublished = b.CongBoRieng || (b.ExamPaper?.IsResultPublished ?? false),
                         SoLanThi = soLanThi,
                         SoLanGianLan = soLanGianLan,
                         SoLanThiLai = soLanThiLai,

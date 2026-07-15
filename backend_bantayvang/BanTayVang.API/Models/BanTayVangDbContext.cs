@@ -33,7 +33,7 @@ public partial class BanTayVangDbContext : DbContext
 
     public virtual DbSet<QuestionOption> QuestionOptions { get; set; }
 
-    public virtual DbSet<Phiendangnhap> Phiendangnhaps { get; set; }
+    public virtual DbSet<LoginSession> LoginSessions { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -74,15 +74,15 @@ public partial class BanTayVangDbContext : DbContext
             entity.Property(e => e.SubmitTime).HasColumnType("datetime");
             entity.Property(e => e.Status).HasMaxLength(50);
 
-            entity.HasOne(d => d.IdDeThiNavigation).WithMany(p => p.ExamSubmissions)
+            entity.HasOne(d => d.ExamPaper).WithMany(p => p.ExamSubmissions)
                 .HasForeignKey(d => d.ExamPaperId)
                 .HasConstraintName("FK__BAITHI__IdDeThi__52593CB8");
 
-            entity.HasOne(d => d.IdTaiKhoanNavigation).WithMany(p => p.ExamSubmissions)
+            entity.HasOne(d => d.User).WithMany(p => p.ExamSubmissions)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK__BAITHI__IdTaiKho__534D60F1");
 
-            entity.HasOne(d => d.KyThiNavigation).WithMany()
+            entity.HasOne(d => d.ExamCampaign).WithMany()
                 .HasForeignKey(d => d.ExamCampaignId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
@@ -98,7 +98,7 @@ public partial class BanTayVangDbContext : DbContext
             entity.Property(e => e.WarningType).HasMaxLength(100);
             entity.Property(e => e.ActionTime).HasColumnType("datetime");
 
-            entity.HasOne(d => d.IdBaiThiNavigation).WithMany(p => p.CheatWarnings)
+            entity.HasOne(d => d.ExamSubmission).WithMany(p => p.CheatWarnings)
                 .HasForeignKey(d => d.ExamSubmissionId)
                 .HasConstraintName("FK__CANHBAOGI__IdBai__5441852A");
         });
@@ -109,13 +109,13 @@ public partial class BanTayVangDbContext : DbContext
 
             
 
-            entity.Property(e => e.DaXoa).HasDefaultValue(false);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Difficulty).HasMaxLength(50);
             entity.Property(e => e.Department).HasMaxLength(100);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
 
-            entity.HasOne(d => d.IdLoaiCauHoiNavigation).WithMany(p => p.Questions)
+            entity.HasOne(d => d.QuestionCategory).WithMany(p => p.Questions)
                 .HasForeignKey(d => d.QuestionCategoryId)
                 .HasConstraintName("FK__CAUHOI__IdLoaiCa__5629CD9C");
         });
@@ -126,18 +126,18 @@ public partial class BanTayVangDbContext : DbContext
 
             
 
-            entity.Property(e => e.DaLuu).HasDefaultValue(false);
-            entity.Property(e => e.ThoiGianTraLoi).HasColumnType("datetime");
+            entity.Property(e => e.IsSaved).HasDefaultValue(false);
+            entity.Property(e => e.AnswerTime).HasColumnType("datetime");
 
-            entity.HasOne(d => d.IdBaiThiNavigation).WithMany(p => p.SubmissionDetails)
+            entity.HasOne(d => d.ExamSubmission).WithMany(p => p.SubmissionDetails)
                 .HasForeignKey(d => d.ExamSubmissionId)
                 .HasConstraintName("FK__CHITIETLA__IdBai__571DF1D5");
 
-            entity.HasOne(d => d.IdCauHoiNavigation).WithMany(p => p.SubmissionDetails)
+            entity.HasOne(d => d.Question).WithMany(p => p.SubmissionDetails)
                 .HasForeignKey(d => d.QuestionId)
                 .HasConstraintName("FK__CHITIETLA__IdCau__5812160E");
 
-            entity.HasOne(d => d.IdLuaChonDaChonNavigation).WithMany(p => p.SubmissionDetails)
+            entity.HasOne(d => d.SelectedOption).WithMany(p => p.SubmissionDetails)
                 .HasForeignKey(d => d.SelectedOptionId)
                 .HasConstraintName("FK__CHITIETLA__IdLua__59063A47");
         });
@@ -156,7 +156,7 @@ public partial class BanTayVangDbContext : DbContext
             entity.Property(e => e.Department).HasMaxLength(200);
             entity.Property(e => e.ChecksumData).HasMaxLength(500);
 
-            entity.HasOne(d => d.KyThiNavigation).WithMany()
+            entity.HasOne(d => d.ExamCampaign).WithMany()
                 .HasForeignKey(d => d.ExamCampaignId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
@@ -167,11 +167,11 @@ public partial class BanTayVangDbContext : DbContext
 
             
 
-            entity.HasOne(d => d.IdCauHoiNavigation).WithMany(p => p.ExamPaperQuestions)
+            entity.HasOne(d => d.Question).WithMany(p => p.ExamPaperQuestions)
                 .HasForeignKey(d => d.QuestionId)
                 .HasConstraintName("FK__DETHI_CAU__IdCau__59FA5E80");
 
-            entity.HasOne(d => d.IdDeThiNavigation).WithMany(p => p.ExamPaperQuestions)
+            entity.HasOne(d => d.ExamPaper).WithMany(p => p.ExamPaperQuestions)
                 .HasForeignKey(d => d.ExamPaperId)
                 .HasConstraintName("FK__DETHI_CAU__IdDeT__5AEE82B9");
         });
@@ -203,7 +203,7 @@ public partial class BanTayVangDbContext : DbContext
             entity.Property(e => e.Department).HasMaxLength(100);
             entity.Property(e => e.UserAgent).HasMaxLength(500);
 
-            entity.HasOne(d => d.IdBaiThiNavigation).WithMany(p => p.AuditLogs)
+            entity.HasOne(d => d.ExamSubmission).WithMany(p => p.AuditLogs)
                 .HasForeignKey(d => d.ExamSubmissionId)
                 .HasConstraintName("FK__LOGTHAOTA__IdBai__5BE2A6F2");
 
@@ -218,7 +218,7 @@ public partial class BanTayVangDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             
-            entity.Property(e => e.MaKhoa).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.DeptCode).IsRequired().HasMaxLength(50);
             entity.Property(e => e.DepartmentName).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
@@ -245,12 +245,12 @@ public partial class BanTayVangDbContext : DbContext
 
             
 
-            entity.HasOne(d => d.IdCauHoiNavigation).WithMany(p => p.QuestionOptions)
+            entity.HasOne(d => d.Question).WithMany(p => p.QuestionOptions)
                 .HasForeignKey(d => d.QuestionId)
                 .HasConstraintName("FK__LUACHON__IdCauHo__5CD6CB2B");
         });
 
-        modelBuilder.Entity<Phiendangnhap>(entity =>
+        modelBuilder.Entity<LoginSession>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__PHIENDAN__3214EC0786D0DC9F");
 
@@ -260,10 +260,10 @@ public partial class BanTayVangDbContext : DbContext
                 .HasMaxLength(50)
                 .HasColumnName("IP");
             
-            entity.Property(e => e.ThoiGianHetHan).HasColumnType("datetime");
-            entity.Property(e => e.ThoiGianTao).HasColumnType("datetime");
+            entity.Property(e => e.ExpiresAt).HasColumnType("datetime");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
 
-            entity.HasOne(d => d.IdTaiKhoanNavigation).WithMany(p => p.Phiendangnhaps)
+            entity.HasOne(d => d.User).WithMany(p => p.LoginSessions)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK__PHIENDANG__IdTai__5DCAEF64");
         });
@@ -290,11 +290,11 @@ public partial class BanTayVangDbContext : DbContext
 
             
 
-            entity.HasOne(d => d.IdTaiKhoanNavigation).WithMany(p => p.UserRoles)
+            entity.HasOne(d => d.User).WithMany(p => p.UserRoles)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK__TAIKHOAN___IdTai__5EBF139D");
 
-            entity.HasOne(d => d.IdVaiTroNavigation).WithMany(p => p.UserRoles)
+            entity.HasOne(d => d.Role).WithMany(p => p.UserRoles)
                 .HasForeignKey(d => d.RoleId)
                 .HasConstraintName("FK__TAIKHOAN___IdVai__5FB337D6");
         });

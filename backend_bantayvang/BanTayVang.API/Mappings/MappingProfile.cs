@@ -11,21 +11,21 @@ namespace BanTayVang.API.Mappings
         {
             // Question mappings
             CreateMap<Question, QuestionDto>()
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.IdLoaiCauHoiNavigation!.CategoryName))
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.QuestionCategory!.CategoryName))
                 .ForMember(dest => dest.Options, opt => opt.MapFrom(src => src.QuestionOptions))
                 .ForMember(dest => dest.Difficulty, opt => opt.MapFrom(src => 
                     src.Difficulty == "3" ? "Khó" : 
                     src.Difficulty == "2" ? "Trung bình" : "Dễ"))
                 .ForMember(dest => dest.Campaigns, opt => opt.MapFrom(src => 
                     src.ExamPaperQuestions
-                        .Where(dc => dc.IdDeThiNavigation != null && dc.IdDeThiNavigation.KyThiNavigation != null)
-                        .Select(dc => dc.IdDeThiNavigation!.KyThiNavigation!.CampaignName)
+                        .Where(dc => dc.ExamPaper != null && dc.ExamPaper.ExamCampaign != null)
+                        .Select(dc => dc.ExamPaper!.ExamCampaign!.CampaignName)
                         .Distinct()
                         .ToList()))
                 .ForMember(dest => dest.ExamPapers, opt => opt.MapFrom(src => 
                     src.ExamPaperQuestions
-                        .Where(dc => dc.IdDeThiNavigation != null)
-                        .Select(dc => dc.IdDeThiNavigation!.ExamPaperName)
+                        .Where(dc => dc.ExamPaper != null)
+                        .Select(dc => dc.ExamPaper!.ExamPaperName)
                         .Distinct()
                         .ToList()));
 
@@ -35,7 +35,7 @@ namespace BanTayVang.API.Mappings
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.UpdatedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.DaXoa, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.QuestionOptions, opt => opt.Ignore());
 
             CreateMap<UpdateQuestionDto, Question>()
@@ -43,7 +43,7 @@ namespace BanTayVang.API.Mappings
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.UpdatedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.DaXoa, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.QuestionOptions, opt => opt.Ignore());
 
             // QuestionOption mappings
@@ -57,7 +57,7 @@ namespace BanTayVang.API.Mappings
                 .ForMember(dest => dest.TotalQuestions, opt => opt.MapFrom(src => src.ExamPaperQuestions.Count))
                 .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Department))
                 .ForMember(dest => dest.IsResultPublished, opt => opt.MapFrom(src => src.IsResultPublished))
-                .ForMember(dest => dest.ThoiGianCongBo, opt => opt.MapFrom(src => src.ThoiGianCongBo))
+                .ForMember(dest => dest.PublishedAt, opt => opt.MapFrom(src => src.PublishedAt))
                 .ForMember(dest => dest.ExamCampaignId, opt => opt.MapFrom(src => src.ExamCampaignId))
                 .ForMember(dest => dest.MinPassQuestions, opt => opt.MapFrom(src => src.MinPassQuestions))
                 .ForMember(dest => dest.DanhSachCauHoi, opt => opt.Ignore());
@@ -81,15 +81,15 @@ namespace BanTayVang.API.Mappings
                 .ForMember(dest => dest.Options, opt => opt.MapFrom(src => src.QuestionOptions))
                 .ForMember(dest => dest.ThuTuCau, opt => opt.Ignore())
                 .ForMember(dest => dest.SelectedOptionId, opt => opt.Ignore())
-                .ForMember(dest => dest.CauTraLoiTuLuan, opt => opt.Ignore())
-                .ForMember(dest => dest.DaLuu, opt => opt.Ignore());
+                .ForMember(dest => dest.EssayAnswer, opt => opt.Ignore())
+                .ForMember(dest => dest.IsSaved, opt => opt.Ignore());
 
             CreateMap<QuestionOption, ExamChoiceDto>();
 
             // Answer mappings
             CreateMap<SubmitAnswerDto, SubmissionDetail>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.ThoiGianTraLoi, opt => opt.MapFrom(src => DateTime.Now))
+                .ForMember(dest => dest.AnswerTime, opt => opt.MapFrom(src => DateTime.Now))
                 .ForMember(dest => dest.ScoreObtained, opt => opt.Ignore());
         }
     }

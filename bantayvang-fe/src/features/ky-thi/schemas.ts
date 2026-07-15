@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const createKyThiSchema = z.object({
   campaignCode: z.string().min(1, 'Mã kỳ thi không được trống').max(50),
   campaignName: z.string().min(1, 'Tên kỳ thi không được trống').max(255),
-  moTa: z.string().max(1000).optional().or(z.literal('')),
+  description: z.string().max(1000).optional().or(z.literal('')),
   departmentId: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? null : Number(val),
     z.number().nullable().optional()
@@ -31,7 +31,7 @@ export const getKyThiSchema = (isEdit: boolean, initialStart?: string | null, in
   return z.object({
     campaignCode: z.string().min(1, 'Mã kỳ thi không được trống').max(50),
     campaignName: z.string().min(1, 'Tên kỳ thi không được trống').max(255),
-    moTa: z.string().max(1000).optional().or(z.literal('')),
+    description: z.string().max(1000).optional().or(z.literal('')),
     departmentId: z.preprocess(
       (val) => val === '' || val === null || val === undefined ? null : Number(val),
       z.number().nullable().optional()

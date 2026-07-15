@@ -37,16 +37,16 @@ namespace BanTayVang.API.Controllers
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 var examSubmission = await _db.ExamSubmissions
-                    .Include(b => b.IdTaiKhoanNavigation)
-                    .Include(b => b.IdDeThiNavigation)
-                    .Include(b => b.KyThiNavigation)
+                    .Include(b => b.User)
+                    .Include(b => b.ExamPaper)
+                    .Include(b => b.ExamCampaign)
                     .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
                 
                 if (examSubmission == null) return Forbid();
                 
-                bool isOwner = examSubmission.IdTaiKhoanNavigation?.Department == myKhoa ||
-                               examSubmission.IdDeThiNavigation?.Department == myKhoa ||
-                               examSubmission.KyThiNavigation?.OrganizedBy == myKhoa;
+                bool isOwner = examSubmission.User?.Department == myKhoa ||
+                               examSubmission.ExamPaper?.Department == myKhoa ||
+                               examSubmission.ExamCampaign?.OrganizedBy == myKhoa;
                                
                 if (!isOwner)
                 {
@@ -136,16 +136,16 @@ namespace BanTayVang.API.Controllers
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 var examSubmission = await _db.ExamSubmissions
-                    .Include(b => b.IdTaiKhoanNavigation)
-                    .Include(b => b.IdDeThiNavigation)
-                    .Include(b => b.KyThiNavigation)
+                    .Include(b => b.User)
+                    .Include(b => b.ExamPaper)
+                    .Include(b => b.ExamCampaign)
                     .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
                 
                 if (examSubmission == null) return Forbid();
                 
-                bool isOwner = examSubmission.IdTaiKhoanNavigation?.Department == myKhoa ||
-                               examSubmission.IdDeThiNavigation?.Department == myKhoa ||
-                               examSubmission.KyThiNavigation?.OrganizedBy == myKhoa;
+                bool isOwner = examSubmission.User?.Department == myKhoa ||
+                               examSubmission.ExamPaper?.Department == myKhoa ||
+                               examSubmission.ExamCampaign?.OrganizedBy == myKhoa;
                                
                 if (!isOwner)
                 {
@@ -170,37 +170,37 @@ namespace BanTayVang.API.Controllers
 
             var pendingQuery = _db.ExamSubmissions
                 .Where(b => b.Status == "Completed" || b.Status == "Submitted")
-                .Include(b => b.IdTaiKhoanNavigation)
-                .Include(b => b.IdDeThiNavigation)
-                .Include(b => b.KyThiNavigation)
+                .Include(b => b.User)
+                .Include(b => b.ExamPaper)
+                .Include(b => b.ExamCampaign)
                 .AsQueryable();
 
             if (!isGraded)
             {
                 pendingQuery = pendingQuery.Where(b => b.SubmissionDetails.Any(c =>
-                    c.IdCauHoiNavigation != null &&
-                    c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
-                    (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" ||
-                     c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan" ||
-                     c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL") &&
+                    c.Question != null &&
+                    c.Question.QuestionCategory != null &&
+                    (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
+                     c.Question.QuestionCategory.CategoryName == "TuLuan" ||
+                     c.Question.QuestionCategory.CategoryName == "TL") &&
                     c.ScoreObtained == null));
             }
             else
             {
                 pendingQuery = pendingQuery.Where(b => 
                     b.SubmissionDetails.Any(c =>
-                        c.IdCauHoiNavigation != null &&
-                        c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
-                        (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" ||
-                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan" ||
-                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL"))
+                        c.Question != null &&
+                        c.Question.QuestionCategory != null &&
+                        (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
+                         c.Question.QuestionCategory.CategoryName == "TuLuan" ||
+                         c.Question.QuestionCategory.CategoryName == "TL"))
                     && 
                     !b.SubmissionDetails.Any(c =>
-                        c.IdCauHoiNavigation != null &&
-                        c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
-                        (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" ||
-                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan" ||
-                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL") &&
+                        c.Question != null &&
+                        c.Question.QuestionCategory != null &&
+                        (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
+                         c.Question.QuestionCategory.CategoryName == "TuLuan" ||
+                         c.Question.QuestionCategory.CategoryName == "TL") &&
                         c.ScoreObtained == null));
             }
 
@@ -208,9 +208,9 @@ namespace BanTayVang.API.Controllers
             if (myKhoa != null)
             {
                 pendingQuery = pendingQuery.Where(b =>
-                    b.IdTaiKhoanNavigation!.Department == myKhoa ||
-                    b.IdDeThiNavigation!.Department == myKhoa ||
-                    b.KyThiNavigation!.OrganizedBy == myKhoa);
+                    b.User!.Department == myKhoa ||
+                    b.ExamPaper!.Department == myKhoa ||
+                    b.ExamCampaign!.OrganizedBy == myKhoa);
             }
 
             var examSubmissions = await pendingQuery
@@ -220,12 +220,12 @@ namespace BanTayVang.API.Controllers
                 {
                     ExamSubmissionId = b.Id,
                     UserId = b.UserId,
-                    Username = b.IdTaiKhoanNavigation!.Username,
-                    FullName = b.IdTaiKhoanNavigation.FullName,
-                    EmployeeCode = b.IdTaiKhoanNavigation.EmployeeCode,
-                    Department = b.IdTaiKhoanNavigation.Department,
+                    Username = b.User!.Username,
+                    FullName = b.User.FullName,
+                    EmployeeCode = b.User.EmployeeCode,
+                    Department = b.User.Department,
                     ExamPaperCode = b.ExamPaperCode,
-                    ExamPaperName = b.IdDeThiNavigation != null ? b.IdDeThiNavigation.ExamPaperName : null,
+                    ExamPaperName = b.ExamPaper != null ? b.ExamPaper.ExamPaperName : null,
                     SubmitTime = b.SubmitTime,
                     TotalScore = b.TotalScore,
                     CorrectAnswers = b.CorrectAnswers,
@@ -233,19 +233,19 @@ namespace BanTayVang.API.Controllers
                     Status = b.Status,
                     // Đếm số câu tự luận chưa chấm
                     SoCauTuLuanChuaCham = b.SubmissionDetails.Count(c =>
-                        c.IdCauHoiNavigation != null &&
-                        c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
-                        (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" ||
-                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan" ||
-                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL") &&
+                        c.Question != null &&
+                        c.Question.QuestionCategory != null &&
+                        (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
+                         c.Question.QuestionCategory.CategoryName == "TuLuan" ||
+                         c.Question.QuestionCategory.CategoryName == "TL") &&
                         c.ScoreObtained == null),
                     TongSoCauTuLuan = b.SubmissionDetails.Count(c =>
-                        c.IdCauHoiNavigation != null &&
-                        c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null &&
-                        (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" ||
-                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan" ||
-                         c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL")),
-                    CampaignName = b.KyThiNavigation != null ? b.KyThiNavigation.CampaignName : null,
+                        c.Question != null &&
+                        c.Question.QuestionCategory != null &&
+                        (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
+                         c.Question.QuestionCategory.CategoryName == "TuLuan" ||
+                         c.Question.QuestionCategory.CategoryName == "TL")),
+                    CampaignName = b.ExamCampaign != null ? b.ExamCampaign.CampaignName : null,
                 })
                 .ToListAsync();
 
@@ -267,20 +267,20 @@ namespace BanTayVang.API.Controllers
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 var detail = await _db.SubmissionDetails
-                    .Include(c => c.IdBaiThiNavigation)
-                        .ThenInclude(b => b.IdTaiKhoanNavigation)
-                    .Include(c => c.IdBaiThiNavigation)
-                        .ThenInclude(b => b.IdDeThiNavigation)
-                    .Include(c => c.IdBaiThiNavigation)
-                        .ThenInclude(b => b.KyThiNavigation)
+                    .Include(c => c.ExamSubmission)
+                        .ThenInclude(b => b.User)
+                    .Include(c => c.ExamSubmission)
+                        .ThenInclude(b => b.ExamPaper)
+                    .Include(c => c.ExamSubmission)
+                        .ThenInclude(b => b.ExamCampaign)
                     .FirstOrDefaultAsync(c => c.Id == dto.ChiTietLamBaiId);
                 
-                if (detail?.IdBaiThiNavigation == null) return Forbid();
+                if (detail?.ExamSubmission == null) return Forbid();
                 
-                var examSubmission = detail.IdBaiThiNavigation;
-                bool isOwner = examSubmission.IdTaiKhoanNavigation?.Department == myKhoa ||
-                               examSubmission.IdDeThiNavigation?.Department == myKhoa ||
-                               examSubmission.KyThiNavigation?.OrganizedBy == myKhoa;
+                var examSubmission = detail.ExamSubmission;
+                bool isOwner = examSubmission.User?.Department == myKhoa ||
+                               examSubmission.ExamPaper?.Department == myKhoa ||
+                               examSubmission.ExamCampaign?.OrganizedBy == myKhoa;
                                
                 if (!isOwner)
                 {
@@ -471,9 +471,9 @@ namespace BanTayVang.API.Controllers
             var baiThiIds = items.Select(i => i.ExamSubmissionId).ToList();
 
             var examSubmissions = await _db.ExamSubmissions
-                .Include(b => b.IdTaiKhoanNavigation)
-                .Include(b => b.IdDeThiNavigation)
-                .Include(b => b.KyThiNavigation)
+                .Include(b => b.User)
+                .Include(b => b.ExamPaper)
+                .Include(b => b.ExamCampaign)
                 .Where(b => baiThiIds.Contains(b.Id))
                 .ToListAsync();
 
@@ -494,9 +494,9 @@ namespace BanTayVang.API.Controllers
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 orderedBaithis = orderedBaithis.Where(x => 
-                    x.ExamSubmission.IdTaiKhoanNavigation?.Department == myKhoa ||
-                    x.ExamSubmission.IdDeThiNavigation?.Department == myKhoa ||
-                    x.ExamSubmission.KyThiNavigation?.OrganizedBy == myKhoa
+                    x.ExamSubmission.User?.Department == myKhoa ||
+                    x.ExamSubmission.ExamPaper?.Department == myKhoa ||
+                    x.ExamSubmission.ExamCampaign?.OrganizedBy == myKhoa
                 ).ToList();
             }
 
@@ -537,19 +537,19 @@ namespace BanTayVang.API.Controllers
                 var duration = (b.SubmitTime.HasValue && b.StartTime.HasValue)
                     ? (int)(b.SubmitTime.Value - b.StartTime.Value).TotalMinutes : 0;
 
-                var isPass = b.KyThiNavigation?.MinPassQuestions != null 
-                    ? (b.CorrectAnswers ?? 0) >= b.KyThiNavigation.MinPassQuestions.Value 
-                    : (b.IdDeThiNavigation?.MinPassQuestions != null 
-                        ? (b.CorrectAnswers ?? 0) >= b.IdDeThiNavigation.MinPassQuestions.Value 
+                var isPass = b.ExamCampaign?.MinPassQuestions != null 
+                    ? (b.CorrectAnswers ?? 0) >= b.ExamCampaign.MinPassQuestions.Value 
+                    : (b.ExamPaper?.MinPassQuestions != null 
+                        ? (b.CorrectAnswers ?? 0) >= b.ExamPaper.MinPassQuestions.Value 
                         : true);
 
                 ws.Cell(row, 1).Value = stt++;
-                ws.Cell(row, 2).Value = b.IdTaiKhoanNavigation?.Username ?? "";
-                ws.Cell(row, 3).Value = b.IdTaiKhoanNavigation?.FullName ?? "";
-                ws.Cell(row, 4).Value = b.IdTaiKhoanNavigation?.EmployeeCode ?? "";
-                ws.Cell(row, 5).Value = b.IdTaiKhoanNavigation?.Department ?? "";
-                ws.Cell(row, 6).Value = b.ExamPaperCode ?? b.IdDeThiNavigation?.ExamPaperCode ?? "";
-                ws.Cell(row, 7).Value = b.IdDeThiNavigation?.ExamPaperName ?? "";
+                ws.Cell(row, 2).Value = b.User?.Username ?? "";
+                ws.Cell(row, 3).Value = b.User?.FullName ?? "";
+                ws.Cell(row, 4).Value = b.User?.EmployeeCode ?? "";
+                ws.Cell(row, 5).Value = b.User?.Department ?? "";
+                ws.Cell(row, 6).Value = b.ExamPaperCode ?? b.ExamPaper?.ExamPaperCode ?? "";
+                ws.Cell(row, 7).Value = b.ExamPaper?.ExamPaperName ?? "";
                 ws.Cell(row, 8).Value = b.StartTime?.ToString("dd/MM/yyyy HH:mm") ?? "";
                 ws.Cell(row, 9).Value = b.SubmitTime?.ToString("dd/MM/yyyy HH:mm") ?? "";
                 ws.Cell(row, 10).Value = duration;
@@ -560,7 +560,7 @@ namespace BanTayVang.API.Controllers
                 ws.Cell(row, 15).Value = x.Item.LanThi;
                 ws.Cell(row, 16).Value = isPass ? "Đạt" : "Không đạt";
                 ws.Cell(row, 17).Value = b.TongSoCanhBao ?? 0;
-                ws.Cell(row, 18).Value = (b.CongBoRieng || (b.IdDeThiNavigation?.IsResultPublished ?? false)) ? "Đã công bố" : "Chưa công bố";
+                ws.Cell(row, 18).Value = (b.CongBoRieng || (b.ExamPaper?.IsResultPublished ?? false)) ? "Đã công bố" : "Chưa công bố";
                 row++;
             }
 
@@ -624,16 +624,16 @@ namespace BanTayVang.API.Controllers
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 var examSubmission = await _db.ExamSubmissions
-                    .Include(b => b.IdTaiKhoanNavigation)
-                    .Include(b => b.IdDeThiNavigation)
-                    .Include(b => b.KyThiNavigation)
+                    .Include(b => b.User)
+                    .Include(b => b.ExamPaper)
+                    .Include(b => b.ExamCampaign)
                     .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
                 
                 if (examSubmission == null) return Forbid();
                 
-                bool isOwner = examSubmission.IdTaiKhoanNavigation?.Department == myKhoa ||
-                               examSubmission.IdDeThiNavigation?.Department == myKhoa ||
-                               examSubmission.KyThiNavigation?.OrganizedBy == myKhoa;
+                bool isOwner = examSubmission.User?.Department == myKhoa ||
+                               examSubmission.ExamPaper?.Department == myKhoa ||
+                               examSubmission.ExamCampaign?.OrganizedBy == myKhoa;
                                
                 if (!isOwner)
                 {
@@ -660,7 +660,7 @@ namespace BanTayVang.API.Controllers
         public async Task<IActionResult> PublishSingle(int examSubmissionId)
         {
             var examSubmission = await _db.ExamSubmissions
-                .Include(b => b.IdDeThiNavigation)
+                .Include(b => b.ExamPaper)
                 .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
             if (examSubmission == null)
@@ -672,28 +672,28 @@ namespace BanTayVang.API.Controllers
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 
                 var baithiFull = await _db.ExamSubmissions
-                    .Include(b => b.IdTaiKhoanNavigation)
-                    .Include(b => b.IdDeThiNavigation)
-                    .Include(b => b.KyThiNavigation)
+                    .Include(b => b.User)
+                    .Include(b => b.ExamPaper)
+                    .Include(b => b.ExamCampaign)
                     .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
-                bool isOwner = baithiFull?.IdTaiKhoanNavigation?.Department == myKhoa ||
-                               baithiFull?.IdDeThiNavigation?.Department == myKhoa ||
-                               baithiFull?.KyThiNavigation?.OrganizedBy == myKhoa;
+                bool isOwner = baithiFull?.User?.Department == myKhoa ||
+                               baithiFull?.ExamPaper?.Department == myKhoa ||
+                               baithiFull?.ExamCampaign?.OrganizedBy == myKhoa;
                                
                 if (!isOwner) return Forbid();
             }
 
             examSubmission.CongBoRieng = true;
-            examSubmission.ThoiGianCongBoRieng = DateTime.Now;
+            examSubmission.IndividualPublishedAt = DateTime.Now;
             var nguoiCongBo = DepartmentAuthHelper.GetUserId(User);
             examSubmission.NguoiCongBoRieng = nguoiCongBo;
 
             var hasUngraded = await _db.SubmissionDetails
                 .AnyAsync(c => c.ExamSubmissionId == examSubmissionId
-                            && c.IdCauHoiNavigation != null
-                            && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null
-                            && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan" || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL")
+                            && c.Question != null
+                            && c.Question.QuestionCategory != null
+                            && (c.Question.QuestionCategory.CategoryName == "Tự luận" || c.Question.QuestionCategory.CategoryName == "TuLuan" || c.Question.QuestionCategory.CategoryName == "TL")
                             && c.ScoreObtained == null);
             if (hasUngraded)
             {
@@ -718,7 +718,7 @@ namespace BanTayVang.API.Controllers
         public async Task<IActionResult> UnpublishSingle(int examSubmissionId)
         {
             var examSubmission = await _db.ExamSubmissions
-                .Include(b => b.IdDeThiNavigation)
+                .Include(b => b.ExamPaper)
                 .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
             if (examSubmission == null)
@@ -727,12 +727,12 @@ namespace BanTayVang.API.Controllers
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                if (examSubmission.IdDeThiNavigation?.Department != myKhoa)
+                if (examSubmission.ExamPaper?.Department != myKhoa)
                     return Forbid();
             }
 
             examSubmission.CongBoRieng = false;
-            examSubmission.ThoiGianCongBoRieng = null;
+            examSubmission.IndividualPublishedAt = null;
             examSubmission.NguoiCongBoRieng = null;
 
             await _db.SaveChangesAsync();

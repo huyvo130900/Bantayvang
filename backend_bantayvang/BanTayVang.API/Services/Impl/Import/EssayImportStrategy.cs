@@ -76,7 +76,7 @@ namespace BanTayVang.API.Services.Impl.Import
                         Difficulty = difficulty,
                         CreatedBy = createdBy,
                         CreatedAt = DateTime.Now,
-                        DaXoa = false,
+                        IsDeleted = false,
                         Department = department,
                         QuestionOptions = new List<QuestionOption>() // Không có lựa chọn cho tự luận
                     };

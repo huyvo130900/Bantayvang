@@ -429,8 +429,8 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 var query = _context.Questions
-                    .Include(c => c.IdLoaiCauHoiNavigation)
-                    .Where(q => q.DaXoa != true);
+                    .Include(c => c.QuestionCategory)
+                    .Where(q => q.IsDeleted != true);
 
                 if (!string.IsNullOrEmpty(targetKhoaPhong))
                 {
@@ -444,7 +444,7 @@ namespace BanTayVang.API.Services.Impl
                     .ToList();
 
                 // Group and count questions
-                bool IsEssay(Question q) => q.QuestionCategoryId == 3 || (q.IdLoaiCauHoiNavigation != null && q.IdLoaiCauHoiNavigation.CategoryName != null && q.IdLoaiCauHoiNavigation.CategoryName.ToLower().Contains("tự luận"));
+                bool IsEssay(Question q) => q.QuestionCategoryId == 3 || (q.QuestionCategory != null && q.QuestionCategory.CategoryName != null && q.QuestionCategory.CategoryName.ToLower().Contains("tự luận"));
                 bool IsMC(Question q) => !IsEssay(q);
 
                 string NormalizeDifficulty(string? difficulty)
@@ -609,8 +609,8 @@ namespace BanTayVang.API.Services.Impl
 
                 // 3. Fetch questions matching criteria
                 var query = _context.Questions
-                    .Include(c => c.IdLoaiCauHoiNavigation)
-                    .Where(q => q.DaXoa != true);
+                    .Include(c => c.QuestionCategory)
+                    .Where(q => q.IsDeleted != true);
 
                 if (!string.IsNullOrEmpty(targetKhoaPhong))
                     query = query.Where(q => q.Department == targetKhoaPhong);
@@ -621,7 +621,7 @@ namespace BanTayVang.API.Services.Impl
                     .Select(g => g.First())
                     .ToList();
 
-                bool IsEssay(Question q) => q.QuestionCategoryId == 3 || (q.IdLoaiCauHoiNavigation != null && q.IdLoaiCauHoiNavigation.CategoryName != null && q.IdLoaiCauHoiNavigation.CategoryName.ToLower().Contains("tự luận"));
+                bool IsEssay(Question q) => q.QuestionCategoryId == 3 || (q.QuestionCategory != null && q.QuestionCategory.CategoryName != null && q.QuestionCategory.CategoryName.ToLower().Contains("tự luận"));
                 bool IsMC(Question q) => !IsEssay(q);
 
                 string NormalizeDifficulty(string? difficulty)

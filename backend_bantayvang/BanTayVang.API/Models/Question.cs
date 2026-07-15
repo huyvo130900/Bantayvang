@@ -19,7 +19,7 @@ public partial class Question
 
     public int? UpdatedBy { get; set; }
 
-    public bool? DaXoa { get; set; }
+    public bool? IsDeleted { get; set; }
 
     public string? Difficulty { get; set; }
 
@@ -31,7 +31,7 @@ public partial class Question
 
     public virtual ICollection<ExamPaperQuestion> ExamPaperQuestions { get; set; } = new List<ExamPaperQuestion>();
 
-    public virtual QuestionCategory? IdLoaiCauHoiNavigation { get; set; }
+    public virtual QuestionCategory? QuestionCategory { get; set; }
 
     public virtual ICollection<QuestionOption> QuestionOptions { get; set; } = new List<QuestionOption>();
 }

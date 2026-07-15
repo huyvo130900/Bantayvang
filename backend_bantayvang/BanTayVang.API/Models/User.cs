@@ -46,7 +46,7 @@ public partial class User
 
     public virtual ICollection<ExamSubmission> ExamSubmissions { get; set; } = new List<ExamSubmission>();
 
-    public virtual ICollection<Phiendangnhap> Phiendangnhaps { get; set; } = new List<Phiendangnhap>();
+    public virtual ICollection<LoginSession> LoginSessions { get; set; } = new List<LoginSession>();
 
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 }

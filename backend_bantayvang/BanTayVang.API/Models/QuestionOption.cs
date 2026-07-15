@@ -17,5 +17,5 @@ public partial class QuestionOption
 
     public virtual ICollection<SubmissionDetail> SubmissionDetails { get; set; } = new List<SubmissionDetail>();
 
-    public virtual Question? IdCauHoiNavigation { get; set; }
+    public virtual Question? Question { get; set; }
 }

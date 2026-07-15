@@ -5,7 +5,7 @@ namespace BanTayVang.API.DTOs.Department
     public class DepartmentDto
     {
         public int Id { get; set; }
-        public string MaKhoa { get; set; } = string.Empty;
+        public string DeptCode { get; set; } = string.Empty;
         public string DepartmentName { get; set; } = string.Empty;
         public string? Description { get; set; }
         public bool Status { get; set; }
@@ -19,7 +19,7 @@ namespace BanTayVang.API.DTOs.Department
     {
         [Required]
         [StringLength(50)]
-        public string MaKhoa { get; set; } = string.Empty;
+        public string DeptCode { get; set; } = string.Empty;
 
         [Required]
         [StringLength(255)]

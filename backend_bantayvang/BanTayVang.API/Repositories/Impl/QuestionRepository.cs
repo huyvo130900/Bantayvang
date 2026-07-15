@@ -19,29 +19,29 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<Question?> GetByIdAsync(int id)
         {
             return await _context.Questions
-                .Include(c => c.IdLoaiCauHoiNavigation)
+                .Include(c => c.QuestionCategory)
                 .Include(c => c.QuestionOptions)
                 .Include(c => c.ExamPaperQuestions)
-                    .ThenInclude(dc => dc.IdDeThiNavigation)
-                        .ThenInclude(d => d.KyThiNavigation)
-                .FirstOrDefaultAsync(c => c.Id == id && c.DaXoa != true);
+                    .ThenInclude(dc => dc.ExamPaper)
+                        .ThenInclude(d => d.ExamCampaign)
+                .FirstOrDefaultAsync(c => c.Id == id && c.IsDeleted != true);
         }
 
         public async Task<IEnumerable<Question>> GetAllAsync()
         {
             return await _context.Questions
-                .Include(c => c.IdLoaiCauHoiNavigation)
+                .Include(c => c.QuestionCategory)
                 .Include(c => c.QuestionOptions)
-                .Where(c => c.DaXoa != true)
+                .Where(c => c.IsDeleted != true)
                 .ToListAsync();
         }
 
         public async Task<PagedResultDto<Question>> GetPagedAsync(int pageNumber, int pageSize)
         {
             var query = _context.Questions
-                .Include(c => c.IdLoaiCauHoiNavigation)
+                .Include(c => c.QuestionCategory)
                 .Include(c => c.QuestionOptions)
-                .Where(c => c.DaXoa != true);
+                .Where(c => c.IsDeleted != true);
 
             var totalRecords = await query.CountAsync();
             var items = await query
@@ -65,12 +65,12 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<PagedResultDto<Question>> GetFilteredAsync(QuestionFilterDto filter)
         {
             var query = _context.Questions
-                .Include(c => c.IdLoaiCauHoiNavigation)
+                .Include(c => c.QuestionCategory)
                 .Include(c => c.QuestionOptions)
                 .Include(c => c.ExamPaperQuestions)
-                    .ThenInclude(dc => dc.IdDeThiNavigation)
-                        .ThenInclude(d => d.KyThiNavigation)
-                .Where(c => c.DaXoa != true);
+                    .ThenInclude(dc => dc.ExamPaper)
+                        .ThenInclude(d => d.ExamCampaign)
+                .Where(c => c.IsDeleted != true);
 
             // Apply filters
             if (filter.QuestionCategoryId.HasValue)
@@ -99,7 +99,7 @@ namespace BanTayVang.API.Repositories.Impl
 
             if (filter.ExamCampaignId.HasValue)
             {
-                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.IdDeThiNavigation != null && dc.IdDeThiNavigation.ExamCampaignId == filter.ExamCampaignId.Value));
+                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.ExamPaper != null && dc.ExamPaper.ExamCampaignId == filter.ExamCampaignId.Value));
             }
 
             if (filter.DeThiId.HasValue)
@@ -111,7 +111,7 @@ namespace BanTayVang.API.Repositories.Impl
             {
                 query = query.Where(c => !string.IsNullOrEmpty(c.Content) && _context.Questions.Any(other => 
                     other.Id != c.Id && 
-                    other.DaXoa != true && 
+                    other.IsDeleted != true && 
                     other.Department == c.Department && 
                     !string.IsNullOrEmpty(other.Content) && 
                     other.Content.Trim().ToLower() == c.Content.Trim().ToLower()
@@ -139,7 +139,7 @@ namespace BanTayVang.API.Repositories.Impl
 
         public async Task<int> GetFilteredCountAsync(QuestionFilterDto filter)
         {
-            var query = _context.Questions.Where(c => c.DaXoa != true);
+            var query = _context.Questions.Where(c => c.IsDeleted != true);
 
             if (filter.QuestionCategoryId.HasValue)
                 query = query.Where(c => c.QuestionCategoryId == filter.QuestionCategoryId);
@@ -167,7 +167,7 @@ namespace BanTayVang.API.Repositories.Impl
 
             if (filter.ExamCampaignId.HasValue)
             {
-                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.IdDeThiNavigation != null && dc.IdDeThiNavigation.ExamCampaignId == filter.ExamCampaignId.Value));
+                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.ExamPaper != null && dc.ExamPaper.ExamCampaignId == filter.ExamCampaignId.Value));
             }
 
             if (filter.DeThiId.HasValue)
@@ -179,7 +179,7 @@ namespace BanTayVang.API.Repositories.Impl
             {
                 query = query.Where(c => !string.IsNullOrEmpty(c.Content) && _context.Questions.Any(other => 
                     other.Id != c.Id && 
-                    other.DaXoa != true && 
+                    other.IsDeleted != true && 
                     other.Department == c.Department && 
                     !string.IsNullOrEmpty(other.Content) && 
                     other.Content.Trim().ToLower() == c.Content.Trim().ToLower()
@@ -193,7 +193,7 @@ namespace BanTayVang.API.Repositories.Impl
         {
             var khoa = string.IsNullOrEmpty(department) ? null : department.Trim();
             return await _context.Questions
-                .FirstOrDefaultAsync(c => c.DaXoa != true
+                .FirstOrDefaultAsync(c => c.IsDeleted != true
                     && c.Content != null
                     && c.Content.ToLower().Trim() == noiDungChuan
                     && (khoa == null ? (c.Department == null || c.Department == "") : c.Department == khoa));
@@ -203,17 +203,17 @@ namespace BanTayVang.API.Repositories.Impl
         {
             return await _context.Questions
                 .Include(c => c.QuestionOptions)
-                .Include(c => c.IdLoaiCauHoiNavigation)
+                .Include(c => c.QuestionCategory)
                 .Include(c => c.ExamPaperQuestions)
-                    .ThenInclude(dc => dc.IdDeThiNavigation)
-                        .ThenInclude(d => d.KyThiNavigation)
-                .FirstOrDefaultAsync(c => c.Id == id && c.DaXoa != true);
+                    .ThenInclude(dc => dc.ExamPaper)
+                        .ThenInclude(d => d.ExamCampaign)
+                .FirstOrDefaultAsync(c => c.Id == id && c.IsDeleted != true);
         }
 
         public async Task<List<int>> GetValidQuestionIdsAsync(List<int> questionIds)
         {
             return await _context.Questions
-                .Where(c => questionIds.Contains(c.Id) && c.DaXoa != true)
+                .Where(c => questionIds.Contains(c.Id) && c.IsDeleted != true)
                 .Select(c => c.Id)
                 .ToListAsync();
         }
@@ -226,7 +226,7 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<Question> AddAsync(Question entity)
         {
             entity.CreatedAt = DateTime.Now;
-            entity.DaXoa = false;
+            entity.IsDeleted = false;
             _context.Questions.Add(entity);
             await _context.SaveChangesAsync();
             return entity;
@@ -255,7 +255,7 @@ namespace BanTayVang.API.Repositories.Impl
             var entity = await _context.Questions.FindAsync(id);
             if (entity == null) return false;
             
-            entity.DaXoa = true;
+            entity.IsDeleted = true;
             entity.UpdatedAt = DateTime.Now;
             entity.UpdatedBy = updatedBy;
             await _context.SaveChangesAsync();
@@ -264,14 +264,14 @@ namespace BanTayVang.API.Repositories.Impl
 
         public async Task<bool> ExistsAsync(int id)
         {
-            return await _context.Questions.AnyAsync(c => c.Id == id && c.DaXoa != true);
+            return await _context.Questions.AnyAsync(c => c.Id == id && c.IsDeleted != true);
         }
 
         public async Task<List<Question>> GetByKhoaPhongAsync(string department)
         {
             return await _context.Questions
                 .Include(c => c.QuestionOptions)
-                .Where(c => c.Department == department && c.DaXoa != true)
+                .Where(c => c.Department == department && c.IsDeleted != true)
                 .ToListAsync();
         }
 
@@ -279,7 +279,7 @@ namespace BanTayVang.API.Repositories.Impl
         {
             var query = _context.Questions
                 .Include(c => c.QuestionOptions)
-                .Where(c => c.DaXoa != true && c.Department != "Không thuộc ngân hàng");
+                .Where(c => c.IsDeleted != true && c.Department != "Không thuộc ngân hàng");
                 
             return await query
                 .OrderBy(x => Guid.NewGuid())

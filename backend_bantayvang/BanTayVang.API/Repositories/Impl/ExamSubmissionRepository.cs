@@ -22,7 +22,7 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<List<ExamSubmission>> GetByTaiKhoanAsync(int userId)
         {
             return await _dbSet
-                .Include(b => b.IdDeThiNavigation)
+                .Include(b => b.ExamPaper)
                 .Where(b => b.UserId == userId)
                 .OrderByDescending(b => b.SubmitTime)
                 .ToListAsync();
@@ -31,8 +31,8 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<ExamSubmission?> GetWithDetailsAsync(int id)
         {
             return await _dbSet
-                .Include(b => b.IdDeThiNavigation)
-                .Include(b => b.IdTaiKhoanNavigation)
+                .Include(b => b.ExamPaper)
+                .Include(b => b.User)
                 .Include(b => b.SubmissionDetails)
                 .Include(b => b.CheatWarnings)
                 .FirstOrDefaultAsync(b => b.Id == id);
@@ -64,20 +64,20 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<List<ExamSubmission>> GetExpiredInProgressExamsAsync()
         {
             return await _dbSet
-                .Include(b => b.IdDeThiNavigation)
+                .Include(b => b.ExamPaper)
                 .Where(b => b.Status == "InProgress" 
-                         && b.IdDeThiNavigation != null
-                         && b.IdDeThiNavigation.DurationMinutes != null
+                         && b.ExamPaper != null
+                         && b.ExamPaper.DurationMinutes != null
                          && b.StartTime != null
-                         && DateTime.Now > b.StartTime.Value.AddMinutes(b.IdDeThiNavigation.DurationMinutes.Value))
+                         && DateTime.Now > b.StartTime.Value.AddMinutes(b.ExamPaper.DurationMinutes.Value))
                 .ToListAsync();
         }
 
         public async Task<ExamSubmission?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _dbSet
-                .Include(b => b.IdDeThiNavigation)
-                .Include(b => b.IdTaiKhoanNavigation)
+                .Include(b => b.ExamPaper)
+                .Include(b => b.User)
                 .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
         }
 
@@ -90,7 +90,7 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<List<ExamSubmission>> GetActiveSessionsByExamAsync(int examId)
         {
             return await _dbSet
-                .Include(b => b.IdTaiKhoanNavigation)
+                .Include(b => b.User)
                 .Where(b => b.ExamPaperId == examId && b.Status == "InProgress")
                 .ToListAsync();
         }
