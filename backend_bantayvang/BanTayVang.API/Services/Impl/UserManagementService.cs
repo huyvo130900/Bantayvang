@@ -142,7 +142,7 @@ namespace BanTayVang.API.Services.Impl
                     CreatedAt = DateTime.Now,
                     DeptManagerDeptId = createDto.RoleId == 5 ? createDto.DeptManagerDeptId : null,
                     Email = createDto.Email,
-                    SoDienThoai = createDto.SoDienThoai
+                    PhoneNumber = createDto.PhoneNumber
                 };
 
                 // Add to role mapping table to maintain database integrity
@@ -238,7 +238,7 @@ namespace BanTayVang.API.Services.Impl
                 user.Status = updateDto.Status;
                 user.UpdatedAt = DateTime.Now;
                 user.Email = updateDto.Email;
-                user.SoDienThoai = updateDto.SoDienThoai;
+                user.PhoneNumber = updateDto.PhoneNumber;
 
                 // Handle new department manager assignment
                 if (updateDto.RoleId == 5 && updateDto.DeptManagerDeptId.HasValue)
@@ -570,7 +570,7 @@ namespace BanTayVang.API.Services.Impl
                 LanDangNhapCuoi = u.LanDangNhapCuoi,
                 IsDeleted = u.IsDeleted,
                 Email = u.Email,
-                SoDienThoai = u.SoDienThoai
+                PhoneNumber = u.PhoneNumber
             };
         }
 
@@ -695,7 +695,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 using var stream = file.OpenReadStream();
-                var rawRows = new List<(int Row, string EmployeeCode, string Password, string FullName, string JobTitle, string Department, string VaiTroStr, string SoDienThoai, string Email)>();
+                var rawRows = new List<(int Row, string EmployeeCode, string Password, string FullName, string JobTitle, string Department, string VaiTroStr, string PhoneNumber, string Email)>();
 
                 if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                 {
@@ -765,7 +765,7 @@ namespace BanTayVang.API.Services.Impl
                             JobTitle: colChucDanh >= 0 && colChucDanh < csv.Parser.Count ? csv.GetField(colChucDanh)?.Trim() ?? string.Empty : string.Empty,
                             Department: colKhoaPhong >= 0 && colKhoaPhong < csv.Parser.Count ? csv.GetField(colKhoaPhong)?.Trim() ?? string.Empty : string.Empty,
                             VaiTroStr: colVaiTro >= 0 && colVaiTro < csv.Parser.Count ? csv.GetField(colVaiTro)?.Trim() ?? string.Empty : string.Empty,
-                            SoDienThoai: colSoDienThoai >= 0 && colSoDienThoai < csv.Parser.Count ? csv.GetField(colSoDienThoai)?.Trim() ?? string.Empty : string.Empty,
+                            PhoneNumber: colSoDienThoai >= 0 && colSoDienThoai < csv.Parser.Count ? csv.GetField(colSoDienThoai)?.Trim() ?? string.Empty : string.Empty,
                             Email: colEmail >= 0 && colEmail < csv.Parser.Count ? csv.GetField(colEmail)?.Trim() ?? string.Empty : string.Empty
                         ));
                     }
@@ -829,7 +829,7 @@ namespace BanTayVang.API.Services.Impl
                             JobTitle: colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty,
                             Department: colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty,
                             VaiTroStr: colVaiTro > 0 ? ws.Cell(row, colVaiTro).GetString().Trim() : string.Empty,
-                            SoDienThoai: colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty,
+                            PhoneNumber: colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty,
                             Email: colEmail > 0 ? ws.Cell(row, colEmail).GetString().Trim() : string.Empty
                         ));
                     }
@@ -846,7 +846,7 @@ namespace BanTayVang.API.Services.Impl
                     var jobTitle = r.JobTitle;
                     var department = r.Department;
                     var vaiTroStr = r.VaiTroStr;
-                    var soDienThoai = r.SoDienThoai;
+                    var phoneNumber = r.PhoneNumber;
                     var email = r.Email;
 
                     // If all columns are empty, skip row
@@ -856,7 +856,7 @@ namespace BanTayVang.API.Services.Impl
                         string.IsNullOrWhiteSpace(jobTitle) &&
                         string.IsNullOrWhiteSpace(department) &&
                         string.IsNullOrWhiteSpace(vaiTroStr) &&
-                        string.IsNullOrWhiteSpace(soDienThoai) &&
+                        string.IsNullOrWhiteSpace(phoneNumber) &&
                         string.IsNullOrWhiteSpace(email))
                     {
                         continue;
@@ -963,7 +963,7 @@ namespace BanTayVang.API.Services.Impl
                         DeptManagerDeptId = idKhoaQuanLy,
                         Status = true,
                         CreatedAt = DateTime.Now,
-                        SoDienThoai = string.IsNullOrWhiteSpace(soDienThoai) ? null : soDienThoai,
+                        PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber,
                         Email = string.IsNullOrWhiteSpace(email) ? null : email
                     };
 

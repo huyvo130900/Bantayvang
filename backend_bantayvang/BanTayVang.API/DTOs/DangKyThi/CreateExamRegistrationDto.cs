@@ -12,7 +12,7 @@ namespace BanTayVang.API.DTOs.ExamRegistration
         public string Cccd { get; set; } = null!;
 
         [Required(ErrorMessage = "Số điện thoại là bắt buộc")]
-        public string SoDienThoai { get; set; } = null!;
+        public string PhoneNumber { get; set; } = null!;
 
         public string? Email { get; set; }
 

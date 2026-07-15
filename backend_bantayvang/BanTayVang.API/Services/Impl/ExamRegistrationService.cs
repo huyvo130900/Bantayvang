@@ -45,7 +45,7 @@ namespace BanTayVang.API.Services.Impl
             {
                 FullName = dto.FullName,
                 Cccd = dto.Cccd,
-                SoDienThoai = dto.SoDienThoai,
+                PhoneNumber = dto.PhoneNumber,
                 Email = dto.Email,
                 MatKhauHash = hashedPw,
                 WorkUnit = dto.WorkUnit,
@@ -92,7 +92,7 @@ namespace BanTayVang.API.Services.Impl
                 Username = reg.Cccd, // CCCD làm username
                 Password = reg.MatKhauHash, // Đã hash lúc nộp form
                 FullName = reg.FullName,
-                SoDienThoai = reg.SoDienThoai,
+                PhoneNumber = reg.PhoneNumber,
                 Email = reg.Email,
                 JobTitle = reg.ChuyenNganh,
                 // Department là string trong User table. We need the name of Khoa.
@@ -161,7 +161,7 @@ namespace BanTayVang.API.Services.Impl
                 Id = entity.Id,
                 FullName = entity.FullName,
                 Cccd = entity.Cccd,
-                SoDienThoai = entity.SoDienThoai,
+                PhoneNumber = entity.PhoneNumber,
                 Email = entity.Email,
                 WorkUnit = entity.WorkUnit,
                 ChuyenNganh = entity.ChuyenNganh,

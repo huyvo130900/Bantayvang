@@ -85,7 +85,7 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
                   <span className="text-gray-600">{user.department || '—'}</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.soDienThoai || '—'}</td>
+              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.phoneNumber || '—'}</td>
               <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.email || '—'}</td>
               <td className="px-4 py-3">
                 <RoleBadge role={user.tenVaiTro} />

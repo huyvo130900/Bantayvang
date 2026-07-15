@@ -281,7 +281,7 @@ public partial class BanTayVangDbContext : DbContext
             entity.Property(e => e.Password).HasMaxLength(255);
             entity.Property(e => e.Username).HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(255);
-            entity.Property(e => e.SoDienThoai).HasMaxLength(50);
+            entity.Property(e => e.PhoneNumber).HasMaxLength(50);
         });
 
         modelBuilder.Entity<UserRole>(entity =>

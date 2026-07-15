@@ -19,7 +19,7 @@ public partial class ExamRegistration
 
     [Required]
     [MaxLength(20)]
-    public string SoDienThoai { get; set; } = null!;
+    public string PhoneNumber { get; set; } = null!;
 
     [MaxLength(255)]
     public string? Email { get; set; }

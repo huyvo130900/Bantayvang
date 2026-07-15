@@ -272,18 +272,18 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<BanTayVangDbContext>();
         var passwordService = services.GetRequiredService<IPasswordService>();
 
-        // 1. Ensure Email and SoDienThoai columns exist in the database
+        // 1. Ensure Email and PhoneNumber columns exist in the database
         await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'USER' AND COLUMN_NAME = 'Email')
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'Email')
             BEGIN
-                ALTER TABLE USER ADD Email nvarchar(255) NULL;
+                ALTER TABLE [Users] ADD Email nvarchar(255) NULL;
             END
         ");
 
         await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'USER' AND COLUMN_NAME = 'SoDienThoai')
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'PhoneNumber')
             BEGIN
-                ALTER TABLE USER ADD SoDienThoai nvarchar(50) NULL;
+                ALTER TABLE [Users] ADD PhoneNumber nvarchar(50) NULL;
             END
         ");
 

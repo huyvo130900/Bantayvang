@@ -21,7 +21,7 @@ export function PublicRegistrationPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     cccd: '',
-    soDienThoai: '',
+    phoneNumber: '',
     email: '',
     password: '',
     workUnit: '',
@@ -47,7 +47,7 @@ export function PublicRegistrationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.fullName || !formData.cccd || !formData.soDienThoai || !formData.password) {
+    if (!formData.fullName || !formData.cccd || !formData.phoneNumber || !formData.password) {
       showToast('Vui lòng điền đầy đủ các trường bắt buộc', false)
       return
     }
@@ -110,12 +110,12 @@ export function PublicRegistrationPage() {
               </div>
               
               <div className="space-y-2">
-                <label htmlFor="soDienThoai" className="text-sm font-medium leading-none">Số điện thoại *</label>
+                <label htmlFor="phoneNumber" className="text-sm font-medium leading-none">Số điện thoại *</label>
                 <Input
-                  id="soDienThoai"
+                  id="phoneNumber"
                   placeholder="0912345678"
-                  value={formData.soDienThoai}
-                  onChange={(e) => setFormData({ ...formData, soDienThoai: e.target.value })}
+                  value={formData.phoneNumber}
+                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                   required
                 />
               </div>

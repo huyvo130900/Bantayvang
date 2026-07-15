@@ -3,7 +3,7 @@ export interface UserDto {
   employeeCode: string | null
   username: string | null
   email: string | null
-  soDienThoai: string | null
+  phoneNumber: string | null
   fullName: string | null
   jobTitle: string | null
   department: string | null
@@ -21,7 +21,7 @@ export interface CreateUserDto {
   username: string
   password: string
   email?: string
-  soDienThoai?: string
+  phoneNumber?: string
   fullName: string
   employeeCode?: string
   jobTitle?: string
@@ -33,7 +33,7 @@ export interface CreateUserDto {
 
 export interface UpdateUserDto {
   email?: string
-  soDienThoai?: string
+  phoneNumber?: string
   fullName: string
   employeeCode?: string
   jobTitle?: string

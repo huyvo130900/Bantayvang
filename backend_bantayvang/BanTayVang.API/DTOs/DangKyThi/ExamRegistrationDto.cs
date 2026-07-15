@@ -7,7 +7,7 @@ namespace BanTayVang.API.DTOs.ExamRegistration
         public int Id { get; set; }
         public string FullName { get; set; } = null!;
         public string Cccd { get; set; } = null!;
-        public string SoDienThoai { get; set; } = null!;
+        public string PhoneNumber { get; set; } = null!;
         public string? Email { get; set; }
         public string? WorkUnit { get; set; }
         public string? ChuyenNganh { get; set; }

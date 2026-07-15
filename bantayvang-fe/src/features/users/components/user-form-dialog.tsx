@@ -36,7 +36,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
       username: '', password: '', fullName: '',
       employeeCode: '', jobTitle: '', department: '',
       roleId: 3, idKhoaQuanLy: null as any, status: true,
-      email: '', soDienThoai: '',
+      email: '', phoneNumber: '',
     },
   })
 
@@ -75,7 +75,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
           idKhoaQuanLy: user.idKhoaQuanLy || null as any,
           status: user.status ?? true,
           email: user.email || '',
-          soDienThoai: user.soDienThoai || '',
+          phoneNumber: user.phoneNumber || '',
         })
         setSearchTerm(user.department || '')
       } else {
@@ -85,7 +85,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
           idKhoaQuanLy: null as any,
           status: true,
           email: '',
-          soDienThoai: '',
+          phoneNumber: '',
         })
         setSearchTerm(isUserDeptManager && myKhoa ? myKhoa : '')
       }
@@ -217,8 +217,8 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Số điện thoại" error={form.formState.errors.soDienThoai?.message}>
-              <Input {...form.register('soDienThoai')} placeholder="0912345678" />
+            <Field label="Số điện thoại" error={form.formState.errors.phoneNumber?.message}>
+              <Input {...form.register('phoneNumber')} placeholder="0912345678" />
             </Field>
             <Field label="Email" error={form.formState.errors.email?.message}>
               <Input {...form.register('email')} placeholder="nguyenvana@example.com" />

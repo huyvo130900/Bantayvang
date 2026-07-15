@@ -2,7 +2,7 @@ export interface ExamRegistrationDto {
   id: number;
   fullName: string;
   cccd: string;
-  soDienThoai: string;
+  phoneNumber: string;
   email?: string;
   workUnit?: string;
   chuyenNganh?: string;
@@ -17,7 +17,7 @@ export interface ExamRegistrationDto {
 export interface CreateExamRegistrationDto {
   fullName: string;
   cccd: string;
-  soDienThoai: string;
+  phoneNumber: string;
   email?: string;
   password: string;
   workUnit?: string;

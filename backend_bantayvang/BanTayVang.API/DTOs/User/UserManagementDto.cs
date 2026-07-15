@@ -22,7 +22,7 @@ namespace BanTayVang.API.DTOs.User
         public DateTime? LanDangNhapCuoi { get; set; }
         public bool IsDeleted { get; set; }
         public string? Email { get; set; }
-        public string? SoDienThoai { get; set; }
+        public string? PhoneNumber { get; set; }
     }
 
     /// <summary>
@@ -46,7 +46,7 @@ namespace BanTayVang.API.DTOs.User
         public string? JobTitle { get; set; }
         public string? Department { get; set; }
         public string? Email { get; set; }
-        public string? SoDienThoai { get; set; }
+        public string? PhoneNumber { get; set; }
         public int RoleId { get; set; } = 3;
         /// <summary>Bắt buộc khi RoleId = 5 (DeptManager)</summary>
         public int? DeptManagerDeptId { get; set; }
@@ -66,7 +66,7 @@ namespace BanTayVang.API.DTOs.User
         public string? JobTitle { get; set; }
         public string? Department { get; set; }
         public string? Email { get; set; }
-        public string? SoDienThoai { get; set; }
+        public string? PhoneNumber { get; set; }
         public int RoleId { get; set; }
         public int? DeptManagerDeptId { get; set; }
         public bool Status { get; set; }
