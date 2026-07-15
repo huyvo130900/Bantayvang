@@ -784,33 +784,70 @@ namespace BanTayVang.API.Services.Impl
 
                     var firstRow = ws.Row(1);
                     int lastCell = firstRow.LastCellUsed()?.Address.ColumnNumber ?? 8;
-                    for (int col = 1; col <= lastCell; col++)
-                    {
-                        var rawHeaderText = firstRow.Cell(col).GetString();
-                        var headerText = RemoveSign4Vietnamese(rawHeaderText).ToLowerInvariant();
-                        if (string.IsNullOrEmpty(headerText)) continue;
+                    bool isSingleColumnCsvInExcel = lastCell == 1 && firstRow.Cell(1).GetString().Contains(",");
 
-                        if (headerText.Contains("tai khoan") || headerText.Contains("username") || 
-                            headerText.Contains("ten dang nhap") || headerText.Contains("ma nhan vien"))
-                            colTaiKhoan = col;
-                        else if (headerText.Contains("ho ten") || headerText.Contains("fullname") || 
-                                 headerText.Contains("ho va ten") || headerText == "ten")
-                            colHoTen = col;
-                        else if (headerText.Contains("email") || headerText.Contains("thu dien tu"))
-                            colEmail = col;
-                        else if (headerText.Contains("so dien thoai") || headerText.Contains("sdt") || 
-                                 headerText.Contains("dien thoai") || headerText.Contains("phone"))
-                            colSoDienThoai = col;
-                        else if (headerText.Contains("khoa/phong") || headerText.Contains("khoaphong") || 
-                                 headerText.Contains("khoa phong") || headerText.Contains("khoa") || 
-                                 headerText.Contains("phong") || headerText.Contains("department"))
-                            colKhoaPhong = col;
-                        else if (headerText.Contains("mat khau") || headerText.Contains("password"))
-                            colMatKhau = col;
-                        else if (headerText.Contains("vai tro") || headerText.Contains("role"))
-                            colVaiTro = col;
-                        else if (headerText.Contains("chuc danh") || headerText.Contains("title"))
-                            colChucDanh = col;
+                    if (isSingleColumnCsvInExcel)
+                    {
+                        var headers = firstRow.Cell(1).GetString().Split(',');
+                        for (int col = 0; col < headers.Length; col++)
+                        {
+                            var rawHeaderText = headers[col];
+                            var headerText = RemoveSign4Vietnamese(rawHeaderText).ToLowerInvariant();
+                            if (string.IsNullOrEmpty(headerText)) continue;
+
+                            if (headerText.Contains("tai khoan") || headerText.Contains("username") || 
+                                headerText.Contains("ten dang nhap") || headerText.Contains("ma nhan vien"))
+                                colTaiKhoan = col + 1;
+                            else if (headerText.Contains("ho ten") || headerText.Contains("fullname") || 
+                                     headerText.Contains("ho va ten") || headerText == "ten")
+                                colHoTen = col + 1;
+                            else if (headerText.Contains("email") || headerText.Contains("thu dien tu"))
+                                colEmail = col + 1;
+                            else if (headerText.Contains("so dien thoai") || headerText.Contains("sdt") || 
+                                     headerText.Contains("dien thoai") || headerText.Contains("phone"))
+                                colSoDienThoai = col + 1;
+                            else if (headerText.Contains("khoa/phong") || headerText.Contains("khoaphong") || 
+                                     headerText.Contains("khoa phong") || headerText.Contains("khoa") || 
+                                     headerText.Contains("phong") || headerText.Contains("department"))
+                                colKhoaPhong = col + 1;
+                            else if (headerText.Contains("mat khau") || headerText.Contains("password"))
+                                colMatKhau = col + 1;
+                            else if (headerText.Contains("vai tro") || headerText.Contains("role"))
+                                colVaiTro = col + 1;
+                            else if (headerText.Contains("chuc danh") || headerText.Contains("title"))
+                                colChucDanh = col + 1;
+                        }
+                    }
+                    else
+                    {
+                        for (int col = 1; col <= lastCell; col++)
+                        {
+                            var rawHeaderText = firstRow.Cell(col).GetString();
+                            var headerText = RemoveSign4Vietnamese(rawHeaderText).ToLowerInvariant();
+                            if (string.IsNullOrEmpty(headerText)) continue;
+
+                            if (headerText.Contains("tai khoan") || headerText.Contains("username") || 
+                                headerText.Contains("ten dang nhap") || headerText.Contains("ma nhan vien"))
+                                colTaiKhoan = col;
+                            else if (headerText.Contains("ho ten") || headerText.Contains("fullname") || 
+                                     headerText.Contains("ho va ten") || headerText == "ten")
+                                colHoTen = col;
+                            else if (headerText.Contains("email") || headerText.Contains("thu dien tu"))
+                                colEmail = col;
+                            else if (headerText.Contains("so dien thoai") || headerText.Contains("sdt") || 
+                                     headerText.Contains("dien thoai") || headerText.Contains("phone"))
+                                colSoDienThoai = col;
+                            else if (headerText.Contains("khoa/phong") || headerText.Contains("khoaphong") || 
+                                     headerText.Contains("khoa phong") || headerText.Contains("khoa") || 
+                                     headerText.Contains("phong") || headerText.Contains("department"))
+                                colKhoaPhong = col;
+                            else if (headerText.Contains("mat khau") || headerText.Contains("password"))
+                                colMatKhau = col;
+                            else if (headerText.Contains("vai tro") || headerText.Contains("role"))
+                                colVaiTro = col;
+                            else if (headerText.Contains("chuc danh") || headerText.Contains("title"))
+                                colChucDanh = col;
+                        }
                     }
 
                     if (colTaiKhoan == -1) colTaiKhoan = 2;
@@ -821,17 +858,35 @@ namespace BanTayVang.API.Services.Impl
 
                     for (int row = 2; row <= lastRow; row++)
                     {
-                        rawRows.Add((
-                            Row: row,
-                            EmployeeCode: colTaiKhoan > 0 ? ws.Cell(row, colTaiKhoan).GetString().Trim() : string.Empty,
-                            Password: colMatKhau > 0 ? ws.Cell(row, colMatKhau).GetString().Trim() : string.Empty,
-                            FullName: colHoTen > 0 ? ws.Cell(row, colHoTen).GetString().Trim() : string.Empty,
-                            JobTitle: colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty,
-                            Department: colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty,
-                            VaiTroStr: colVaiTro > 0 ? ws.Cell(row, colVaiTro).GetString().Trim() : string.Empty,
-                            PhoneNumber: colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty,
-                            Email: colEmail > 0 ? ws.Cell(row, colEmail).GetString().Trim() : string.Empty
-                        ));
+                        if (isSingleColumnCsvInExcel)
+                        {
+                            var parts = ws.Cell(row, 1).GetString().Split(',');
+                            rawRows.Add((
+                                Row: row,
+                                EmployeeCode: colTaiKhoan > 0 && colTaiKhoan <= parts.Length ? parts[colTaiKhoan - 1].Trim() : string.Empty,
+                                Password: colMatKhau > 0 && colMatKhau <= parts.Length ? parts[colMatKhau - 1].Trim() : string.Empty,
+                                FullName: colHoTen > 0 && colHoTen <= parts.Length ? parts[colHoTen - 1].Trim() : string.Empty,
+                                JobTitle: colChucDanh > 0 && colChucDanh <= parts.Length ? parts[colChucDanh - 1].Trim() : string.Empty,
+                                Department: colKhoaPhong > 0 && colKhoaPhong <= parts.Length ? parts[colKhoaPhong - 1].Trim() : string.Empty,
+                                VaiTroStr: colVaiTro > 0 && colVaiTro <= parts.Length ? parts[colVaiTro - 1].Trim() : string.Empty,
+                                PhoneNumber: colSoDienThoai > 0 && colSoDienThoai <= parts.Length ? parts[colSoDienThoai - 1].Trim() : string.Empty,
+                                Email: colEmail > 0 && colEmail <= parts.Length ? parts[colEmail - 1].Trim() : string.Empty
+                            ));
+                        }
+                        else
+                        {
+                            rawRows.Add((
+                                Row: row,
+                                EmployeeCode: colTaiKhoan > 0 ? ws.Cell(row, colTaiKhoan).GetString().Trim() : string.Empty,
+                                Password: colMatKhau > 0 ? ws.Cell(row, colMatKhau).GetString().Trim() : string.Empty,
+                                FullName: colHoTen > 0 ? ws.Cell(row, colHoTen).GetString().Trim() : string.Empty,
+                                JobTitle: colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty,
+                                Department: colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty,
+                                VaiTroStr: colVaiTro > 0 ? ws.Cell(row, colVaiTro).GetString().Trim() : string.Empty,
+                                PhoneNumber: colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty,
+                                Email: colEmail > 0 ? ws.Cell(row, colEmail).GetString().Trim() : string.Empty
+                            ));
+                        }
                     }
                 }
 
