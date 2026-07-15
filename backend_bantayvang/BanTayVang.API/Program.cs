@@ -294,7 +294,7 @@ using (var scope = app.Services.CreateScope())
             var adminUser = new User
             {
                 Username = "admin",
-                MaNhanVien = "admin",
+                EmployeeCode = "admin",
                 Password = passwordService.HashPassword("admin123"),
                 FullName = "Quản trị viên hệ thống",
                 RoleId = 1,

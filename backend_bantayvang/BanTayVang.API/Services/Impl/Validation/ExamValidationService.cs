@@ -77,16 +77,16 @@ namespace BanTayVang.API.Services.Impl.Validation
                     errors.Add("Exam duration exceeds maximum allowed time");
                 }
 
-                if (createDto.DanhSachIdCauHoi.Count > 200)
+                if (createDto.QuestionIds.Count > 200)
                 {
                     errors.Add("Too many questions (maximum 200 allowed)");
                 }
 
                 // Validate question IDs exist and are accessible
-                if (createDto.DanhSachIdCauHoi.Any())
+                if (createDto.QuestionIds.Any())
                 {
-                    var validQuestionIds = await _questionRepository.GetValidQuestionIdsAsync(createDto.DanhSachIdCauHoi);
-                    var invalidIds = createDto.DanhSachIdCauHoi.Except(validQuestionIds).ToList();
+                    var validQuestionIds = await _questionRepository.GetValidQuestionIdsAsync(createDto.QuestionIds);
+                    var invalidIds = createDto.QuestionIds.Except(validQuestionIds).ToList();
 
                     if (invalidIds.Any())
                     {
@@ -111,14 +111,14 @@ namespace BanTayVang.API.Services.Impl.Validation
             }
         }
 
-        public async Task<ValidationResultDto> ValidateStartExamAsync(StartExamDto startDto, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<ValidationResultDto> ValidateStartExamAsync(StartExamDto startDto, int userId, CancellationToken cancellationToken = default)
         {
             var errors = new List<string>();
 
             try
             {
                 // OWASP A01: Broken Access Control - Validate user permissions
-                if (taikhoanId <= 0)
+                if (userId <= 0)
                 {
                     errors.Add("Invalid user ID");
                     return ValidationResultDto.Failure(errors, "INVALID_USER");
@@ -126,9 +126,9 @@ namespace BanTayVang.API.Services.Impl.Validation
 
                 // Resolve exam paper (ExamPaper)
                 ExamPaper? exam = null;
-                if (startDto.KyThiId.HasValue)
+                if (startDto.ExamCampaignId.HasValue)
                 {
-                    exam = await _examPaperRepository.ResolveExamForCandidateAsync(startDto.KyThiId.Value, taikhoanId, cancellationToken);
+                    exam = await _examPaperRepository.ResolveExamForCandidateAsync(startDto.ExamCampaignId.Value, userId, cancellationToken);
                 }
                 else
                 {
@@ -136,7 +136,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                     if (ContainsSqlInjection(startDto.ExamPaperCode))
                     {
                         errors.Add("Exam code contains invalid characters");
-                        _logger.LogWarning("SQL injection attempt in exam start: {ExamCode} by user {UserId}", startDto.ExamPaperCode, taikhoanId);
+                        _logger.LogWarning("SQL injection attempt in exam start: {ExamCode} by user {UserId}", startDto.ExamPaperCode, userId);
                         return ValidationResultDto.Failure(errors, "SECURITY_VIOLATION");
                     }
 
@@ -168,12 +168,12 @@ namespace BanTayVang.API.Services.Impl.Validation
 
                 // Check if user already completed this exam / ExamCampaign
                 // Allow retakes if still within duration of ExamCampaign (or ExamPaper if standalone)
-                var studentSessions = await _examSubmissionRepository.GetByTaiKhoanAsync(taikhoanId);
+                var studentSessions = await _examSubmissionRepository.GetByTaiKhoanAsync(userId);
                 bool withinDuration = false;
 
-                if (startDto.KyThiId.HasValue)
+                if (startDto.ExamCampaignId.HasValue)
                 {
-                    var examCampaign = await _context.ExamCampaigns.FindAsync(startDto.KyThiId.Value, cancellationToken);
+                    var examCampaign = await _context.ExamCampaigns.FindAsync(startDto.ExamCampaignId.Value, cancellationToken);
                     if (examCampaign != null)
                     {
                         var start = examCampaign.StartTime;
@@ -198,9 +198,9 @@ namespace BanTayVang.API.Services.Impl.Validation
 
                 if (!withinDuration)
                 {
-                    if (startDto.KyThiId.HasValue)
+                    if (startDto.ExamCampaignId.HasValue)
                     {
-                        var completedSessionInKyThi = studentSessions.Any(b => b.ExamCampaignId == startDto.KyThiId.Value 
+                        var completedSessionInKyThi = studentSessions.Any(b => b.ExamCampaignId == startDto.ExamCampaignId.Value 
                             && b.Status != "InProgress" && b.Status != "Paused");
                         if (completedSessionInKyThi)
                         {
@@ -219,10 +219,10 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
 
                 // Check if user has an active session for this exam (concurrency check)
-                var existingSession = await _examSubmissionRepository.GetActiveExamSessionAsync(taikhoanId, exam.Id);
+                var existingSession = await _examSubmissionRepository.GetActiveExamSessionAsync(userId, exam.Id);
 
                 // OWASP A04: Validate concurrent session limits
-                var activeSessions = await _examSubmissionRepository.GetActiveSessionsCountAsync(taikhoanId);
+                var activeSessions = await _examSubmissionRepository.GetActiveSessionsCountAsync(userId);
                 if (activeSessions >= 3) // Max 3 concurrent exams
                 {
                     errors.Add("Too many active exam sessions");
@@ -233,12 +233,12 @@ namespace BanTayVang.API.Services.Impl.Validation
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error validating exam start for user {UserId}", taikhoanId);
+                _logger.LogError(ex, "Error validating exam start for user {UserId}", userId);
                 return ValidationResultDto.Failure("Validation error occurred", "INTERNAL_ERROR");
             }
         }
 
-        public async Task<ValidationResultDto> ValidateAnswerSubmissionAsync(SubmitAnswerDto answerDto, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<ValidationResultDto> ValidateAnswerSubmissionAsync(SubmitAnswerDto answerDto, int userId, CancellationToken cancellationToken = default)
         {
             var errors = new List<string>();
 
@@ -252,10 +252,10 @@ namespace BanTayVang.API.Services.Impl.Validation
                     return ValidationResultDto.Failure(errors, "SESSION_NOT_FOUND");
                 }
 
-                if (examSession.UserId != taikhoanId)
+                if (examSession.UserId != userId)
                 {
                     errors.Add("Access denied to this exam session");
-                    _logger.LogWarning("Unauthorized access attempt to exam session {SessionId} by user {UserId}", answerDto.ExamSubmissionId, taikhoanId);
+                    _logger.LogWarning("Unauthorized access attempt to exam session {SessionId} by user {UserId}", answerDto.ExamSubmissionId, userId);
                     return ValidationResultDto.Failure(errors, "ACCESS_DENIED");
                 }
 
@@ -271,7 +271,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                     if (ContainsSqlInjection(answerDto.CauTraLoiTuLuan))
                     {
                         errors.Add("Answer contains invalid content");
-                        _logger.LogWarning("SQL injection attempt in answer submission by user {UserId}", taikhoanId);
+                        _logger.LogWarning("SQL injection attempt in answer submission by user {UserId}", userId);
                         return ValidationResultDto.Failure(errors, "SECURITY_VIOLATION");
                     }
 
@@ -290,7 +290,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                 {
                     errors.Add("Question does not belong to this exam");
                     _logger.LogWarning("Invalid question access attempt: Question {QuestionId} in session {SessionId} by user {UserId}",
-                        answerDto.QuestionId, answerDto.ExamSubmissionId, taikhoanId);
+                        answerDto.QuestionId, answerDto.ExamSubmissionId, userId);
                     return ValidationResultDto.Failure(errors, "INVALID_QUESTION");
                 }
 
@@ -298,7 +298,7 @@ namespace BanTayVang.API.Services.Impl.Validation
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error validating answer submission for user {UserId}", taikhoanId);
+                _logger.LogError(ex, "Error validating answer submission for user {UserId}", userId);
                 return ValidationResultDto.Failure("Validation error occurred", "INTERNAL_ERROR");
             }
         }
@@ -432,7 +432,7 @@ namespace BanTayVang.API.Services.Impl.Validation
             }
         }
 
-        public async Task<ValidationResultDto> ValidateExamSubmissionAsync(SubmitExamDto submitDto, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<ValidationResultDto> ValidateExamSubmissionAsync(SubmitExamDto submitDto, int userId, CancellationToken cancellationToken = default)
         {
             var errors = new List<string>();
 
@@ -441,7 +441,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                 // Validate session access
                 var sessionValidation = await ValidateAnswerSubmissionAsync(
                     new SubmitAnswerDto { ExamSubmissionId = submitDto.ExamSubmissionId },
-                    taikhoanId,
+                    userId,
                     cancellationToken);
 
                 if (!sessionValidation.IsValid)
@@ -452,7 +452,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                 // Validate all answers in submission
                 foreach (var answer in submitDto.DanhSachCauTraLoi)
                 {
-                    var answerValidation = await ValidateAnswerSubmissionAsync(answer, taikhoanId, cancellationToken);
+                    var answerValidation = await ValidateAnswerSubmissionAsync(answer, userId, cancellationToken);
                     if (!answerValidation.IsValid)
                     {
                         errors.AddRange(answerValidation.Errors);
@@ -465,7 +465,7 @@ namespace BanTayVang.API.Services.Impl.Validation
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error validating exam submission for user {UserId}", taikhoanId);
+                _logger.LogError(ex, "Error validating exam submission for user {UserId}", userId);
                 return ValidationResultDto.Failure("Validation error occurred", "INTERNAL_ERROR");
             }
         }

@@ -34,7 +34,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
     resolver: zodResolver(isEdit ? updateUserSchema : createUserSchema) as never,
     defaultValues: {
       username: '', password: '', fullName: '',
-      maNhanVien: '', chucDanh: '', department: '',
+      employeeCode: '', jobTitle: '', department: '',
       roleId: 3, idKhoaQuanLy: null as any, status: true,
       email: '', soDienThoai: '',
     },
@@ -70,7 +70,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
         form.reset({
           username: user.username || '', password: '',
           fullName: user.fullName || '',
-          maNhanVien: user.maNhanVien || '', chucDanh: user.chucDanh || '',
+          employeeCode: user.employeeCode || '', jobTitle: user.jobTitle || '',
           department: user.department || '', roleId: user.roleId || 3,
           idKhoaQuanLy: user.idKhoaQuanLy || null as any,
           status: user.status ?? true,
@@ -81,7 +81,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
       } else {
         form.reset({
           username: '', password: '', fullName: '',
-          maNhanVien: '', chucDanh: '', department: isUserDeptManager && myKhoa ? myKhoa : '', roleId: 3,
+          employeeCode: '', jobTitle: '', department: isUserDeptManager && myKhoa ? myKhoa : '', roleId: 3,
           idKhoaQuanLy: null as any,
           status: true,
           email: '',
@@ -103,7 +103,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
     } else {
       onSubmit({
         ...data,
-        maNhanVien: data.username,
+        employeeCode: data.username,
       })
     }
   }
@@ -144,17 +144,17 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
           <div className="grid grid-cols-2 gap-4">
             {isEdit ? (
               <>
-                <Field label="Mã nhân viên" error={form.formState.errors.maNhanVien?.message}>
-                  <Input {...form.register('maNhanVien')} placeholder="NV001" />
+                <Field label="Mã nhân viên" error={form.formState.errors.employeeCode?.message}>
+                  <Input {...form.register('employeeCode')} placeholder="NV001" />
                 </Field>
-                <Field label="Chức danh" error={form.formState.errors.chucDanh?.message}>
-                  <Input {...form.register('chucDanh')} placeholder="Bác sĩ" />
+                <Field label="Chức danh" error={form.formState.errors.jobTitle?.message}>
+                  <Input {...form.register('jobTitle')} placeholder="Bác sĩ" />
                 </Field>
               </>
             ) : (
               <div className="col-span-2">
-                <Field label="Chức danh" error={form.formState.errors.chucDanh?.message}>
-                  <Input {...form.register('chucDanh')} placeholder="Bác sĩ" />
+                <Field label="Chức danh" error={form.formState.errors.jobTitle?.message}>
+                  <Input {...form.register('jobTitle')} placeholder="Bác sĩ" />
                 </Field>
               </div>
             )}

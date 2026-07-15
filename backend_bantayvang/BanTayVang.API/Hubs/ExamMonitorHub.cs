@@ -38,19 +38,19 @@ namespace BanTayVang.API.Hubs
         /// <summary>
         /// Student joins their exam session room
         /// </summary>
-        public async Task JoinExamSession(int baithiId)
+        public async Task JoinExamSession(int examSubmissionId)
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"session-{baithiId}");
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"session-{examSubmissionId}");
         }
 
         /// <summary>
         /// Student sends heartbeat (proves they're still active)
         /// </summary>
-        public async Task SendHeartbeat(int baithiId)
+        public async Task SendHeartbeat(int examSubmissionId)
         {
             await Clients.Group($"exam-monitor-all").SendAsync("StudentHeartbeat", new
             {
-                BaithiId = baithiId,
+                ExamSubmissionId = examSubmissionId,
                 Timestamp = DateTime.UtcNow,
                 ConnectionId = Context.ConnectionId
             });
@@ -82,11 +82,11 @@ namespace BanTayVang.API.Hubs
     /// </summary>
     public interface IExamMonitorNotifier
     {
-        Task NotifyCheatingWarning(int examId, int baithiId, string username, string warningType, string description);
+        Task NotifyCheatingWarning(int examId, int examSubmissionId, string username, string warningType, string description);
         Task NotifyExamStarted(int examId, int userId, string username);
-        Task NotifyExamSubmitted(int examId, int baithiId, string username, double score);
+        Task NotifyExamSubmitted(int examId, int examSubmissionId, string username, double score);
         Task NotifyExamStatusChanged(int examId, string newStatus);
-        Task NotifyStudentProgress(int examId, int baithiId, int answeredCount, int totalCount);
+        Task NotifyStudentProgress(int examId, int examSubmissionId, int answeredCount, int totalCount);
     }
 
     public class ExamMonitorNotifier : IExamMonitorNotifier
@@ -98,12 +98,12 @@ namespace BanTayVang.API.Hubs
             _hubContext = hubContext;
         }
 
-        public async Task NotifyCheatingWarning(int examId, int baithiId, string username, string warningType, string description)
+        public async Task NotifyCheatingWarning(int examId, int examSubmissionId, string username, string warningType, string description)
         {
             await _hubContext.Clients.Group($"exam-{examId}").SendAsync("CheatingWarning", new
             {
                 ExamId = examId,
-                BaithiId = baithiId,
+                ExamSubmissionId = examSubmissionId,
                 Username = username,
                 WarningType = warningType,
                 Description = description,
@@ -113,7 +113,7 @@ namespace BanTayVang.API.Hubs
             await _hubContext.Clients.Group("exam-monitor-all").SendAsync("CheatingWarning", new
             {
                 ExamId = examId,
-                BaithiId = baithiId,
+                ExamSubmissionId = examSubmissionId,
                 Username = username,
                 WarningType = warningType,
                 Description = description,
@@ -132,12 +132,12 @@ namespace BanTayVang.API.Hubs
             });
         }
 
-        public async Task NotifyExamSubmitted(int examId, int baithiId, string username, double score)
+        public async Task NotifyExamSubmitted(int examId, int examSubmissionId, string username, double score)
         {
             await _hubContext.Clients.Group($"exam-{examId}").SendAsync("ExamSubmitted", new
             {
                 ExamId = examId,
-                BaithiId = baithiId,
+                ExamSubmissionId = examSubmissionId,
                 Username = username,
                 Score = score,
                 Timestamp = DateTime.UtcNow
@@ -154,12 +154,12 @@ namespace BanTayVang.API.Hubs
             });
         }
 
-        public async Task NotifyStudentProgress(int examId, int baithiId, int answeredCount, int totalCount)
+        public async Task NotifyStudentProgress(int examId, int examSubmissionId, int answeredCount, int totalCount)
         {
             await _hubContext.Clients.Group($"exam-{examId}").SendAsync("StudentProgress", new
             {
                 ExamId = examId,
-                BaithiId = baithiId,
+                ExamSubmissionId = examSubmissionId,
                 AnsweredCount = answeredCount,
                 TotalCount = totalCount,
                 Timestamp = DateTime.UtcNow

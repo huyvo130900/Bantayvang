@@ -31,7 +31,7 @@ namespace BanTayVang.API.DTOs.Statistics
     /// </summary>
     public class ExamStatisticsDto
     {
-        public int KyThiId { get; set; }
+        public int ExamCampaignId { get; set; }
         public string? CampaignCode { get; set; }
         public string? CampaignName { get; set; }
         public int TotalParticipants { get; set; }
@@ -58,7 +58,7 @@ namespace BanTayVang.API.DTOs.Statistics
     /// </summary>
     public class UserExamHistoryDto
     {
-        public int BaiThiId { get; set; }
+        public int ExamSubmissionId { get; set; }
         public string? ExamPaperCode { get; set; }
         public string? ExamPaperName { get; set; }
         public DateTime? StartTime { get; set; }

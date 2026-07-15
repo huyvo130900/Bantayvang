@@ -57,8 +57,8 @@ namespace BanTayVang.API.Services.Impl
 
                 var examCampaigns = await query.OrderByDescending(k => k.CreatedAt).ToListAsync();
                 
-                var examPapers = await _context.ExamPapers.Where(d => d.KyThiId != null).ToListAsync();
-                var dethisGrouped = examPapers.GroupBy(d => d.KyThiId!.Value)
+                var examPapers = await _context.ExamPapers.Where(d => d.ExamCampaignId != null).ToListAsync();
+                var dethisGrouped = examPapers.GroupBy(d => d.ExamCampaignId!.Value)
                     .ToDictionary(g => g.Key, g => g.ToList());
 
                 var result = examCampaigns.Select(k => {
@@ -96,7 +96,7 @@ namespace BanTayVang.API.Services.Impl
                     return new BaseResponseDto<ExamCampaignDto> { Success = false, Message = "Không tìm thấy kỳ thi" };
 
                 var examPapers = await _context.ExamPapers
-                    .Where(d => d.KyThiId == id)
+                    .Where(d => d.ExamCampaignId == id)
                     .ToListAsync();
 
                 var dto = MapToDto(examCampaign);
@@ -258,7 +258,7 @@ namespace BanTayVang.API.Services.Impl
 
                 // Sync related exams (ExamPaper) properties if time/name has changed
                 var relatedExams = await _context.Set<ExamPaper>()
-                    .Where(d => d.KyThiId == id)
+                    .Where(d => d.ExamCampaignId == id)
                     .ToListAsync();
 
                 foreach (var exam in relatedExams)
@@ -415,7 +415,7 @@ namespace BanTayVang.API.Services.Impl
         // MULTIPLE EXAMS CHECK & GENERATION
         // ============================================================
 
-        public async Task<BaseResponseDto<ExamCheckResultDto>> CheckExamsAvailabilityAsync(int kyThiId, ExamGenerationConfigDto config)
+        public async Task<BaseResponseDto<ExamCheckResultDto>> CheckExamsAvailabilityAsync(int examCampaignId, ExamGenerationConfigDto config)
         {
             try
             {
@@ -551,11 +551,11 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto> GenerateExamsForKyThiAsync(int kyThiId, ExamGenerationConfigDto config, int createdBy)
+        public async Task<BaseResponseDto> GenerateExamsForCampaignAsync(int examCampaignId, ExamGenerationConfigDto config, int createdBy)
         {
             try
             {
-                var examCampaign = await _context.Set<ExamCampaign>().FindAsync(kyThiId);
+                var examCampaign = await _context.Set<ExamCampaign>().FindAsync(examCampaignId);
                 if (examCampaign == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy kỳ thi" };
 
@@ -572,7 +572,7 @@ namespace BanTayVang.API.Services.Impl
                 // 1. Run check
                 var originalKhoaPhong = config.Department;
                 config.Department = targetKhoaPhong;
-                var checkRes = await CheckExamsAvailabilityAsync(kyThiId, config);
+                var checkRes = await CheckExamsAvailabilityAsync(examCampaignId, config);
                 if (!checkRes.Success || checkRes.Data == null || !checkRes.Data.CanGenerate)
                 {
                     var errors = checkRes.Data?.Warnings ?? new List<string> { "Không đủ câu hỏi trong ngân hàng" };
@@ -668,7 +668,7 @@ namespace BanTayVang.API.Services.Impl
                             Department = targetKhoaPhong,
                             CreatedAt = DateTime.Now,
                             CreatedBy = createdBy,
-                            KyThiId = examCampaign.Id,
+                            ExamCampaignId = examCampaign.Id,
                             LinkTruyCap = $"/exam/{examPaperCode}",
                             TotalScore = config.TotalQuestions,
                             IsResultPublished = false
@@ -702,19 +702,19 @@ namespace BanTayVang.API.Services.Impl
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    _logger.LogInformation("Successfully generated {Count} non-overlapping exams for ExamCampaign {KyThiId}", config.SoLuongDe, kyThiId);
+                    _logger.LogInformation("Successfully generated {Count} non-overlapping exams for ExamCampaign {ExamCampaignId}", config.SoLuongDe, examCampaignId);
                     return new BaseResponseDto { Success = true, Message = $"Đã tạo thành công {config.SoLuongDe} đề thi không trùng lặp cho kỳ thi." };
                 }
                 catch (Exception dbEx)
                 {
                     await transaction.RollbackAsync();
-                    _logger.LogError(dbEx, "Database error generating exams for ExamCampaign {KyThiId}", kyThiId);
+                    _logger.LogError(dbEx, "Database error generating exams for ExamCampaign {ExamCampaignId}", examCampaignId);
                     return new BaseResponseDto { Success = false, Message = "Lỗi cơ sở dữ liệu khi tạo bộ đề thi." };
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error generating exams for ExamCampaign {KyThiId}", kyThiId);
+                _logger.LogError(ex, "Error generating exams for ExamCampaign {ExamCampaignId}", examCampaignId);
                 return new BaseResponseDto { Success = false, Message = ex.Message };
             }
         }

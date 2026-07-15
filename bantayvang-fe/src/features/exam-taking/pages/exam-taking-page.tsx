@@ -13,9 +13,9 @@ import { cn } from '@/lib/utils'
 import type { ExamSubmissionDto, ExamQuestionDto } from '../types'
 
 export function ExamTakingPage() {
-  const { baithiId } = useParams<{ baithiId: string }>()
+  const { examSubmissionId } = useParams<{ examSubmissionId: string }>()
   const navigate = useNavigate()
-  const id = Number(baithiId)
+  const id = Number(examSubmissionId)
 
   const [examInfo, setExamInfo] = useState<ExamSubmissionDto | null>(null)
   const [questions, setQuestions] = useState<ExamQuestionDto[]>([])
@@ -151,7 +151,7 @@ export function ExamTakingPage() {
   }, [handleSubmitExam])
 
   const { warningCount, remainingWarnings, isTerminated, isFullscreen, requestFullscreen, blockedKeyMessage } = useAntiCheat({
-    baithiId: id,
+    examSubmissionId: id,
     enabled: !!examInfo && !isSubmitting,
     onForceSubmit: handleForceSubmit,
   })

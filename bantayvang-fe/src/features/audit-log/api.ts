@@ -41,8 +41,8 @@ export const auditLogApi = {
   getByUser: (userId: number, top = 100) =>
     apiClient.get<ApiResponse<AuditLogEntry[]>>(`/AuditLog/user/${userId}?top=${top}`),
 
-  getByExamSession: (baithiId: number) =>
-    apiClient.get<ApiResponse<AuditLogEntry[]>>(`/AuditLog/exam-session/${baithiId}`),
+  getByExamSession: (examSubmissionId: number) =>
+    apiClient.get<ApiResponse<AuditLogEntry[]>>(`/AuditLog/exam-session/${examSubmissionId}`),
 
   search: (actionType?: string, username?: string, from?: string, to?: string) =>
     apiClient.get<ApiResponse<AuditLogEntry[]>>('/AuditLog/search', {

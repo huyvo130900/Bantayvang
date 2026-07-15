@@ -10,7 +10,7 @@ namespace BanTayVang.API.DTOs.AntiCheat
 
     public class CanhbaoDto
     {
-        public string? LoaiCanhBao { get; set; }
+        public string? WarningType { get; set; }
         public string? Description { get; set; }
         public DateTime? ActionTime { get; set; }
     }

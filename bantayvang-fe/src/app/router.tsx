@@ -98,7 +98,7 @@ function AppRoutes() {
 
       {/* Exam taking (full screen, no layout) */}
       <Route
-        path="/exam/:baithiId"
+        path="/exam/:examSubmissionId"
         element={
           <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
             <ExamTakingPage />
@@ -108,7 +108,7 @@ function AppRoutes() {
 
       {/* Result page */}
       <Route
-        path="/exam-result/:baithiId"
+        path="/exam-result/:examSubmissionId"
         element={
           <ProtectedRoute>
             <ExamResultPage />

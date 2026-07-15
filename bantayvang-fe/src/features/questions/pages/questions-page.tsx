@@ -94,8 +94,8 @@ export function QuestionsPage() {
       if (isDeptManager && myKhoa && 'department' in changes) {
         changes = { ...changes, department: myKhoa }
       }
-      // Reset deThiId if kyThiId is explicitly changed/cleared
-      if ('kyThiId' in changes) {
+      // Reset deThiId if examCampaignId is explicitly changed/cleared
+      if ('examCampaignId' in changes) {
         changes.deThiId = undefined
       }
       dispatch(setFilter(changes))

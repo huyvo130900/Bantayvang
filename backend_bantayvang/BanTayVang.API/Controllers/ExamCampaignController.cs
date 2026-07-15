@@ -132,8 +132,8 @@ namespace BanTayVang.API.Controllers
 
         // ===== Sinh đề cho kỳ thi =====
 
-        [HttpPost("{kyThiId}/check-generation")]
-        public async Task<ActionResult<BaseResponseDto<ExamCheckResultDto>>> CheckGeneration(int kyThiId, [FromBody] ExamGenerationConfigDto config)
+        [HttpPost("{examCampaignId}/check-generation")]
+        public async Task<ActionResult<BaseResponseDto<ExamCheckResultDto>>> CheckGeneration(int examCampaignId, [FromBody] ExamGenerationConfigDto config)
         {
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
@@ -143,7 +143,7 @@ namespace BanTayVang.API.Controllers
                 {
                     return BadRequest(BaseResponseDto<ExamCheckResultDto>.FailureResult("Tài khoản quản lý khoa chưa được cấu hình khoa phòng quản lý."));
                 }
-                var existing = await _examCampaignService.GetByIdAsync(kyThiId);
+                var existing = await _examCampaignService.GetByIdAsync(examCampaignId);
                 if (!existing.Success || existing.Data == null || existing.Data.DepartmentId != myKhoaId)
                 {
                     return Forbid();
@@ -151,12 +151,12 @@ namespace BanTayVang.API.Controllers
                 config.Department = myKhoaName;
             }
 
-            var result = await _examCampaignService.CheckExamsAvailabilityAsync(kyThiId, config);
+            var result = await _examCampaignService.CheckExamsAvailabilityAsync(examCampaignId, config);
             return Ok(result);
         }
 
-        [HttpPost("{kyThiId}/generate-exams")]
-        public async Task<ActionResult<BaseResponseDto>> GenerateExams(int kyThiId, [FromBody] ExamGenerationConfigDto config)
+        [HttpPost("{examCampaignId}/generate-exams")]
+        public async Task<ActionResult<BaseResponseDto>> GenerateExams(int examCampaignId, [FromBody] ExamGenerationConfigDto config)
         {
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
@@ -166,7 +166,7 @@ namespace BanTayVang.API.Controllers
                 {
                     return BadRequest(BaseResponseDto.FailureResult("Tài khoản quản lý khoa chưa được cấu hình khoa phòng quản lý."));
                 }
-                var existing = await _examCampaignService.GetByIdAsync(kyThiId);
+                var existing = await _examCampaignService.GetByIdAsync(examCampaignId);
                 if (!existing.Success || existing.Data == null || existing.Data.DepartmentId != myKhoaId)
                 {
                     return Forbid();
@@ -175,7 +175,7 @@ namespace BanTayVang.API.Controllers
             }
 
             var userId = HttpContext.Items["UserId"] as int? ?? 1;
-            var result = await _examCampaignService.GenerateExamsForKyThiAsync(kyThiId, config, userId);
+            var result = await _examCampaignService.GenerateExamsForCampaignAsync(examCampaignId, config, userId);
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }

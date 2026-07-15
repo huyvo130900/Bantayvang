@@ -25,7 +25,7 @@ namespace BanTayVang.API.Repositories.Impl
             // → Backend DeptManager scope trả về danh sách rỗng vì filter.Department = null.
             return await _dbSet
                 .Include(u => u.ManagedDepartment)
-                .FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.MaNhanVien == usernameOrEmail);
+                .FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.EmployeeCode == usernameOrEmail);
         }
 
         public async Task<User?> GetByUsernameAsync(string username)
@@ -35,7 +35,7 @@ namespace BanTayVang.API.Repositories.Impl
 
             return await _dbSet
                 .Include(u => u.ManagedDepartment)
-                .FirstOrDefaultAsync(u => u.Username == username || u.MaNhanVien == username);
+                .FirstOrDefaultAsync(u => u.Username == username || u.EmployeeCode == username);
         }
 
         public async Task<User?> GetByEmailAsync(string email)

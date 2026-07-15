@@ -31,14 +31,14 @@ namespace BanTayVang.API.DTOs.Exam
         /// <summary>
         /// Tương thích ngược - nếu truyền list câu hỏi cụ thể (legacy)
         /// </summary>
-        public List<int> DanhSachIdCauHoi { get; set; } = new();
+        public List<int> QuestionIds { get; set; } = new();
 
 
 
         /// <summary>
         /// Kỳ thi liên kết
         /// </summary>
-        public int? KyThiId { get; set; }
+        public int? ExamCampaignId { get; set; }
 
         /// <summary>
         /// Số câu đúng tối thiểu để đạt cho đề thi này (tùy chọn)

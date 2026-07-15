@@ -157,7 +157,7 @@ namespace BanTayVang.API.Controllers
 
                 // Lấy tất cả đề thi thuộc các kỳ thi của khoa
                 var dethiList = await _context.ExamPapers
-                    .Where(d => d.KyThiId != null && kyThiIds.Contains(d.KyThiId!.Value))
+                    .Where(d => d.ExamCampaignId != null && kyThiIds.Contains(d.ExamCampaignId!.Value))
                     .ToListAsync();
 
                 var dethiIds = dethiList.Select(d => d.Id).ToList();
@@ -183,8 +183,8 @@ namespace BanTayVang.API.Controllers
 
                 // 6. Nhóm đề thi theo kỳ thi để lấy số liệu
                 var dethiByKyThi = dethiList
-                    .Where(d => d.KyThiId.HasValue)
-                    .GroupBy(d => d.KyThiId!.Value)
+                    .Where(d => d.ExamCampaignId.HasValue)
+                    .GroupBy(d => d.ExamCampaignId!.Value)
                     .ToDictionary(g => g.Key, g => g.ToList());
 
                 // Đếm thí sinh cho từng kỳ thi
@@ -232,7 +232,7 @@ namespace BanTayVang.API.Controllers
 
                 var result = new DepartmentDashboardDto
                 {
-                    IdKhoa = khoa.Id,
+                    DeptId = khoa.Id,
                     DepartmentName = departmentName,
                     TotalQuestions = tongSoCauHoi,
                     TongSoDeThi = tongSoDeThi,

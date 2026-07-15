@@ -17,22 +17,22 @@ namespace BanTayVang.API.Services.Interfaces
         Task<BaseResponseDto> DeleteExamAsync(int examId, int nguoiXoa);
 
         // Bắt đầu thi
-        Task<BaseResponseDto<ExamSubmissionDto>> StartExamAsync(StartExamDto startDto, int taikhoanId);
-        Task<BaseResponseDto<List<ExamQuestionDto>>> GetExamQuestionsAsync(int baithiId, int taikhoanId);
+        Task<BaseResponseDto<ExamSubmissionDto>> StartExamAsync(StartExamDto startDto, int userId);
+        Task<BaseResponseDto<List<ExamQuestionDto>>> GetExamQuestionsAsync(int examSubmissionId, int userId);
 
         // Làm bài
-        Task<BaseResponseDto> SaveAnswerAsync(SubmitAnswerDto answerDto, int taikhoanId);
-        Task<BaseResponseDto<ExamSubmissionDto>> GetExamProgressAsync(int baithiId, int taikhoanId);
+        Task<BaseResponseDto> SaveAnswerAsync(SubmitAnswerDto answerDto, int userId);
+        Task<BaseResponseDto<ExamSubmissionDto>> GetExamProgressAsync(int examSubmissionId, int userId);
 
         // Nộp bài
-        Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId);
+        Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int userId);
         Task<BaseResponseDto> AutoSubmitExpiredExamsAsync(); // Chạy background job
 
         // Kết quả của user hiện tại ← THÊM MỚI
-        Task<BaseResponseDto<List<ExamSubmissionDto>>> GetMyResultsAsync(int taikhoanId);
+        Task<BaseResponseDto<List<ExamSubmissionDto>>> GetMyResultsAsync(int userId);
 
         // Chống gian lận
-        Task<BaseResponseDto> LogSuspiciousActivityAsync(int baithiId, string loaiCanhBao, string moTa);
-        Task<BaseResponseDto<int>> GetWarningCountAsync(int baithiId);
+        Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string moTa);
+        Task<BaseResponseDto<int>> GetWarningCountAsync(int examSubmissionId);
     }
 }

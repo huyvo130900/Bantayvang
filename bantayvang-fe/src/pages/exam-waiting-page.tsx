@@ -56,11 +56,11 @@ export function ExamWaitingPage() {
     return () => clearInterval(interval)
   }, []) // eslint-disable-line
 
-  const handleStartExam = async (examPaperCode: string | null | undefined, kyThiId: number) => {
-    setStartingId(kyThiId)
+  const handleStartExam = async (examPaperCode: string | null | undefined, examCampaignId: number) => {
+    setStartingId(examCampaignId)
     setError(null)
     try {
-      const res = await examTakingApi.start({ examPaperCode: examPaperCode || undefined, kyThiId })
+      const res = await examTakingApi.start({ examPaperCode: examPaperCode || undefined, examCampaignId })
       if (res.data.success && res.data.data) {
         navigate(`/exam/${res.data.data.id}`)
       } else {

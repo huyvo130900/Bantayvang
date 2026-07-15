@@ -18,7 +18,7 @@ namespace BanTayVang.API.Services.Impl.Exams
     {
         private readonly IExamPaperRepository _examPaperRepository;
         private readonly IExamSubmissionRepository _examSubmissionRepository;
-        private readonly ISubmissionDetailRepository _chitietRepository;
+        private readonly ISubmissionDetailRepository _submissionDetailRepository;
         private readonly IExamValidationService _validationService;
         private readonly IExamSecurityService _securityService;
         private readonly IMapper _mapper;
@@ -37,7 +37,7 @@ namespace BanTayVang.API.Services.Impl.Exams
         {
             _examPaperRepository = dethiRepository ?? throw new ArgumentNullException(nameof(dethiRepository));
             _examSubmissionRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
-            _chitietRepository = chitietRepository ?? throw new ArgumentNullException(nameof(chitietRepository));
+            _submissionDetailRepository = chitietRepository ?? throw new ArgumentNullException(nameof(chitietRepository));
             _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
             _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
@@ -45,19 +45,19 @@ namespace BanTayVang.API.Services.Impl.Exams
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<BaseResponseDto<ExamSubmissionDto>> StartExamAsync(StartExamDto startDto, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> StartExamAsync(StartExamDto startDto, int userId, CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("Starting exam session for user {UserId} with exam code {ExamCode}, KyThiId {KyThiId}", taikhoanId, startDto.ExamPaperCode, startDto.KyThiId);
+                _logger.LogInformation("Starting exam session for user {UserId} with exam code {ExamCode}, ExamCampaignId {ExamCampaignId}", userId, startDto.ExamPaperCode, startDto.ExamCampaignId);
 
                 // OWASP A03: Injection - Input validation
-                var validationResult = await _validationService.ValidateStartExamAsync(startDto, taikhoanId, cancellationToken);
+                var validationResult = await _validationService.ValidateStartExamAsync(startDto, userId, cancellationToken);
                 if (!validationResult.IsValid)
                 {
                     await _securityService.LogSecurityEventAsync("EXAM_START_VALIDATION_FAILED",
-                        $"User {taikhoanId} failed validation for exam {startDto.ExamPaperCode}",
-                        taikhoanId, "Medium", cancellationToken);
+                        $"User {userId} failed validation for exam {startDto.ExamPaperCode}",
+                        userId, "Medium", cancellationToken);
                     return new BaseResponseDto<ExamSubmissionDto>
                     {
                         Success = false,
@@ -69,12 +69,12 @@ namespace BanTayVang.API.Services.Impl.Exams
                 // Resolve exam paper (ExamPaper)
                 // Rule: Thí sinh làm các đề khác nhau khi thi lại. Làm hết các đề mới lặp lại.
                 ExamPaper? examPaper = null;
-                if (startDto.KyThiId.HasValue)
+                if (startDto.ExamCampaignId.HasValue)
                 {
-                    examPaper = await _examPaperRepository.ResolveExamForCandidateAsync(startDto.KyThiId.Value, taikhoanId, cancellationToken);
+                    examPaper = await _examPaperRepository.ResolveExamForCandidateAsync(startDto.ExamCampaignId.Value, userId, cancellationToken);
                 }
 
-                // Fallback to ExamPaperCode if not resolved via KyThiId
+                // Fallback to ExamPaperCode if not resolved via ExamCampaignId
                 if (examPaper == null)
                 {
                     if (string.IsNullOrEmpty(startDto.ExamPaperCode))
@@ -87,8 +87,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                 if (examPaper == null)
                 {
                     await _securityService.LogSecurityEventAsync("EXAM_NOT_FOUND",
-                        $"User {taikhoanId} attempted to access non-existent exam {startDto.ExamPaperCode}",
-                        taikhoanId, "Medium", cancellationToken);
+                        $"User {userId} attempted to access non-existent exam {startDto.ExamPaperCode}",
+                        userId, "Medium", cancellationToken);
 
                     return new BaseResponseDto<ExamSubmissionDto>
                     {
@@ -101,8 +101,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                 if (examPaper.StartTime > DateTime.Now)
                 {
                     await _securityService.LogSecurityEventAsync("EXAM_EARLY_ACCESS_ATTEMPT",
-                        $"User {taikhoanId} attempted early access to exam {examPaper.ExamPaperCode}",
-                        taikhoanId, "High", cancellationToken);
+                        $"User {userId} attempted early access to exam {examPaper.ExamPaperCode}",
+                        userId, "High", cancellationToken);
 
                     return new BaseResponseDto<ExamSubmissionDto>
                     {
@@ -112,14 +112,14 @@ namespace BanTayVang.API.Services.Impl.Exams
                 }
 
                 // Check for existing IN-PROGRESS session (resume it)
-                var existingBaithi = await _examSubmissionRepository.GetActiveExamSessionAsync(taikhoanId, examPaper.Id);
+                var existingBaithi = await _examSubmissionRepository.GetActiveExamSessionAsync(userId, examPaper.Id);
 
                 ExamSubmission examSubmission;
                 if (existingBaithi != null && existingBaithi.Status == "InProgress")
                 {
                     // Resume existing in-progress session
                     examSubmission = existingBaithi;
-                    _logger.LogInformation("Resuming existing exam session {SessionId} for user {UserId}", examSubmission.Id, taikhoanId);
+                    _logger.LogInformation("Resuming existing exam session {SessionId} for user {UserId}", examSubmission.Id, userId);
                 }
                 else
                 {
@@ -156,10 +156,10 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                     examSubmission = new ExamSubmission
                     {
-                        UserId = taikhoanId,
+                        UserId = userId,
                         ExamPaperId = examPaper.Id,
                         ExamPaperCode = examPaper.ExamPaperCode,
-                        ExamCampaignId = startDto.KyThiId ?? examPaper.KyThiId, // Link KyThiId to the exam session
+                        ExamCampaignId = startDto.ExamCampaignId ?? examPaper.ExamCampaignId, // Link ExamCampaignId to the exam session
                         Status = "InProgress",
                         TotalQuestions = selectedQuestions.Count,
                         TongSoCanhBao = 0,
@@ -181,14 +181,14 @@ namespace BanTayVang.API.Services.Impl.Exams
                             DaLuu = false,
                             ScoreObtained = null
                         };
-                        await _chitietRepository.AddAsync(placeholder);
+                        await _submissionDetailRepository.AddAsync(placeholder);
                     }
 
                     await _securityService.LogSecurityEventAsync("EXAM_SESSION_STARTED",
-                        $"User {taikhoanId} started exam session {examSubmission.Id} for exam {examPaper.ExamPaperCode} with {selectedQuestions.Count} questions",
-                        taikhoanId, "Info", cancellationToken);
+                        $"User {userId} started exam session {examSubmission.Id} for exam {examPaper.ExamPaperCode} with {selectedQuestions.Count} questions",
+                        userId, "Info", cancellationToken);
 
-                    _logger.LogInformation("Created new exam session {SessionId} for user {UserId} with {Count} unique questions", examSubmission.Id, taikhoanId, selectedQuestions.Count);
+                    _logger.LogInformation("Created new exam session {SessionId} for user {UserId} with {Count} unique questions", examSubmission.Id, userId, selectedQuestions.Count);
                 }
 
                 var result = _mapper.Map<ExamSubmissionDto>(examSubmission);
@@ -208,11 +208,11 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting exam session for user {UserId} with exam code {ExamCode}", taikhoanId, startDto.ExamPaperCode);
+                _logger.LogError(ex, "Error starting exam session for user {UserId} with exam code {ExamCode}", userId, startDto.ExamPaperCode);
 
                 await _securityService.LogSecurityEventAsync("EXAM_START_ERROR",
-                    $"System error during exam start for user {taikhoanId}: {ex.Message}",
-                    taikhoanId, "High", cancellationToken);
+                    $"System error during exam start for user {userId}: {ex.Message}",
+                    userId, "High", cancellationToken);
 
                 return new BaseResponseDto<ExamSubmissionDto>
                 {
@@ -223,19 +223,19 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
         }
 
-        public async Task<BaseResponseDto<List<ExamQuestionDto>>> GetExamQuestionsAsync(int baithiId, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<List<ExamQuestionDto>>> GetExamQuestionsAsync(int examSubmissionId, int userId, CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("Getting exam questions for session {SessionId} and user {UserId}", baithiId, taikhoanId);
+                _logger.LogInformation("Getting exam questions for session {SessionId} and user {UserId}", examSubmissionId, userId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var examSubmission = await _examSubmissionRepository.GetByIdAsync(baithiId);
-                if (examSubmission == null || examSubmission.UserId != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(examSubmissionId);
+                if (examSubmission == null || examSubmission.UserId != userId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_EXAM_ACCESS",
-                        $"User {taikhoanId} attempted unauthorized access to exam session {baithiId}",
-                        taikhoanId, "High", cancellationToken);
+                        $"User {userId} attempted unauthorized access to exam session {examSubmissionId}",
+                        userId, "High", cancellationToken);
 
                     return new BaseResponseDto<List<ExamQuestionDto>>
                     {
@@ -267,7 +267,7 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                 // Đọc danh sách câu hỏi từ SubmissionDetail đã được lưu lúc StartExam
                 // → thứ tự cố định, không shuffle lại, không bị trùng lặp
-                var savedChitiets = await _chitietRepository.GetByBaiThiAsync(baithiId);
+                var savedChitiets = await _submissionDetailRepository.GetByBaiThiAsync(examSubmissionId);
 
                 // Distinct theo QuestionId để phòng trường hợp dữ liệu cũ có bản ghi trùng
                 var orderedChitiets = savedChitiets
@@ -280,7 +280,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                 // Nếu session cũ (chưa có placeholder), fallback về logic cũ nhưng dùng seed cố định
                 if (!orderedChitiets.Any())
                 {
-                    var random = new Random(baithiId);
+                    var random = new Random(examSubmissionId);
                     int? soCauLimit = null;
                     if (!string.IsNullOrEmpty(examPaper.ChecksumData) && examPaper.ChecksumData.Contains("SO_CAU:"))
                     {
@@ -309,7 +309,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     foreach (var examPaperQuestion in shuffled)
                     {
                         var question = examPaperQuestion.IdCauHoiNavigation!;
-                        var choiceRandom = new Random(baithiId * 1000 + question.Id);
+                        var choiceRandom = new Random(examSubmissionId * 1000 + question.Id);
                         var shuffledChoices = question.QuestionOptions
                             .OrderBy(_ => choiceRandom.Next())
                             .Select((l, idx) => new ExamChoiceDto { Id = l.Id, Content = SanitizeHtmlContent(l.Content), OrderIndex = idx + 1 })
@@ -358,7 +358,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                             .ToList();
 
                         // Shuffle đáp án dùng seed cố định theo session + câu hỏi
-                        var choiceRandom = new Random(baithiId * 1000 + question.Id);
+                        var choiceRandom = new Random(examSubmissionId * 1000 + question.Id);
                         var shuffledChoices = question.QuestionOptions
                             .OrderBy(_ => choiceRandom.Next())
                             .Select((l, idx) => new ExamChoiceDto
@@ -396,11 +396,11 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting exam questions for session {SessionId} and user {UserId}", baithiId, taikhoanId);
+                _logger.LogError(ex, "Error getting exam questions for session {SessionId} and user {UserId}", examSubmissionId, userId);
 
                 await _securityService.LogSecurityEventAsync("EXAM_QUESTIONS_ERROR",
-                    $"System error getting questions for user {taikhoanId}, session {baithiId}: {ex.Message}",
-                    taikhoanId, "Medium", cancellationToken);
+                    $"System error getting questions for user {userId}, session {examSubmissionId}: {ex.Message}",
+                    userId, "Medium", cancellationToken);
 
                 return new BaseResponseDto<List<ExamQuestionDto>>
                 {
@@ -411,19 +411,19 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
         }
 
-        public async Task<BaseResponseDto<ExamSubmissionDto>> GetExamProgressAsync(int baithiId, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> GetExamProgressAsync(int examSubmissionId, int userId, CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("Getting exam progress for session {SessionId} and user {UserId}", baithiId, taikhoanId);
+                _logger.LogInformation("Getting exam progress for session {SessionId} and user {UserId}", examSubmissionId, userId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var examSubmission = await _examSubmissionRepository.GetWithDetailsAsync(baithiId);
-                if (examSubmission == null || examSubmission.UserId != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetWithDetailsAsync(examSubmissionId);
+                if (examSubmission == null || examSubmission.UserId != userId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_PROGRESS_ACCESS",
-                        $"User {taikhoanId} attempted unauthorized access to progress of session {baithiId}",
-                        taikhoanId, "High", cancellationToken);
+                        $"User {userId} attempted unauthorized access to progress of session {examSubmissionId}",
+                        userId, "High", cancellationToken);
 
                     return new BaseResponseDto<ExamSubmissionDto>
                     {
@@ -449,11 +449,11 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting exam progress for session {SessionId} and user {UserId}", baithiId, taikhoanId);
+                _logger.LogError(ex, "Error getting exam progress for session {SessionId} and user {UserId}", examSubmissionId, userId);
 
                 await _securityService.LogSecurityEventAsync("EXAM_PROGRESS_ERROR",
-                    $"System error getting progress for user {taikhoanId}, session {baithiId}: {ex.Message}",
-                    taikhoanId, "Medium", cancellationToken);
+                    $"System error getting progress for user {userId}, session {examSubmissionId}: {ex.Message}",
+                    userId, "Medium", cancellationToken);
 
                 return new BaseResponseDto<ExamSubmissionDto>
                 {
@@ -464,19 +464,19 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
         }
 
-        public async Task<BaseResponseDto> PauseExamAsync(int baithiId, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto> PauseExamAsync(int examSubmissionId, int userId, CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("Pausing exam session {SessionId} for user {UserId}", baithiId, taikhoanId);
+                _logger.LogInformation("Pausing exam session {SessionId} for user {UserId}", examSubmissionId, userId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var examSubmission = await _examSubmissionRepository.GetByIdAsync(baithiId);
-                if (examSubmission == null || examSubmission.UserId != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(examSubmissionId);
+                if (examSubmission == null || examSubmission.UserId != userId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_PAUSE_ATTEMPT",
-                        $"User {taikhoanId} attempted unauthorized pause of session {baithiId}",
-                        taikhoanId, "High", cancellationToken);
+                        $"User {userId} attempted unauthorized pause of session {examSubmissionId}",
+                        userId, "High", cancellationToken);
 
                     return new BaseResponseDto
                     {
@@ -498,8 +498,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                 await _examSubmissionRepository.UpdateAsync(examSubmission);
 
                 await _securityService.LogSecurityEventAsync("EXAM_PAUSED",
-                    $"User {taikhoanId} paused exam session {baithiId}",
-                    taikhoanId, "Info", cancellationToken);
+                    $"User {userId} paused exam session {examSubmissionId}",
+                    userId, "Info", cancellationToken);
 
                 return new BaseResponseDto
                 {
@@ -509,11 +509,11 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error pausing exam session {SessionId} for user {UserId}", baithiId, taikhoanId);
+                _logger.LogError(ex, "Error pausing exam session {SessionId} for user {UserId}", examSubmissionId, userId);
 
                 await _securityService.LogSecurityEventAsync("EXAM_PAUSE_ERROR",
-                    $"System error pausing exam for user {taikhoanId}, session {baithiId}: {ex.Message}",
-                    taikhoanId, "Medium", cancellationToken);
+                    $"System error pausing exam for user {userId}, session {examSubmissionId}: {ex.Message}",
+                    userId, "Medium", cancellationToken);
 
                 return new BaseResponseDto
                 {
@@ -524,19 +524,19 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
         }
 
-        public async Task<BaseResponseDto> ResumeExamAsync(int baithiId, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto> ResumeExamAsync(int examSubmissionId, int userId, CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("Resuming exam session {SessionId} for user {UserId}", baithiId, taikhoanId);
+                _logger.LogInformation("Resuming exam session {SessionId} for user {UserId}", examSubmissionId, userId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
-                var examSubmission = await _examSubmissionRepository.GetByIdAsync(baithiId);
-                if (examSubmission == null || examSubmission.UserId != taikhoanId)
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(examSubmissionId);
+                if (examSubmission == null || examSubmission.UserId != userId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_RESUME_ATTEMPT",
-                        $"User {taikhoanId} attempted unauthorized resume of session {baithiId}",
-                        taikhoanId, "High", cancellationToken);
+                        $"User {userId} attempted unauthorized resume of session {examSubmissionId}",
+                        userId, "High", cancellationToken);
 
                     return new BaseResponseDto
                     {
@@ -558,8 +558,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                 await _examSubmissionRepository.UpdateAsync(examSubmission);
 
                 await _securityService.LogSecurityEventAsync("EXAM_RESUMED",
-                    $"User {taikhoanId} resumed exam session {baithiId}",
-                    taikhoanId, "Info", cancellationToken);
+                    $"User {userId} resumed exam session {examSubmissionId}",
+                    userId, "Info", cancellationToken);
 
                 return new BaseResponseDto
                 {
@@ -569,11 +569,11 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error resuming exam session {SessionId} for user {UserId}", baithiId, taikhoanId);
+                _logger.LogError(ex, "Error resuming exam session {SessionId} for user {UserId}", examSubmissionId, userId);
 
                 await _securityService.LogSecurityEventAsync("EXAM_RESUME_ERROR",
-                    $"System error resuming exam for user {taikhoanId}, session {baithiId}: {ex.Message}",
-                    taikhoanId, "Medium", cancellationToken);
+                    $"System error resuming exam for user {userId}, session {examSubmissionId}: {ex.Message}",
+                    userId, "Medium", cancellationToken);
 
                 return new BaseResponseDto
                 {

@@ -24,9 +24,9 @@ export function PublicRegistrationPage() {
     soDienThoai: '',
     email: '',
     password: '',
-    donViCongTac: '',
+    workUnit: '',
     chuyenNganh: '',
-    khoaPhongId: '',
+    departmentId: '',
     mucDichThi: '',
   })
 
@@ -56,7 +56,7 @@ export function PublicRegistrationPage() {
     try {
       await registrationApi.create({
         ...formData,
-        khoaPhongId: formData.khoaPhongId ? parseInt(formData.khoaPhongId) : undefined,
+        departmentId: formData.departmentId ? parseInt(formData.departmentId) : undefined,
       })
       showToast('Đăng ký thành công! Vui lòng chờ thông báo duyệt qua email/sđt.', true)
       setTimeout(() => navigate('/login'), 2000)
@@ -152,12 +152,12 @@ export function PublicRegistrationPage() {
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <label htmlFor="donViCongTac" className="text-sm font-medium leading-none">Đơn vị công tác hiện tại</label>
+                <label htmlFor="workUnit" className="text-sm font-medium leading-none">Đơn vị công tác hiện tại</label>
                 <Input
-                  id="donViCongTac"
+                  id="workUnit"
                   placeholder="Sinh viên trường Y, BV Đa khoa Tỉnh..."
-                  value={formData.donViCongTac}
-                  onChange={(e) => setFormData({ ...formData, donViCongTac: e.target.value })}
+                  value={formData.workUnit}
+                  onChange={(e) => setFormData({ ...formData, workUnit: e.target.value })}
                 />
               </div>
 
@@ -166,8 +166,8 @@ export function PublicRegistrationPage() {
                 <select
                   id="department"
                   className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  value={formData.khoaPhongId}
-                  onChange={(e) => setFormData({ ...formData, khoaPhongId: e.target.value })}
+                  value={formData.departmentId}
+                  onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                 >
                   <option value="">Chọn khoa / phòng</option>
                   {departments.map((d) => (

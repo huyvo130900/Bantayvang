@@ -47,7 +47,7 @@ export interface QuestionFilterDto {
   department?: string
   searchKeyword?: string
   showDuplicatesOnly?: boolean
-  kyThiId?: number
+  examCampaignId?: number
   deThiId?: number
   pageNumber: number
   pageSize: number

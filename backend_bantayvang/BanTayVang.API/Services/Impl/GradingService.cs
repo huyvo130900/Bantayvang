@@ -17,7 +17,7 @@ namespace BanTayVang.API.Services.Impl
             _logger = logger;
         }
 
-        public async Task<BaseResponseDto<ExamResultDetailDto>> GetResultDetailAsync(int baiThiId)
+        public async Task<BaseResponseDto<ExamResultDetailDto>> GetResultDetailAsync(int examSubmissionId)
         {
             try
             {
@@ -34,7 +34,7 @@ namespace BanTayVang.API.Services.Impl
                             .ThenInclude(ch => ch!.IdLoaiCauHoiNavigation)
                     .Include(b => b.SubmissionDetails)
                         .ThenInclude(c => c.IdLuaChonDaChonNavigation)
-                    .FirstOrDefaultAsync(b => b.Id == baiThiId);
+                    .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
                 if (examSubmission == null)
                     return new BaseResponseDto<ExamResultDetailDto> { Success = false, Message = "Không tìm thấy bài thi" };
@@ -105,8 +105,8 @@ namespace BanTayVang.API.Services.Impl
                 var gradedCounts = await _context.SubmissionDetails
                     .Where(c => c.ExamSubmissionId != null && latestPerUserIds.Contains(c.ExamSubmissionId.Value) && c.ScoreObtained != null)
                     .GroupBy(c => c.ExamSubmissionId!.Value)
-                    .Select(g => new { BaiThiId = g.Key, GradedCount = g.Count() })
-                    .ToDictionaryAsync(x => x.BaiThiId, x => x.GradedCount);
+                    .Select(g => new { ExamSubmissionId = g.Key, GradedCount = g.Count() })
+                    .ToDictionaryAsync(x => x.ExamSubmissionId, x => x.GradedCount);
 
                 var statsDict = new Dictionary<int, (int mcqTotal, int mcqGraded, int essayTotal, int essayGraded)>();
                 if (latestPerUserIds.Any())
@@ -175,7 +175,7 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto<ExamResultDetailDto>> RegradeAsync(int baiThiId)
+        public async Task<BaseResponseDto<ExamResultDetailDto>> RegradeAsync(int examSubmissionId)
         {
             try
             {
@@ -186,7 +186,7 @@ namespace BanTayVang.API.Services.Impl
                     .Include(b => b.SubmissionDetails)
                         .ThenInclude(c => c.IdCauHoiNavigation)
                             .ThenInclude(ch => ch!.IdLoaiCauHoiNavigation)
-                    .FirstOrDefaultAsync(b => b.Id == baiThiId);
+                    .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
                 if (examSubmission == null)
                     return new BaseResponseDto<ExamResultDetailDto> { Success = false, Message = "Không tìm thấy bài thi" };
@@ -259,7 +259,7 @@ namespace BanTayVang.API.Services.Impl
 
                 await _context.SaveChangesAsync();
 
-                return await GetResultDetailAsync(baiThiId);
+                return await GetResultDetailAsync(examSubmissionId);
             }
             catch (Exception ex)
             {
@@ -419,11 +419,11 @@ namespace BanTayVang.API.Services.Impl
 
             var detail = new ExamResultDetailDto
             {
-                BaiThiId = examSubmission.Id,
+                ExamSubmissionId = examSubmission.Id,
                 UserId = examSubmission.UserId,
                 Username = examSubmission.IdTaiKhoanNavigation?.Username,
                 FullName = examSubmission.IdTaiKhoanNavigation?.FullName,
-                MaNhanVien = examSubmission.IdTaiKhoanNavigation?.MaNhanVien,
+                EmployeeCode = examSubmission.IdTaiKhoanNavigation?.EmployeeCode,
                 Department = examSubmission.IdTaiKhoanNavigation?.Department,
                 ExamId = examSubmission.ExamPaperId ?? 0,
                 ExamPaperId = examSubmission.ExamPaperId,
@@ -522,7 +522,7 @@ namespace BanTayVang.API.Services.Impl
 
                 detail.Answers.Add(new AnswerDetailDto
                 {
-                    CauHoiId = question.Id,
+                    QuestionId = question.Id,
                     NoiDungCauHoi = question.Content,
                     QuestionCategory = question.IdLoaiCauHoiNavigation?.CategoryName,
                     SelectedOptionId = firstCt.SelectedOptionId, // Fallback
@@ -555,11 +555,11 @@ namespace BanTayVang.API.Services.Impl
 
             return new ExamResultDetailDto
             {
-                BaiThiId = examSubmission.Id,
+                ExamSubmissionId = examSubmission.Id,
                 UserId = examSubmission.UserId,
                 Username = examSubmission.IdTaiKhoanNavigation?.Username,
                 FullName = examSubmission.IdTaiKhoanNavigation?.FullName,
-                MaNhanVien = examSubmission.IdTaiKhoanNavigation?.MaNhanVien,
+                EmployeeCode = examSubmission.IdTaiKhoanNavigation?.EmployeeCode,
                 Department = examSubmission.IdTaiKhoanNavigation?.Department,
                 ExamId = examSubmission.ExamPaperId ?? 0,
                 ExamPaperCode = examSubmission.ExamPaperCode ?? examSubmission.IdDeThiNavigation?.ExamPaperCode,
@@ -589,22 +589,22 @@ namespace BanTayVang.API.Services.Impl
         /// <summary>
         /// Quản lý khoa đánh giá / nhận xét bài thi của thí sinh
         /// </summary>
-        public async Task<BaseResponseDto> DanhGiaThiSinhAsync(int baiThiId, string danhGia)
+        public async Task<BaseResponseDto> EvaluateCandidateAsync(int examSubmissionId, string evaluation)
         {
             try
             {
-                var examSubmission = await _context.ExamSubmissions.FindAsync(baiThiId);
+                var examSubmission = await _context.ExamSubmissions.FindAsync(examSubmissionId);
                 if (examSubmission == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy bài thi" };
 
-                examSubmission.DanhGiaKhoa = danhGia;
+                examSubmission.DanhGiaKhoa = evaluation;
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseDto { Success = true, Message = "Đã lưu đánh giá" };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving DanhGiaKhoa for examSubmission {BaiThiId}", baiThiId);
+                _logger.LogError(ex, "Error saving DanhGiaKhoa for examSubmission {ExamSubmissionId}", examSubmissionId);
                 return new BaseResponseDto { Success = false, Message = "Lỗi khi lưu đánh giá" };
             }
         }
@@ -614,7 +614,7 @@ namespace BanTayVang.API.Services.Impl
         /// <summary>
         /// Lấy kết quả thi theo Kỳ thi
         /// </summary>
-        public async Task<BaseResponseDto<List<ExamResultDetailDto>>> GetResultsByKyThiAsync(int kyThiId)
+        public async Task<BaseResponseDto<List<ExamResultDetailDto>>> GetResultsByExamCampaignAsync(int examCampaignId)
         {
             try
             {
@@ -623,7 +623,7 @@ namespace BanTayVang.API.Services.Impl
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
-                    .Where(b => b.ExamCampaignId == kyThiId)
+                    .Where(b => b.ExamCampaignId == examCampaignId)
                     .OrderByDescending(b => b.TotalScore)
                     .ToListAsync();
 
@@ -654,8 +654,8 @@ namespace BanTayVang.API.Services.Impl
                     gradedCounts = await _context.SubmissionDetails
                         .Where(c => c.ExamSubmissionId != null && baithiIds.Contains(c.ExamSubmissionId.Value) && c.ScoreObtained != null)
                         .GroupBy(c => c.ExamSubmissionId!.Value)
-                        .Select(g => new { BaiThiId = g.Key, GradedCount = g.Count() })
-                        .ToDictionaryAsync(x => x.BaiThiId, x => x.GradedCount);
+                        .Select(g => new { ExamSubmissionId = g.Key, GradedCount = g.Count() })
+                        .ToDictionaryAsync(x => x.ExamSubmissionId, x => x.GradedCount);
                 }
 
                 var statsDict = new Dictionary<int, (int mcqTotal, int mcqGraded, int essayTotal, int essayGraded)>();
@@ -714,11 +714,11 @@ namespace BanTayVang.API.Services.Impl
 
                     return new ExamResultDetailDto
                     {
-                        BaiThiId = b.Id,
+                        ExamSubmissionId = b.Id,
                         ExamPaperId = b.ExamPaperId,
                         Username = b.IdTaiKhoanNavigation?.Username,
                         FullName = b.IdTaiKhoanNavigation?.FullName,
-                        MaNhanVien = b.IdTaiKhoanNavigation?.MaNhanVien,
+                        EmployeeCode = b.IdTaiKhoanNavigation?.EmployeeCode,
                         Department = b.IdTaiKhoanNavigation?.Department,
                         ExamId = b.ExamPaperId ?? 0,
                         ExamPaperCode = b.ExamPaperCode,
@@ -754,13 +754,13 @@ namespace BanTayVang.API.Services.Impl
                 return new BaseResponseDto<List<ExamResultDetailDto>>
                 {
                     Success = true,
-                    Message = $"Lấy {results.Count} kết quả thi kỳ {kyThiId}",
+                    Message = $"Lấy {results.Count} kết quả thi kỳ {examCampaignId}",
                     Data = results
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting results by ExamCampaign {KyThiId}", kyThiId);
+                _logger.LogError(ex, "Error getting results by ExamCampaign {ExamCampaignId}", examCampaignId);
                 return BaseResponseDto<List<ExamResultDetailDto>>.FailureResult("Lỗi khi lấy kết quả");
             }
         }

@@ -9,7 +9,7 @@ namespace BanTayVang.API.DTOs.AntiCheat
     public class ExamSecuritySummaryDto
     {
         public int ExamSessionId { get; set; }
-        public int BaithiId { get; set; }
+        public int ExamSubmissionId { get; set; }
         public int TotalWarnings { get; set; }
         public int CriticalWarnings { get; set; }
         public int HighWarnings { get; set; }

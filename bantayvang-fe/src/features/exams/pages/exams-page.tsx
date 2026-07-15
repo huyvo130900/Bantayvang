@@ -77,14 +77,14 @@ export function ExamsPage() {
         department: isDeptManager && myKhoa ? myKhoa : data.department,
         soCauRandom: data.soCauRandom,
         danhSachIdCauHoi: data.danhSachIdCauHoi ?? [],
-        kyThiId: data.kyThiId,
+        examCampaignId: data.examCampaignId,
         soCauDungToiThieu: data.soCauDungToiThieu ?? null,
       }
       const res = await examsApi.create(createDto)
       if (res.data.success) {
-        if (data.kyThiId) {
-          setDefaultKyThiId(data.kyThiId)
-          localStorage.setItem('bantayvang_last_kythi_id', String(data.kyThiId))
+        if (data.examCampaignId) {
+          setDefaultKyThiId(data.examCampaignId)
+          localStorage.setItem('bantayvang_last_kythi_id', String(data.examCampaignId))
         }
         setFormOpen(false)
         dispatch(fetchAllExams())

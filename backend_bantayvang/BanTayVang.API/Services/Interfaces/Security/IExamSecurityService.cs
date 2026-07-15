@@ -23,20 +23,20 @@ namespace BanTayVang.API.Services.Interfaces.Security
         /// <summary>
         /// Logs suspicious activity with OWASP security logging
         /// </summary>
-        /// <param name="baithiId">Exam session ID</param>
-        /// <param name="loaiCanhBao">Warning type</param>
+        /// <param name="examSubmissionId">Exam session ID</param>
+        /// <param name="warningType">Warning type</param>
         /// <param name="moTa">Description</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Operation result</returns>
-        Task<BaseResponseDto> LogSuspiciousActivityAsync(int baithiId, string loaiCanhBao, string moTa, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string moTa, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets warning count for an exam session
         /// </summary>
-        /// <param name="baithiId">Exam session ID</param>
+        /// <param name="examSubmissionId">Exam session ID</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Warning count</returns>
-        Task<BaseResponseDto<int>> GetWarningCountAsync(int baithiId, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto<int>> GetWarningCountAsync(int examSubmissionId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Validates exam environment for security
@@ -49,17 +49,17 @@ namespace BanTayVang.API.Services.Interfaces.Security
         /// <summary>
         /// Checks if exam session should be terminated due to violations
         /// </summary>
-        /// <param name="baithiId">Exam session ID</param>
+        /// <param name="examSubmissionId">Exam session ID</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Termination recommendation</returns>
-        Task<BaseResponseDto<bool>> ShouldTerminateExamAsync(int baithiId, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto<bool>> ShouldTerminateExamAsync(int examSubmissionId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets security summary for an exam session
         /// </summary>
-        /// <param name="baithiId">Exam session ID</param>
+        /// <param name="examSubmissionId">Exam session ID</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Security summary</returns>
-        Task<BaseResponseDto<ExamSecuritySummaryDto>> GetSecuritySummaryAsync(int baithiId, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto<ExamSecuritySummaryDto>> GetSecuritySummaryAsync(int examSubmissionId, CancellationToken cancellationToken = default);
     }
 }

@@ -31,7 +31,7 @@ namespace BanTayVang.API.DTOs.Exam
         public string Status { get; set; } = "Draft";
 
         // OWASP: Validate question IDs to prevent injection
-        public List<int> DanhSachIdCauHoi { get; set; } = new();
+        public List<int> QuestionIds { get; set; } = new();
 
         // Audit fields
         public int UpdatedBy { get; set; }
@@ -41,7 +41,7 @@ namespace BanTayVang.API.DTOs.Exam
         /// <summary>
         /// Kỳ thi liên kết
         /// </summary>
-        public int? KyThiId { get; set; }
+        public int? ExamCampaignId { get; set; }
 
         /// <summary>
         /// Custom validation for business rules
@@ -59,19 +59,19 @@ namespace BanTayVang.API.DTOs.Exam
             }
 
             // OWASP: Validate reasonable number of questions
-            if (DanhSachIdCauHoi.Count > 200)
+            if (QuestionIds.Count > 200)
             {
                 results.Add(new ValidationResult(
                     "Too many questions (max 200)",
-                    new[] { nameof(DanhSachIdCauHoi) }));
+                    new[] { nameof(QuestionIds) }));
             }
 
             // OWASP: Validate question IDs are positive
-            if (DanhSachIdCauHoi.Any(id => id <= 0))
+            if (QuestionIds.Any(id => id <= 0))
             {
                 results.Add(new ValidationResult(
                     "Invalid question IDs",
-                    new[] { nameof(DanhSachIdCauHoi) }));
+                    new[] { nameof(QuestionIds) }));
             }
 
             return results;

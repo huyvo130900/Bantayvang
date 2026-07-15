@@ -8,10 +8,10 @@ namespace BanTayVang.API.DTOs.User
     public class UserDto
     {
         public int Id { get; set; }
-        public string? MaNhanVien { get; set; }
+        public string? EmployeeCode { get; set; }
         public string? Username { get; set; }
         public string? FullName { get; set; }
-        public string? ChucDanh { get; set; }
+        public string? JobTitle { get; set; }
         public string? Department { get; set; }
         public int? RoleId { get; set; }
         public string? RoleName { get; set; }
@@ -42,8 +42,8 @@ namespace BanTayVang.API.DTOs.User
         [StringLength(255)]
         public string FullName { get; set; } = string.Empty;
 
-        public string? MaNhanVien { get; set; }
-        public string? ChucDanh { get; set; }
+        public string? EmployeeCode { get; set; }
+        public string? JobTitle { get; set; }
         public string? Department { get; set; }
         public string? Email { get; set; }
         public string? SoDienThoai { get; set; }
@@ -62,8 +62,8 @@ namespace BanTayVang.API.DTOs.User
         [StringLength(255)]
         public string FullName { get; set; } = string.Empty;
 
-        public string? MaNhanVien { get; set; }
-        public string? ChucDanh { get; set; }
+        public string? EmployeeCode { get; set; }
+        public string? JobTitle { get; set; }
         public string? Department { get; set; }
         public string? Email { get; set; }
         public string? SoDienThoai { get; set; }

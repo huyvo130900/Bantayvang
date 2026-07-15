@@ -16,7 +16,7 @@ namespace BanTayVang.API.Services.Impl.Exams
     public class ExamSubmissionService : IExamSubmissionService
     {
         private readonly IExamSubmissionRepository _examSubmissionRepository;
-        private readonly ISubmissionDetailRepository _chitietRepository;
+        private readonly ISubmissionDetailRepository _submissionDetailRepository;
         private readonly IExamPaperRepository _examPaperRepository;
         private readonly IExamValidationService _validationService;
         private readonly IExamSecurityService _securityService;
@@ -35,7 +35,7 @@ namespace BanTayVang.API.Services.Impl.Exams
             ILogger<ExamSubmissionService> logger)
         {
             _examSubmissionRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
-            _chitietRepository = chitietRepository ?? throw new ArgumentNullException(nameof(chitietRepository));
+            _submissionDetailRepository = chitietRepository ?? throw new ArgumentNullException(nameof(chitietRepository));
             _examPaperRepository = dethiRepository ?? throw new ArgumentNullException(nameof(dethiRepository));
             _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
             _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
@@ -44,20 +44,20 @@ namespace BanTayVang.API.Services.Impl.Exams
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<BaseResponseDto> SaveAnswerAsync(SubmitAnswerDto answerDto, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto> SaveAnswerAsync(SubmitAnswerDto answerDto, int userId, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Saving answer for user {UserId}, session {SessionId}, question {QuestionId}",
-                    taikhoanId, answerDto.ExamSubmissionId, answerDto.QuestionId);
+                    userId, answerDto.ExamSubmissionId, answerDto.QuestionId);
 
                 // OWASP A03: Injection - Input validation
                 var validationResult = await ValidateAnswerAsync(answerDto, cancellationToken);
                 if (!validationResult.Success)
                 {
                     await _securityService.LogSecurityEventAsync("ANSWER_VALIDATION_FAILED",
-                        $"User {taikhoanId} failed answer validation for session {answerDto.ExamSubmissionId}",
-                        taikhoanId, "Medium", cancellationToken);
+                        $"User {userId} failed answer validation for session {answerDto.ExamSubmissionId}",
+                        userId, "Medium", cancellationToken);
                     return new BaseResponseDto
                     {
                         Success = false,
@@ -68,11 +68,11 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                 // OWASP A01: Broken Access Control - Verify ownership
                 var examSubmission = await _examSubmissionRepository.GetByIdAsync(answerDto.ExamSubmissionId);
-                if (examSubmission == null || examSubmission.UserId != taikhoanId)
+                if (examSubmission == null || examSubmission.UserId != userId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_ANSWER_SUBMISSION",
-                        $"User {taikhoanId} attempted unauthorized answer submission to session {answerDto.ExamSubmissionId}",
-                        taikhoanId, "High", cancellationToken);
+                        $"User {userId} attempted unauthorized answer submission to session {answerDto.ExamSubmissionId}",
+                        userId, "High", cancellationToken);
 
                     return new BaseResponseDto
                     {
@@ -84,8 +84,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                 if (examSubmission.Status != "InProgress")
                 {
                     await _securityService.LogSecurityEventAsync("ANSWER_TO_INACTIVE_EXAM",
-                        $"User {taikhoanId} attempted to submit answer to inactive exam session {answerDto.ExamSubmissionId}",
-                        taikhoanId, "Medium", cancellationToken);
+                        $"User {userId} attempted to submit answer to inactive exam session {answerDto.ExamSubmissionId}",
+                        userId, "Medium", cancellationToken);
 
                     return new BaseResponseDto
                     {
@@ -99,7 +99,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                 if (IsExamExpired(examPaper, examSubmission.StartTime))
                 {
                     // Auto-submit expired exam
-                    await AutoSubmitExpiredExam(examSubmission, taikhoanId, cancellationToken);
+                    await AutoSubmitExpiredExam(examSubmission, userId, cancellationToken);
 
                     return new BaseResponseDto
                     {
@@ -119,11 +119,11 @@ namespace BanTayVang.API.Services.Impl.Exams
                     DaLuu = answerDto.DaLuu
                 };
 
-                await _chitietRepository.SaveAnswerAsync(chitiet);
+                await _submissionDetailRepository.SaveAnswerAsync(chitiet);
 
                 await _securityService.LogSecurityEventAsync("ANSWER_SAVED",
-                    $"User {taikhoanId} saved answer for question {answerDto.QuestionId} in session {answerDto.ExamSubmissionId}",
-                    taikhoanId, "Info", cancellationToken);
+                    $"User {userId} saved answer for question {answerDto.QuestionId} in session {answerDto.ExamSubmissionId}",
+                    userId, "Info", cancellationToken);
 
                 return new BaseResponseDto
                 {
@@ -134,11 +134,11 @@ namespace BanTayVang.API.Services.Impl.Exams
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving answer for user {UserId}, session {SessionId}, question {QuestionId}",
-                    taikhoanId, answerDto.ExamSubmissionId, answerDto.QuestionId);
+                    userId, answerDto.ExamSubmissionId, answerDto.QuestionId);
 
                 await _securityService.LogSecurityEventAsync("ANSWER_SAVE_ERROR",
-                    $"System error saving answer for user {taikhoanId}: {ex.Message}",
-                    taikhoanId, "High", cancellationToken);
+                    $"System error saving answer for user {userId}: {ex.Message}",
+                    userId, "High", cancellationToken);
 
                 return new BaseResponseDto
                 {
@@ -149,19 +149,19 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
         }
 
-        public async Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int userId, CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("Submitting exam for user {UserId}, session {SessionId}", taikhoanId, submitDto.ExamSubmissionId);
+                _logger.LogInformation("Submitting exam for user {UserId}, session {SessionId}", userId, submitDto.ExamSubmissionId);
 
                 // OWASP A01: Broken Access Control - Verify ownership
                 var examSubmission = await _examSubmissionRepository.GetWithDetailsAsync(submitDto.ExamSubmissionId);
-                if (examSubmission == null || examSubmission.UserId != taikhoanId)
+                if (examSubmission == null || examSubmission.UserId != userId)
                 {
                     await _securityService.LogSecurityEventAsync("UNAUTHORIZED_EXAM_SUBMISSION",
-                        $"User {taikhoanId} attempted unauthorized submission of session {submitDto.ExamSubmissionId}",
-                        taikhoanId, "High", cancellationToken);
+                        $"User {userId} attempted unauthorized submission of session {submitDto.ExamSubmissionId}",
+                        userId, "High", cancellationToken);
 
                     return new BaseResponseDto<ExamSubmissionDto>
                     {
@@ -173,8 +173,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                 if (examSubmission.Status == "Completed")
                 {
                     await _securityService.LogSecurityEventAsync("DUPLICATE_EXAM_SUBMISSION",
-                        $"User {taikhoanId} attempted duplicate submission of session {submitDto.ExamSubmissionId}",
-                        taikhoanId, "Medium", cancellationToken);
+                        $"User {userId} attempted duplicate submission of session {submitDto.ExamSubmissionId}",
+                        userId, "Medium", cancellationToken);
 
                     return new BaseResponseDto<ExamSubmissionDto>
                     {
@@ -193,10 +193,10 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                     foreach (var group in answersByQuestion)
                     {
-                        var cauhoiId = group.Key;
+                        var questionId = group.Key;
 
                         // Xóa các câu trả lời cũ/placeholder của câu hỏi này
-                        await _chitietRepository.DeleteAnswersByQuestionAsync(submitDto.ExamSubmissionId, cauhoiId);
+                        await _submissionDetailRepository.DeleteAnswersByQuestionAsync(submitDto.ExamSubmissionId, questionId);
 
                         // Lưu các câu trả lời mới
                         foreach (var answer in group)
@@ -205,8 +205,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                             if (!validationResult.Success)
                             {
                                 await _securityService.LogSecurityEventAsync("INVALID_ANSWER_IN_SUBMISSION",
-                                    $"User {taikhoanId} submitted invalid answer in final submission",
-                                    taikhoanId, "High", cancellationToken);
+                                    $"User {userId} submitted invalid answer in final submission",
+                                    userId, "High", cancellationToken);
                                 continue; // Bỏ qua đáp án không hợp lệ nhưng không làm dừng cả bài thi
                             }
 
@@ -220,7 +220,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                                 DaLuu = true
                             };
 
-                            await _chitietRepository.AddAsync(chitiet);
+                            await _submissionDetailRepository.AddAsync(chitiet);
                         }
                     }
 
@@ -237,8 +237,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                     await transaction.CommitAsync(cancellationToken);
 
                     await _securityService.LogSecurityEventAsync("EXAM_SUBMITTED",
-                        $"User {taikhoanId} successfully submitted exam session {submitDto.ExamSubmissionId} with score {totalScore}",
-                        taikhoanId, "Info", cancellationToken);
+                        $"User {userId} successfully submitted exam session {submitDto.ExamSubmissionId} with score {totalScore}",
+                        userId, "Info", cancellationToken);
 
                     var result = _mapper.Map<ExamSubmissionDto>(examSubmission);
                     return new BaseResponseDto<ExamSubmissionDto>
@@ -256,11 +256,11 @@ namespace BanTayVang.API.Services.Impl.Exams
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error submitting exam for user {UserId}, session {SessionId}", taikhoanId, submitDto.ExamSubmissionId);
+                _logger.LogError(ex, "Error submitting exam for user {UserId}, session {SessionId}", userId, submitDto.ExamSubmissionId);
 
                 await _securityService.LogSecurityEventAsync("EXAM_SUBMISSION_ERROR",
-                    $"System error during exam submission for user {taikhoanId}: {ex.Message}",
-                    taikhoanId, "High", cancellationToken);
+                    $"System error during exam submission for user {userId}: {ex.Message}",
+                    userId, "High", cancellationToken);
 
                 return new BaseResponseDto<ExamSubmissionDto>
                 {
@@ -401,9 +401,9 @@ namespace BanTayVang.API.Services.Impl.Exams
         /// <summary>
         /// Automatically grades the multiple-choice questions (MCQs) of an exam and leaves essay questions ungraded (null)
         /// </summary>
-        private async Task<(int CorrectAnswers, double TotalScore)> GradeExamAsync(int baithiId)
+        private async Task<(int CorrectAnswers, double TotalScore)> GradeExamAsync(int examSubmissionId)
         {
-            var answers = await _chitietRepository.GetByBaiThiAsync(baithiId);
+            var answers = await _submissionDetailRepository.GetByBaiThiAsync(examSubmissionId);
             int correctAnswers = 0;
             var answersByQuestion = answers.Where(c => c.QuestionId.HasValue).GroupBy(c => c.QuestionId!.Value);
 
@@ -453,9 +453,9 @@ namespace BanTayVang.API.Services.Impl.Exams
         /// <summary>
         /// Auto-submit an expired exam
         /// </summary>
-        private async Task AutoSubmitExpiredExam(ExamSubmission examSubmission, int taikhoanId, CancellationToken cancellationToken)
+        private async Task AutoSubmitExpiredExam(ExamSubmission examSubmission, int userId, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Auto-submitting expired exam session {SessionId} for user {UserId}", examSubmission.Id, taikhoanId);
+            _logger.LogInformation("Auto-submitting expired exam session {SessionId} for user {UserId}", examSubmission.Id, userId);
 
             // Grade exam automatically
             var (correctAnswers, totalScore) = await GradeExamAsync(examSubmission.Id);
@@ -469,8 +469,8 @@ namespace BanTayVang.API.Services.Impl.Exams
             await _context.SaveChangesAsync(cancellationToken);
 
             await _securityService.LogSecurityEventAsync("EXAM_AUTO_SUBMITTED",
-                $"Exam session {examSubmission.Id} auto-submitted for user {taikhoanId} due to time expiry",
-                taikhoanId, "Info", cancellationToken);
+                $"Exam session {examSubmission.Id} auto-submitted for user {userId} due to time expiry",
+                userId, "Info", cancellationToken);
         }
 
         /// <summary>

@@ -8,13 +8,13 @@ public partial class User
 {
     public int Id { get; set; }
 
-    public string? MaNhanVien { get; set; }
+    public string? EmployeeCode { get; set; }
 
     public string? Username { get; set; }
 
     public string? Password { get; set; }
 
-    public string? ChucDanh { get; set; }
+    public string? JobTitle { get; set; }
 
     public string? Department { get; set; }
 

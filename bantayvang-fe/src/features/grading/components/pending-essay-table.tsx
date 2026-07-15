@@ -52,7 +52,7 @@ export function PendingEssayTable({ items, isLoading, onViewDetail, isGraded }: 
             <tr key={item.baiThiId} className="hover:bg-orange-50/50 transition-colors">
               <td className="px-4 py-3">
                 <p className="font-semibold text-gray-900">{item.fullName || '—'}</p>
-                <p className="text-xs text-gray-400">{item.username} {item.maNhanVien ? `· ${item.maNhanVien}` : ''}</p>
+                <p className="text-xs text-gray-400">{item.username} {item.employeeCode ? `· ${item.employeeCode}` : ''}</p>
               </td>
               <td className="px-4 py-3 text-gray-600 text-xs">{item.department || '—'}</td>
               <td className="px-4 py-3">

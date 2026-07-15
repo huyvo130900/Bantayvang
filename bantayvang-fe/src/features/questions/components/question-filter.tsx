@@ -178,9 +178,9 @@ export function QuestionFilter({
         {/* Lọc theo kỳ thi */}
         <select
           className="h-10 rounded-md border border-input bg-background px-3 text-sm max-w-[180px]"
-          value={filter.kyThiId ?? ''}
+          value={filter.examCampaignId ?? ''}
           onChange={(e) =>
-            onFilterChange({ kyThiId: e.target.value ? Number(e.target.value) : undefined, pageNumber: 1 })
+            onFilterChange({ examCampaignId: e.target.value ? Number(e.target.value) : undefined, pageNumber: 1 })
           }
         >
           <option value="">Tất cả kỳ thi</option>
@@ -199,7 +199,7 @@ export function QuestionFilter({
         >
           <option value="">Tất cả đề thi</option>
           {deThiList
-            .filter((dt) => !filter.kyThiId || dt.kyThiId === filter.kyThiId)
+            .filter((dt) => !filter.examCampaignId || dt.examCampaignId === filter.examCampaignId)
             .map((dt) => (
               <option key={dt.id} value={dt.id}>{dt.examPaperName || dt.examPaperCode}</option>
             ))}

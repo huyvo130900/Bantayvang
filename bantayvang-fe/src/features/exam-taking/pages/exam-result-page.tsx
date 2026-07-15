@@ -7,7 +7,7 @@ import { CheckCircle2, XCircle, Trophy, AlertTriangle, Clock, ChevronDown, Chevr
 import { formatDate } from '@/lib/utils'
 
 export function ExamResultPage() {
-  const { baithiId } = useParams<{ baithiId: string }>()
+  const { examSubmissionId } = useParams<{ examSubmissionId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
   const [result, setResult] = useState<ExamResultDetailDto | null>(null)
@@ -18,13 +18,13 @@ export function ExamResultPage() {
   const forcedReason = (location.state as any)?.forcedReason as string | undefined
 
   useEffect(() => {
-    if (!baithiId) return
+    if (!examSubmissionId) return
     loadResult()
-  }, [baithiId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [examSubmissionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadResult = async () => {
     try {
-      const response = await gradingApi.getResultDetail(Number(baithiId))
+      const response = await gradingApi.getResultDetail(Number(examSubmissionId))
       if (response.data.success && response.data.data) {
         setResult(response.data.data)
       }

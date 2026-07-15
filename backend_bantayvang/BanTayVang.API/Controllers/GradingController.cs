@@ -30,8 +30,8 @@ namespace BanTayVang.API.Controllers
         /// <summary>
         /// Lấy chi tiết kết quả bài thi (kèm câu trả lời)
         /// </summary>
-        [HttpGet("result/{baiThiId}")]
-        public async Task<ActionResult<BaseResponseDto<ExamResultDetailDto>>> GetResultDetail(int baiThiId)
+        [HttpGet("result/{examSubmissionId}")]
+        public async Task<ActionResult<BaseResponseDto<ExamResultDetailDto>>> GetResultDetail(int examSubmissionId)
         {
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
@@ -40,7 +40,7 @@ namespace BanTayVang.API.Controllers
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
-                    .FirstOrDefaultAsync(b => b.Id == baiThiId);
+                    .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
                 
                 if (examSubmission == null) return Forbid();
                 
@@ -54,7 +54,7 @@ namespace BanTayVang.API.Controllers
                 }
             }
 
-            var result = await _gradingService.GetResultDetailAsync(baiThiId);
+            var result = await _gradingService.GetResultDetailAsync(examSubmissionId);
             if (!result.Success) return NotFound(result);
 
             if (result.Data != null)
@@ -129,8 +129,8 @@ namespace BanTayVang.API.Controllers
         /// <summary>
         /// Chấm lại bài thi
         /// </summary>
-        [HttpPost("regrade/{baiThiId}")]
-        public async Task<ActionResult<BaseResponseDto<ExamResultDetailDto>>> Regrade(int baiThiId)
+        [HttpPost("regrade/{examSubmissionId}")]
+        public async Task<ActionResult<BaseResponseDto<ExamResultDetailDto>>> Regrade(int examSubmissionId)
         {
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
@@ -139,7 +139,7 @@ namespace BanTayVang.API.Controllers
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
-                    .FirstOrDefaultAsync(b => b.Id == baiThiId);
+                    .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
                 
                 if (examSubmission == null) return Forbid();
                 
@@ -153,7 +153,7 @@ namespace BanTayVang.API.Controllers
                 }
             }
 
-            var result = await _gradingService.RegradeAsync(baiThiId);
+            var result = await _gradingService.RegradeAsync(examSubmissionId);
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }
@@ -218,11 +218,11 @@ namespace BanTayVang.API.Controllers
                 .Take(200)
                 .Select(b => new
                 {
-                    BaiThiId = b.Id,
+                    ExamSubmissionId = b.Id,
                     UserId = b.UserId,
                     Username = b.IdTaiKhoanNavigation!.Username,
                     FullName = b.IdTaiKhoanNavigation.FullName,
-                    MaNhanVien = b.IdTaiKhoanNavigation.MaNhanVien,
+                    EmployeeCode = b.IdTaiKhoanNavigation.EmployeeCode,
                     Department = b.IdTaiKhoanNavigation.Department,
                     ExamPaperCode = b.ExamPaperCode,
                     ExamPaperName = b.IdDeThiNavigation != null ? b.IdDeThiNavigation.ExamPaperName : null,
@@ -361,7 +361,7 @@ namespace BanTayVang.API.Controllers
                 ws.Cell(row, 1).Value = stt++;
                 ws.Cell(row, 2).Value = r.Username;
                 ws.Cell(row, 3).Value = r.FullName;
-                ws.Cell(row, 4).Value = r.MaNhanVien;
+                ws.Cell(row, 4).Value = r.EmployeeCode;
                 ws.Cell(row, 5).Value = r.Department;
                 ws.Cell(row, 6).Value = r.ExamPaperCode;
                 ws.Cell(row, 7).Value = r.ExamPaperName;
@@ -439,7 +439,7 @@ namespace BanTayVang.API.Controllers
                 ws.Cell(row, 1).Value = rank++;
                 ws.Cell(row, 2).Value = r.Username;
                 ws.Cell(row, 3).Value = r.FullName;
-                ws.Cell(row, 4).Value = r.MaNhanVien;
+                ws.Cell(row, 4).Value = r.EmployeeCode;
                 ws.Cell(row, 5).Value = r.Department;
                 ws.Cell(row, 6).Value = r.TotalScore ?? 0;
                 ws.Cell(row, 7).Value = r.CorrectAnswers ?? 0;
@@ -468,7 +468,7 @@ namespace BanTayVang.API.Controllers
             if (items == null || !items.Any())
                 return BadRequest(new { success = false, message = "Không có dữ liệu để xuất" });
 
-            var baiThiIds = items.Select(i => i.BaiThiId).ToList();
+            var baiThiIds = items.Select(i => i.ExamSubmissionId).ToList();
 
             var examSubmissions = await _db.ExamSubmissions
                 .Include(b => b.IdTaiKhoanNavigation)
@@ -481,7 +481,7 @@ namespace BanTayVang.API.Controllers
             var orderedBaithis = items
                 .Select(item => new {
                     Item = item,
-                    ExamSubmission = examSubmissions.FirstOrDefault(b => b.Id == item.BaiThiId)
+                    ExamSubmission = examSubmissions.FirstOrDefault(b => b.Id == item.ExamSubmissionId)
                 })
                 .Where(x => x.ExamSubmission != null)
                 .ToList();
@@ -546,7 +546,7 @@ namespace BanTayVang.API.Controllers
                 ws.Cell(row, 1).Value = stt++;
                 ws.Cell(row, 2).Value = b.IdTaiKhoanNavigation?.Username ?? "";
                 ws.Cell(row, 3).Value = b.IdTaiKhoanNavigation?.FullName ?? "";
-                ws.Cell(row, 4).Value = b.IdTaiKhoanNavigation?.MaNhanVien ?? "";
+                ws.Cell(row, 4).Value = b.IdTaiKhoanNavigation?.EmployeeCode ?? "";
                 ws.Cell(row, 5).Value = b.IdTaiKhoanNavigation?.Department ?? "";
                 ws.Cell(row, 6).Value = b.ExamPaperCode ?? b.IdDeThiNavigation?.ExamPaperCode ?? "";
                 ws.Cell(row, 7).Value = b.IdDeThiNavigation?.ExamPaperName ?? "";
@@ -579,17 +579,17 @@ namespace BanTayVang.API.Controllers
         /// <summary>
         /// Lấy kết quả thi phân cấp theo Kỳ thi (cho DeptManager & Admin)
         /// </summary>
-        [HttpGet("by-exam-campaign/{kyThiId}")]
-        public async Task<ActionResult<BaseResponseDto<List<ExamResultDetailDto>>>> GetByKyThi(int kyThiId)
+        [HttpGet("by-exam-campaign/{examCampaignId}")]
+        public async Task<ActionResult<BaseResponseDto<List<ExamResultDetailDto>>>> GetByKyThi(int examCampaignId)
         {
             try
             {
-                var result = await _gradingService.GetResultsByKyThiAsync(kyThiId);
+                var result = await _gradingService.GetResultsByExamCampaignAsync(examCampaignId);
 
                 if (DepartmentAuthHelper.IsDeptManager(User))
                 {
                     var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                    var kythi = await _db.ExamCampaigns.FindAsync(kyThiId);
+                    var kythi = await _db.ExamCampaigns.FindAsync(examCampaignId);
                     bool isOwner = kythi != null && kythi.OrganizedBy == myKhoa;
 
                     if (!isOwner)
@@ -615,10 +615,10 @@ namespace BanTayVang.API.Controllers
         }
 
         /// <summary>
-        /// PUT /api/grading/danh-gia/{baiThiId} — Quản lý khoa đánh giá thí sinh
+        /// PUT /api/grading/danh-gia/{examSubmissionId} — Quản lý khoa đánh giá thí sinh
         /// </summary>
-        [HttpPut("danh-gia/{baiThiId}")]
-        public async Task<IActionResult> DanhGiaThiSinh(int baiThiId, [FromBody] DanhGiaThiSinhDto dto)
+        [HttpPut("evaluate/{examSubmissionId}")]
+        public async Task<IActionResult> EvaluateCandidate(int examSubmissionId, [FromBody] DanhGiaThiSinhDto dto)
         {
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
@@ -627,7 +627,7 @@ namespace BanTayVang.API.Controllers
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
-                    .FirstOrDefaultAsync(b => b.Id == baiThiId);
+                    .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
                 
                 if (examSubmission == null) return Forbid();
                 
@@ -641,7 +641,7 @@ namespace BanTayVang.API.Controllers
                 }
             }
 
-            var result = await _gradingService.DanhGiaThiSinhAsync(baiThiId, dto.DanhGia);
+            var result = await _gradingService.EvaluateCandidateAsync(examSubmissionId, dto.Evaluation);
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }
@@ -651,17 +651,17 @@ namespace BanTayVang.API.Controllers
         // =====================================================================
 
         /// <summary>
-        /// POST /api/grading/publish-single/{baiThiId}
+        /// POST /api/grading/publish-single/{examSubmissionId}
         /// Admin hoặc Quản lý khoa công bố điểm cho 1 thí sinh cụ thể.
         /// Ghi nhận vào bảng ExamSubmission.CongBoRieng = true.
         /// </summary>
-        [HttpPost("publish-single/{baiThiId}")]
+        [HttpPost("publish-single/{examSubmissionId}")]
         [Authorize(Policy = "ManagementOnly")]
-        public async Task<IActionResult> PublishSingle(int baiThiId)
+        public async Task<IActionResult> PublishSingle(int examSubmissionId)
         {
             var examSubmission = await _db.ExamSubmissions
                 .Include(b => b.IdDeThiNavigation)
-                .FirstOrDefaultAsync(b => b.Id == baiThiId);
+                .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
             if (examSubmission == null)
                 return NotFound(new BaseResponseDto { Success = false, Message = "Không tìm thấy bài thi" });
@@ -675,7 +675,7 @@ namespace BanTayVang.API.Controllers
                     .Include(b => b.IdTaiKhoanNavigation)
                     .Include(b => b.IdDeThiNavigation)
                     .Include(b => b.KyThiNavigation)
-                    .FirstOrDefaultAsync(b => b.Id == baiThiId);
+                    .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
                 bool isOwner = baithiFull?.IdTaiKhoanNavigation?.Department == myKhoa ||
                                baithiFull?.IdDeThiNavigation?.Department == myKhoa ||
@@ -690,7 +690,7 @@ namespace BanTayVang.API.Controllers
             examSubmission.NguoiCongBoRieng = nguoiCongBo;
 
             var hasUngraded = await _db.SubmissionDetails
-                .AnyAsync(c => c.ExamSubmissionId == baiThiId
+                .AnyAsync(c => c.ExamSubmissionId == examSubmissionId
                             && c.IdCauHoiNavigation != null
                             && c.IdCauHoiNavigation.IdLoaiCauHoiNavigation != null
                             && (c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "Tự luận" || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TuLuan" || c.IdCauHoiNavigation.IdLoaiCauHoiNavigation.CategoryName == "TL")
@@ -705,21 +705,21 @@ namespace BanTayVang.API.Controllers
             return Ok(new BaseResponseDto
             {
                 Success = true,
-                Message = $"Đã công bố điểm cho thí sinh (bài thi #{baiThiId})"
+                Message = $"Đã công bố điểm cho thí sinh (bài thi #{examSubmissionId})"
             });
         }
 
         /// <summary>
-        /// POST /api/grading/unpublish-single/{baiThiId}
+        /// POST /api/grading/unpublish-single/{examSubmissionId}
         /// Thu hồi công bố điểm của 1 thí sinh.
         /// </summary>
-        [HttpPost("unpublish-single/{baiThiId}")]
+        [HttpPost("unpublish-single/{examSubmissionId}")]
         [Authorize(Policy = "ManagementOnly")]
-        public async Task<IActionResult> UnpublishSingle(int baiThiId)
+        public async Task<IActionResult> UnpublishSingle(int examSubmissionId)
         {
             var examSubmission = await _db.ExamSubmissions
                 .Include(b => b.IdDeThiNavigation)
-                .FirstOrDefaultAsync(b => b.Id == baiThiId);
+                .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
             if (examSubmission == null)
                 return NotFound(new BaseResponseDto { Success = false, Message = "Không tìm thấy bài thi" });

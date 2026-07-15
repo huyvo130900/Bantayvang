@@ -13,7 +13,7 @@ export interface ExamPaperDto {
   soCauRandom?: number | null
   isResultPublished?: boolean
   thoiGianCongBo?: string | null
-  kyThiId?: number | null
+  examCampaignId?: number | null
   soCauDungToiThieu?: number | null
 }
 
@@ -28,7 +28,7 @@ export interface CreateExamPaperDto {
   soCauRandom?: number
   // Legacy: chọn tay (không dùng nữa nhưng giữ tương thích)
   danhSachIdCauHoi: number[]
-  kyThiId?: number
+  examCampaignId?: number
   soCauDungToiThieu?: number | null
 }
 
@@ -48,7 +48,7 @@ export interface ExamAssignmentDto {
   // Trạng thái bài thi
   status: string  // Pending | InProgress | Completed | AutoSubmitted
   // Kết quả nếu đã thi xong
-  baithiId: number | null
+  examSubmissionId: number | null
   diemSo: number | null
   totalScore: number | null
   correctAnswers: number | null
@@ -83,7 +83,7 @@ export interface MyExamDto {
   thoiGianKetThuc: string | null
   durationMinutes: number | null
   status: string | null
-  baithiId: number | null
+  examSubmissionId: number | null
   ghiChu: string | null
   extraMinutes: number | null
 }

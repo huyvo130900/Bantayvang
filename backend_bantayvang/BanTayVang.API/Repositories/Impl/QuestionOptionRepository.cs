@@ -75,18 +75,18 @@ namespace BanTayVang.API.Repositories.Impl
             return await _context.QuestionOptions.AnyAsync(l => l.Id == id);
         }
 
-        public async Task<List<QuestionOption>> GetByCauhoiIdAsync(int cauhoiId)
+        public async Task<List<QuestionOption>> GetByCauhoiIdAsync(int questionId)
         {
             return await _context.QuestionOptions
-                .Where(l => l.QuestionId == cauhoiId)
+                .Where(l => l.QuestionId == questionId)
                 .OrderBy(l => l.OrderIndex)
                 .ToListAsync();
         }
 
-        public async Task<bool> DeleteByCauhoiIdAsync(int cauhoiId)
+        public async Task<bool> DeleteByCauhoiIdAsync(int questionId)
         {
             var questionOptions = await _context.QuestionOptions
-                .Where(l => l.QuestionId == cauhoiId)
+                .Where(l => l.QuestionId == questionId)
                 .ToListAsync();
                 
             _context.QuestionOptions.RemoveRange(questionOptions);

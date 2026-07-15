@@ -48,7 +48,7 @@ namespace BanTayVang.API.Services.Impl
                 SoDienThoai = dto.SoDienThoai,
                 Email = dto.Email,
                 MatKhauHash = hashedPw,
-                DonViCongTac = dto.DonViCongTac,
+                WorkUnit = dto.WorkUnit,
                 ChuyenNganh = dto.ChuyenNganh,
                 DepartmentId = dto.DepartmentId,
                 MucDichThi = dto.MucDichThi,
@@ -62,15 +62,15 @@ namespace BanTayVang.API.Services.Impl
             return MapToDto(reg);
         }
 
-        public async Task<IEnumerable<ExamRegistrationDto>> GetPendingAsync(int? khoaPhongId = null)
+        public async Task<IEnumerable<ExamRegistrationDto>> GetPendingRegistrationsAsync(int? departmentId = null)
         {
             var query = _context.ExamRegistrations
                 .Include(d => d.Department)
                 .Where(d => d.Status == "Pending");
 
-            if (khoaPhongId.HasValue)
+            if (departmentId.HasValue)
             {
-                query = query.Where(d => d.DepartmentId == khoaPhongId.Value);
+                query = query.Where(d => d.DepartmentId == departmentId.Value);
             }
 
             var list = await query.OrderByDescending(d => d.NgayDangKy).ToListAsync();
@@ -94,7 +94,7 @@ namespace BanTayVang.API.Services.Impl
                 FullName = reg.FullName,
                 SoDienThoai = reg.SoDienThoai,
                 Email = reg.Email,
-                ChucDanh = reg.ChuyenNganh,
+                JobTitle = reg.ChuyenNganh,
                 // Department là string trong User table. We need the name of Khoa.
                 Department = reg.DepartmentId.HasValue 
                     ? (await _context.Departments.FindAsync(reg.DepartmentId))?.DepartmentName
@@ -163,7 +163,7 @@ namespace BanTayVang.API.Services.Impl
                 Cccd = entity.Cccd,
                 SoDienThoai = entity.SoDienThoai,
                 Email = entity.Email,
-                DonViCongTac = entity.DonViCongTac,
+                WorkUnit = entity.WorkUnit,
                 ChuyenNganh = entity.ChuyenNganh,
                 DepartmentId = entity.DepartmentId,
                 TenKhoaPhong = entity.Department?.DepartmentName,

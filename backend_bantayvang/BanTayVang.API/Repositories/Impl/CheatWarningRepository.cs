@@ -10,35 +10,35 @@ namespace BanTayVang.API.Repositories.Impl
         {
         }
 
-        public async Task<List<CheatWarning>> GetByBaiThiAsync(int baithiId)
+        public async Task<List<CheatWarning>> GetByBaiThiAsync(int examSubmissionId)
         {
             return await _dbSet
-                .Where(c => c.ExamSubmissionId == baithiId)
+                .Where(c => c.ExamSubmissionId == examSubmissionId)
                 .OrderByDescending(c => c.ActionTime)
                 .ToListAsync();
         }
 
-        public async Task<int> CountWarningsByBaiThiAsync(int baithiId)
+        public async Task<int> CountWarningsByBaiThiAsync(int examSubmissionId)
         {
             return await _dbSet
-                .CountAsync(c => c.ExamSubmissionId == baithiId);
+                .CountAsync(c => c.ExamSubmissionId == examSubmissionId);
         }
 
-        public async Task<int> GetTotalWarningsAsync(int baithiId)
+        public async Task<int> GetTotalWarningsAsync(int examSubmissionId)
         {
-            return await CountWarningsByBaiThiAsync(baithiId);
+            return await CountWarningsByBaiThiAsync(examSubmissionId);
         }
 
-        public async Task<int> GetCountByBaithiIdAsync(int baithiId)
-        {
-            return await _dbSet
-                .CountAsync(c => c.ExamSubmissionId == baithiId);
-        }
-
-        public async Task<List<CheatWarning>> GetByBaithiIdAsync(int baithiId)
+        public async Task<int> GetCountByBaithiIdAsync(int examSubmissionId)
         {
             return await _dbSet
-                .Where(c => c.ExamSubmissionId == baithiId)
+                .CountAsync(c => c.ExamSubmissionId == examSubmissionId);
+        }
+
+        public async Task<List<CheatWarning>> GetByBaithiIdAsync(int examSubmissionId)
+        {
+            return await _dbSet
+                .Where(c => c.ExamSubmissionId == examSubmissionId)
                 .OrderByDescending(c => c.ActionTime)
                 .ToListAsync();
         }

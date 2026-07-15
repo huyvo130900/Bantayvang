@@ -3,7 +3,7 @@ export interface ExamCampaignDto {
   campaignCode: string | null
   campaignName: string | null
   moTa: string | null
-  khoaPhongId: number | null
+  departmentId: number | null
   departmentName: string | null
   status: string | null
   thoiGianBatDau: string | null
@@ -39,7 +39,7 @@ export interface CreateKyThiDto {
   campaignCode: string
   campaignName: string
   moTa?: string
-  khoaPhongId?: number | null
+  departmentId?: number | null
   thoiGianBatDau?: string | null
   thoiGianKetThuc?: string | null
   donViToChuc?: string

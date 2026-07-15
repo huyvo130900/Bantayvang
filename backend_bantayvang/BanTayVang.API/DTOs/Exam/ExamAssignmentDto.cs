@@ -19,7 +19,7 @@ namespace BanTayVang.API.DTOs.Exam
         public string Status { get; set; } = "Pending"; // Pending | InProgress | Completed | AutoSubmitted
 
         // Thông tin kết quả nếu đã thi xong
-        public int? BaithiId { get; set; }
+        public int? ExamSubmissionId { get; set; }
         public double? DiemSo { get; set; }
         public double? TotalScore { get; set; }
         public int? CorrectAnswers { get; set; }
@@ -41,7 +41,7 @@ namespace BanTayVang.API.DTOs.Exam
 
     public class ExtendExamTimeDto
     {
-        public int BaiThiId { get; set; }
+        public int ExamSubmissionId { get; set; }
         public int AdditionalMinutes { get; set; }
         public string? Reason { get; set; }
     }

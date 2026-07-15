@@ -11,19 +11,19 @@ namespace BanTayVang.API.Repositories.Impl
         {
         }
 
-        public async Task<ExamSubmission?> GetActiveExamSessionAsync(int taikhoanId, int dethiId)
+        public async Task<ExamSubmission?> GetActiveExamSessionAsync(int userId, int dethiId)
         {
             return await _dbSet
-                .FirstOrDefaultAsync(b => b.UserId == taikhoanId 
+                .FirstOrDefaultAsync(b => b.UserId == userId 
                                        && b.ExamPaperId == dethiId 
                                        && (b.Status == "InProgress" || b.Status == "Paused"));
         }
 
-        public async Task<List<ExamSubmission>> GetByTaiKhoanAsync(int taikhoanId)
+        public async Task<List<ExamSubmission>> GetByTaiKhoanAsync(int userId)
         {
             return await _dbSet
                 .Include(b => b.IdDeThiNavigation)
-                .Where(b => b.UserId == taikhoanId)
+                .Where(b => b.UserId == userId)
                 .OrderByDescending(b => b.SubmitTime)
                 .ToListAsync();
         }

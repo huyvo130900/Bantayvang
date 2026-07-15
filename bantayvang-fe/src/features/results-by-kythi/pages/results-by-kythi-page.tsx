@@ -197,7 +197,7 @@ interface ThiSinhResult {
   userId?: number
   username?: string
   fullName?: string
-  maNhanVien?: string
+  employeeCode?: string
   department?: string
   examId?: number
   examPaperId?: number
@@ -327,7 +327,7 @@ export function ResultsByKyThiPage() {
       }
 
       setKyThiList(list)
-      const preselect = searchParams.get('kyThiId')
+      const preselect = searchParams.get('examCampaignId')
       if (preselect) {
         const found = list.find((k) => k.id === parseInt(preselect))
         if (found) { setSelectedKyThi(found); loadResults(found.id) }
@@ -336,10 +336,10 @@ export function ResultsByKyThiPage() {
     finally { setLoading(false) }
   }
 
-  const loadResults = async (kyThiId: number) => {
+  const loadResults = async (examCampaignId: number) => {
     setLoading(true)
     try {
-      const res = await apiClient.get(`/Grading/by-kythi/${kyThiId}`)
+      const res = await apiClient.get(`/Grading/by-kythi/${examCampaignId}`)
       const data: ThiSinhResult[] = res.data?.data || []
       setResults(data)
       // Build visibility map: examPaperId -> isResultPublished
@@ -586,7 +586,7 @@ export function ResultsByKyThiPage() {
       const name = r.fullName || r.username || ''
       const matchSearch = !search ||
         name.toLowerCase().includes(search.toLowerCase()) ||
-        r.maNhanVien?.toLowerCase().includes(search.toLowerCase())
+        r.employeeCode?.toLowerCase().includes(search.toLowerCase())
       const diem = r.totalScore
       const matchFilter = !filterXepLoai || (
         hasThreshold
@@ -961,7 +961,7 @@ export function ResultsByKyThiPage() {
                       <tr key={r.baiThiId} className="hover:bg-gray-50">
                         <td className="px-4 py-3">
                           <p className="font-medium text-gray-800">{r.fullName || r.username || '—'}</p>
-                          {r.maNhanVien && <p className="text-xs text-gray-400">{r.maNhanVien}</p>}
+                          {r.employeeCode && <p className="text-xs text-gray-400">{r.employeeCode}</p>}
                           {r.department && <p className="text-xs text-blue-400">{r.department}</p>}
                         </td>
                         <td className="px-4 py-3">

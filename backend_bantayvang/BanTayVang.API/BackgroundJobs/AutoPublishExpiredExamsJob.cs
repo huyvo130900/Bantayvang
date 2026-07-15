@@ -63,7 +63,7 @@ namespace BanTayVang.API.BackgroundJobs
             var candidates = await db.ExamPapers
                 .Include(d => d.KyThiNavigation)
                 .Where(d => d.IsResultPublished == false
-                         && d.KyThiId != null
+                         && d.ExamCampaignId != null
                          && d.KyThiNavigation != null
                          && d.KyThiNavigation.EndTime != null
                          && d.KyThiNavigation.EndTime <= now)

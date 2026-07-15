@@ -48,7 +48,7 @@ public partial class ExamPaper
     /// </summary>
     public DateTime? ThoiGianCongBo { get; set; }
 
-    public int? KyThiId { get; set; }
+    public int? ExamCampaignId { get; set; }
     public virtual ExamCampaign? KyThiNavigation { get; set; }
 
     /// <summary>

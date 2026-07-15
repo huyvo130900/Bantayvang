@@ -15,7 +15,7 @@ export const createExamSchema = z.object({
   soCauRandom: z.number().min(1, 'Số câu phải >= 1').max(200, 'Tối đa 200 câu').optional(),
   // Legacy
   danhSachIdCauHoi: z.array(z.number()),
-  kyThiId: z.preprocess(
+  examCampaignId: z.preprocess(
     (val) => val === '' || val === null || val === undefined || Number.isNaN(Number(val)) ? undefined : Number(val),
     z.number({ message: 'Vui lòng chọn kỳ thi' }).min(1, 'Vui lòng chọn kỳ thi')
   ),

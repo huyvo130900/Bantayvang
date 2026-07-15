@@ -73,8 +73,8 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   useEffect(() => {
     if (preselectedExamId && exams.length > 0) {
       const exam = exams.find(e => e.id === preselectedExamId)
-      if (exam?.kyThiId) {
-        setSelectedKyThiId(exam.kyThiId)
+      if (exam?.examCampaignId) {
+        setSelectedKyThiId(exam.examCampaignId)
       }
     }
   }, [preselectedExamId, exams])
@@ -88,10 +88,10 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
     }
   }, [selectedKyThiId])
 
-  const loadKyThiResults = async (kyThiId: number) => {
+  const loadKyThiResults = async (examCampaignId: number) => {
     setIsLoading(true)
     try {
-      const response = await gradingApi.getByKyThi(kyThiId)
+      const response = await gradingApi.getByKyThi(examCampaignId)
       if (response.data.success && response.data.data) {
         setResults(response.data.data)
       }
@@ -116,7 +116,7 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   // All exams associated with the selected ExamCampaign
   const examsInSelectedKyThi = useMemo(() => {
     if (!selectedKyThiId) return []
-    return exams.filter(e => e.kyThiId === selectedKyThiId)
+    return exams.filter(e => e.examCampaignId === selectedKyThiId)
   }, [selectedKyThiId, exams])
 
   // Submissions grouped by examId

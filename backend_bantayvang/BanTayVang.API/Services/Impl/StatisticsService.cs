@@ -77,17 +77,17 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto<ExamStatisticsDto>> GetExamStatisticsAsync(int kyThiId)
+        public async Task<BaseResponseDto<ExamStatisticsDto>> GetExamStatisticsAsync(int examCampaignId)
         {
             try
             {
-                var examCampaign = await _context.ExamCampaigns.FirstOrDefaultAsync(k => k.Id == kyThiId);
+                var examCampaign = await _context.ExamCampaigns.FirstOrDefaultAsync(k => k.Id == examCampaignId);
                 if (examCampaign == null)
                     return new BaseResponseDto<ExamStatisticsDto> { Success = false, Message = "Không tìm thấy kỳ thi" };
 
                 var submissions = await _context.ExamSubmissions
                     .Include(b => b.IdDeThiNavigation)
-                    .Where(b => b.ExamCampaignId == kyThiId)
+                    .Where(b => b.ExamCampaignId == examCampaignId)
                     .ToListAsync();
 
                 // Group by participant to get unique candidate attempts
@@ -132,7 +132,7 @@ namespace BanTayVang.API.Services.Impl
 
                 var stats = new ExamStatisticsDto
                 {
-                    KyThiId = examCampaign.Id,
+                    ExamCampaignId = examCampaign.Id,
                     CampaignCode = examCampaign.CampaignCode,
                     CampaignName = examCampaign.CampaignName,
                     TotalParticipants = latestSubmissions.Count,
@@ -184,7 +184,7 @@ namespace BanTayVang.API.Services.Impl
                     .OrderByDescending(b => b.StartTime ?? b.SubmitTime)
                     .Select(b => new UserExamHistoryDto
                     {
-                        BaiThiId = b.Id,
+                        ExamSubmissionId = b.Id,
                         ExamPaperCode = b.IdDeThiNavigation!.ExamPaperCode,
                         ExamPaperName = b.IdDeThiNavigation.ExamPaperName,
                         StartTime = b.StartTime,

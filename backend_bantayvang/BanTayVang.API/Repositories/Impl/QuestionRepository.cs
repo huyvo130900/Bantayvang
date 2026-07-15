@@ -97,9 +97,9 @@ namespace BanTayVang.API.Repositories.Impl
             if (!string.IsNullOrEmpty(filter.SearchKeyword))
                 query = query.Where(c => c.Content!.Contains(filter.SearchKeyword));
 
-            if (filter.KyThiId.HasValue)
+            if (filter.ExamCampaignId.HasValue)
             {
-                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.IdDeThiNavigation != null && dc.IdDeThiNavigation.KyThiId == filter.KyThiId.Value));
+                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.IdDeThiNavigation != null && dc.IdDeThiNavigation.ExamCampaignId == filter.ExamCampaignId.Value));
             }
 
             if (filter.DeThiId.HasValue)
@@ -165,9 +165,9 @@ namespace BanTayVang.API.Repositories.Impl
             if (!string.IsNullOrEmpty(filter.SearchKeyword))
                 query = query.Where(c => c.Content!.Contains(filter.SearchKeyword));
 
-            if (filter.KyThiId.HasValue)
+            if (filter.ExamCampaignId.HasValue)
             {
-                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.IdDeThiNavigation != null && dc.IdDeThiNavigation.KyThiId == filter.KyThiId.Value));
+                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.IdDeThiNavigation != null && dc.IdDeThiNavigation.ExamCampaignId == filter.ExamCampaignId.Value));
             }
 
             if (filter.DeThiId.HasValue)

@@ -29,7 +29,7 @@ public partial class ExamRegistration
     public string MatKhauHash { get; set; } = null!;
 
     [MaxLength(255)]
-    public string? DonViCongTac { get; set; }
+    public string? WorkUnit { get; set; }
 
     [MaxLength(255)]
     public string? ChuyenNganh { get; set; }

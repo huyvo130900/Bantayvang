@@ -73,8 +73,8 @@ export function UserTable({ users, isLoading, onEdit, onToggleStatus, onResetPas
               </td>
               <td className="px-4 py-3">
                 <p className="font-medium text-gray-900">{user.fullName || '—'}</p>
-                {user.maNhanVien && (
-                  <p className="text-xs text-gray-400">{user.maNhanVien}</p>
+                {user.employeeCode && (
+                  <p className="text-xs text-gray-400">{user.employeeCode}</p>
                 )}
               </td>
               <td className="px-4 py-3 text-gray-600">{user.username}</td>

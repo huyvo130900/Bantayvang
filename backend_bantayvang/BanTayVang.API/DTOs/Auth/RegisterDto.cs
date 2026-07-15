@@ -36,12 +36,12 @@ namespace BanTayVang.API.DTOs.Auth
         /// <summary>
         /// Optional: Mã nhân viên
         /// </summary>
-        public string? MaNhanVien { get; set; }
+        public string? EmployeeCode { get; set; }
 
         /// <summary>
         /// Optional: Chức danh
         /// </summary>
-        public string? ChucDanh { get; set; }
+        public string? JobTitle { get; set; }
 
         /// <summary>
         /// Optional: Khoa/Phòng

@@ -12,8 +12,8 @@ export const createUserSchema = z.object({
     .min(6, 'Mật khẩu tối thiểu 6 ký tự')
     .max(100, 'Mật khẩu tối đa 100 ký tự'),
   fullName: z.string().min(1, 'Vui lòng nhập họ tên').max(255),
-  maNhanVien: z.string().max(50).optional().or(z.literal('')),
-  chucDanh: z.string().max(100).optional().or(z.literal('')),
+  employeeCode: z.string().max(50).optional().or(z.literal('')),
+  jobTitle: z.string().max(100).optional().or(z.literal('')),
   department: z.string().max(100).optional().or(z.literal('')),
   email: z.union([z.string().email('Email không hợp lệ'), z.literal('')]).optional(),
   soDienThoai: z.string().max(20, 'Số điện thoại tối đa 20 ký tự').optional().or(z.literal('')),
@@ -34,8 +34,8 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema = z.object({
   fullName: z.string().min(1, 'Vui lòng nhập họ tên').max(255),
-  maNhanVien: z.string().max(50).optional().or(z.literal('')),
-  chucDanh: z.string().max(100).optional().or(z.literal('')),
+  employeeCode: z.string().max(50).optional().or(z.literal('')),
+  jobTitle: z.string().max(100).optional().or(z.literal('')),
   department: z.string().max(100).optional().or(z.literal('')),
   email: z.union([z.string().email('Email không hợp lệ'), z.literal('')]).optional(),
   soDienThoai: z.string().max(20, 'Số điện thoại tối đa 20 ký tự').optional().or(z.literal('')),

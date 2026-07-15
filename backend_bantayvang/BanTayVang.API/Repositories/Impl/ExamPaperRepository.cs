@@ -66,12 +66,12 @@ namespace BanTayVang.API.Repositories.Impl
                 _context.ExamPaperQuestions.RemoveRange(existingQuestions);
 
                 // Thêm câu hỏi mới
-                foreach (var cauhoiId in cauhoiIds)
+                foreach (var questionId in cauhoiIds)
                 {
                     _context.ExamPaperQuestions.Add(new ExamPaperQuestion
                     {
                         ExamPaperId = dethiId,
-                        QuestionId = cauhoiId
+                        QuestionId = questionId
                     });
                 }
 
@@ -125,17 +125,17 @@ namespace BanTayVang.API.Repositories.Impl
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<List<ExamPaper>> GetExamsByKyThiAsync(int kyThiId, CancellationToken cancellationToken = default)
+        public async Task<List<ExamPaper>> GetExamsByKyThiAsync(int examCampaignId, CancellationToken cancellationToken = default)
         {
             return await _dbSet
-                .Where(d => d.KyThiId == kyThiId)
+                .Where(d => d.ExamCampaignId == examCampaignId)
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<ExamPaper?> ResolveExamForCandidateAsync(int kyThiId, int taikhoanId, CancellationToken cancellationToken = default)
+        public async Task<ExamPaper?> ResolveExamForCandidateAsync(int examCampaignId, int userId, CancellationToken cancellationToken = default)
         {
             var kyThiExams = await _dbSet
-                .Where(d => d.KyThiId == kyThiId)
+                .Where(d => d.ExamCampaignId == examCampaignId)
                 .OrderBy(d => d.Id)
                 .ToListAsync(cancellationToken);
 
@@ -147,8 +147,8 @@ namespace BanTayVang.API.Repositories.Impl
             // 1. Check if the candidate has an active (InProgress/Paused) session in this ExamCampaign.
             // If they do, they must resume it, so return the exam associated with that session.
             var activeSession = await _context.ExamSubmissions
-                .Where(b => b.UserId == taikhoanId 
-                         && b.ExamCampaignId == kyThiId 
+                .Where(b => b.UserId == userId 
+                         && b.ExamCampaignId == examCampaignId 
                          && b.ExamPaperId.HasValue
                          && (b.Status == "InProgress" || b.Status == "Paused"))
                 .OrderByDescending(b => b.Id)
@@ -166,8 +166,8 @@ namespace BanTayVang.API.Repositories.Impl
             // 2. Candidate is starting a new attempt.
             // Retrieve all past sessions of this candidate in this ExamCampaign.
             var pastSessions = await _context.ExamSubmissions
-                .Where(b => b.UserId == taikhoanId 
-                         && b.ExamCampaignId == kyThiId 
+                .Where(b => b.UserId == userId 
+                         && b.ExamCampaignId == examCampaignId 
                          && b.ExamPaperId.HasValue)
                 .ToListAsync(cancellationToken);
 
@@ -178,7 +178,7 @@ namespace BanTayVang.API.Repositories.Impl
 
             // 3. Determine the preferred starting exam index for the candidate
             int startIndex = -1;
-            var examCampaign = await _context.Set<ExamCampaign>().FindAsync(new object[] { kyThiId }, cancellationToken);
+            var examCampaign = await _context.Set<ExamCampaign>().FindAsync(new object[] { examCampaignId }, cancellationToken);
             if (examCampaign != null && examCampaign.DepartmentId.HasValue)
             {
                 var khoa = await _context.Set<Department>().FindAsync(new object[] { examCampaign.DepartmentId.Value }, cancellationToken);
@@ -190,7 +190,7 @@ namespace BanTayVang.API.Repositories.Impl
                         .Select(u => u.Id)
                         .ToListAsync(cancellationToken);
 
-                    var studentIndex = students.IndexOf(taikhoanId);
+                    var studentIndex = students.IndexOf(userId);
                     if (studentIndex >= 0)
                     {
                         startIndex = studentIndex % kyThiExams.Count;
@@ -200,7 +200,7 @@ namespace BanTayVang.API.Repositories.Impl
 
             if (startIndex == -1)
             {
-                startIndex = taikhoanId % kyThiExams.Count;
+                startIndex = userId % kyThiExams.Count;
             }
 
             // 4. Sort the exams by the number of attempts (ascending), and then by the preferred sequence order (ascending)

@@ -32,7 +32,7 @@ export interface ExamVisibilityDto {
 }
 
 export interface DepartmentDashboardDto {
-  idKhoa: number
+  deptId: number
   departmentName: string
   tongSoCauHoi: number
   tongSoDeThi: number

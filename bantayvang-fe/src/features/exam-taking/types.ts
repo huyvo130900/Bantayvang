@@ -40,7 +40,7 @@ export interface ExamSubmissionDto {
 
 export interface StartExamDto {
   examPaperCode?: string
-  kyThiId?: number
+  examCampaignId?: number
 }
 
 export interface SubmitAnswerDto {
@@ -58,6 +58,6 @@ export interface SubmitExamDto {
 
 export interface CheatingWarningDto {
   examSubmissionId: number
-  loaiCanhBao: string
+  warningType: string
   moTa?: string
 }

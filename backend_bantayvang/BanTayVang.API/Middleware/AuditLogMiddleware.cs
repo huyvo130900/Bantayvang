@@ -57,7 +57,7 @@ namespace BanTayVang.API.Middleware
                     description: description,
                     userId: userId,
                     username: username,
-                    baithiId: null,
+                    examSubmissionId: null,
                     ipAddress: ipAddress,
                     userAgent: userAgent,
                     method: method,

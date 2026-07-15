@@ -44,11 +44,11 @@ namespace BanTayVang.API.Services.Impl.Exams
             try
             {
                 ExamCampaign? examCampaign = null;
-                if (createDto.KyThiId.HasValue)
+                if (createDto.ExamCampaignId.HasValue)
                 {
                     examCampaign = await _context.Set<ExamCampaign>()
                         .Include(k => k.Department)
-                        .FirstOrDefaultAsync(k => k.Id == createDto.KyThiId.Value, cancellationToken);
+                        .FirstOrDefaultAsync(k => k.Id == createDto.ExamCampaignId.Value, cancellationToken);
                     if (examCampaign != null)
                     {
                         createDto.ExamPaperName = examCampaign.CampaignName;
@@ -97,7 +97,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                         CreatedAt = DateTime.UtcNow,
                         LinkTruyCap = GenerateSecureExamLink(createDto.ExamPaperCode),
                         ChecksumData = CalculateExamChecksum(createDto),
-                        KyThiId = createDto.KyThiId
+                        ExamCampaignId = createDto.ExamCampaignId
                     };
 
                     var savedDethi = await _examPaperRepository.AddAsync(examPaper);
@@ -105,9 +105,9 @@ namespace BanTayVang.API.Services.Impl.Exams
                     // Xác định danh sách câu hỏi
                     List<int> questionIds = new();
 
-                    if (createDto.DanhSachIdCauHoi != null && createDto.DanhSachIdCauHoi.Any())
+                    if (createDto.QuestionIds != null && createDto.QuestionIds.Any())
                     {
-                        questionIds = createDto.DanhSachIdCauHoi;
+                        questionIds = createDto.QuestionIds;
                     }
                     else if (!string.IsNullOrWhiteSpace(createDto.Department))
                     {
@@ -238,11 +238,11 @@ namespace BanTayVang.API.Services.Impl.Exams
             try
             {
                 ExamCampaign? examCampaign = null;
-                if (updateDto.KyThiId.HasValue)
+                if (updateDto.ExamCampaignId.HasValue)
                 {
                     examCampaign = await _context.Set<ExamCampaign>()
                         .Include(k => k.Department)
-                        .FirstOrDefaultAsync(k => k.Id == updateDto.KyThiId.Value, cancellationToken);
+                        .FirstOrDefaultAsync(k => k.Id == updateDto.ExamCampaignId.Value, cancellationToken);
                     if (examCampaign != null)
                     {
                         updateDto.ExamPaperName = examCampaign.CampaignName;
@@ -272,7 +272,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     existingExam.DurationMinutes = updateDto.DurationMinutes ?? existingExam.DurationMinutes ?? 60;
                     existingExam.StartTime = updateDto.StartTime;
                     existingExam.Status = updateDto.Status;
-                    existingExam.KyThiId = updateDto.KyThiId;
+                    existingExam.ExamCampaignId = updateDto.ExamCampaignId;
                     if (examCampaign != null)
                     {
                         existingExam.Department = examCampaign.Department?.DepartmentName;
@@ -280,19 +280,19 @@ namespace BanTayVang.API.Services.Impl.Exams
                     existingExam.UpdatedBy = updatedBy;
                     existingExam.UpdatedAt = DateTime.UtcNow;
 
-                    if (updateDto.DanhSachIdCauHoi.Any())
+                    if (updateDto.QuestionIds.Any())
                     {
-                        if (examCampaign != null && examCampaign.TotalQuestions.HasValue && updateDto.DanhSachIdCauHoi.Count != examCampaign.TotalQuestions.Value)
+                        if (examCampaign != null && examCampaign.TotalQuestions.HasValue && updateDto.QuestionIds.Count != examCampaign.TotalQuestions.Value)
                         {
                             await transaction.RollbackAsync(cancellationToken);
-                            var errorMsg = updateDto.DanhSachIdCauHoi.Count < examCampaign.TotalQuestions.Value
-                                ? $"Số lượng câu hỏi chưa đủ, còn thiếu {examCampaign.TotalQuestions.Value - updateDto.DanhSachIdCauHoi.Count} câu hỏi"
-                                : $"Số lượng câu hỏi vượt quá yêu cầu, thừa {updateDto.DanhSachIdCauHoi.Count - examCampaign.TotalQuestions.Value} câu hỏi";
+                            var errorMsg = updateDto.QuestionIds.Count < examCampaign.TotalQuestions.Value
+                                ? $"Số lượng câu hỏi chưa đủ, còn thiếu {examCampaign.TotalQuestions.Value - updateDto.QuestionIds.Count} câu hỏi"
+                                : $"Số lượng câu hỏi vượt quá yêu cầu, thừa {updateDto.QuestionIds.Count - examCampaign.TotalQuestions.Value} câu hỏi";
                             return BaseResponseDto<ExamPaperDto>.FailureResult(errorMsg);
                         }
 
-                        await _examPaperRepository.UpdateExamQuestionsAsync(examId, updateDto.DanhSachIdCauHoi);
-                        existingExam.TotalScore = updateDto.DanhSachIdCauHoi.Count;
+                        await _examPaperRepository.UpdateExamQuestionsAsync(examId, updateDto.QuestionIds);
+                        existingExam.TotalScore = updateDto.QuestionIds.Count;
                     }
 
                     await _examPaperRepository.UpdateAsync(existingExam);

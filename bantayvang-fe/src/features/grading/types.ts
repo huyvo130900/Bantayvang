@@ -3,7 +3,7 @@ export interface ExamResultDetailDto {
   userId: number | null
   username: string | null
   fullName: string | null
-  maNhanVien?: string | null
+  employeeCode?: string | null
   department: string | null
   examId: number
   examPaperId?: number | null
@@ -59,7 +59,7 @@ export interface PendingEssayDto {
   userId: number | null
   username: string | null
   fullName: string | null
-  maNhanVien?: string | null
+  employeeCode?: string | null
   department: string | null
   examPaperCode: string | null
   examPaperName: string | null

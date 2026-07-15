@@ -13,7 +13,7 @@ namespace BanTayVang.API.Services.Interfaces
         Task<BaseResponseDto> DeleteAsync(int id);
 
         // Sinh đề cho kỳ thi
-        Task<BaseResponseDto<ExamCheckResultDto>> CheckExamsAvailabilityAsync(int kyThiId, ExamGenerationConfigDto config);
-        Task<BaseResponseDto> GenerateExamsForKyThiAsync(int kyThiId, ExamGenerationConfigDto config, int createdBy);
+        Task<BaseResponseDto<ExamCheckResultDto>> CheckExamsAvailabilityAsync(int examCampaignId, ExamGenerationConfigDto config);
+        Task<BaseResponseDto> GenerateExamsForCampaignAsync(int examCampaignId, ExamGenerationConfigDto config, int createdBy);
     }
 }

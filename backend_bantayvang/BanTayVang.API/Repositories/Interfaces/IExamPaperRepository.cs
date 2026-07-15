@@ -13,7 +13,7 @@ namespace BanTayVang.API.Repositories.Interfaces
         Task<ExamPaper?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
         Task<bool> UpdateExamQuestionsAsync(int examId, List<int> questionIds);
         Task<IDbContextTransaction> BeginTransactionAsync();
-        Task<List<ExamPaper>> GetExamsByKyThiAsync(int kyThiId, CancellationToken cancellationToken = default);
-        Task<ExamPaper?> ResolveExamForCandidateAsync(int kyThiId, int taikhoanId, CancellationToken cancellationToken = default);
+        Task<List<ExamPaper>> GetExamsByKyThiAsync(int examCampaignId, CancellationToken cancellationToken = default);
+        Task<ExamPaper?> ResolveExamForCandidateAsync(int examCampaignId, int userId, CancellationToken cancellationToken = default);
     }
 }

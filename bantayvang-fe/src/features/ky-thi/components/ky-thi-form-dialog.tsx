@@ -54,12 +54,12 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
 
   const form = useForm<CreateKyThiFormData>({
     resolver: zodResolver(getKyThiSchema(isEdit, examCampaign?.thoiGianBatDau, examCampaign?.thoiGianKetThuc)) as any,
-    defaultValues: { campaignCode: '', campaignName: '', moTa: '', khoaPhongId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any, durationMinutes: '' as any },
+    defaultValues: { campaignCode: '', campaignName: '', moTa: '', departmentId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any, durationMinutes: '' as any },
   })
 
   // Programmatically register custom fields
   useEffect(() => {
-    form.register('khoaPhongId')
+    form.register('departmentId')
   }, [form])
 
   // Load departments
@@ -76,7 +76,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false)
-        const currentId = form.getValues('khoaPhongId')
+        const currentId = form.getValues('departmentId')
         const currentDept = departments.find(d => d.id === currentId)
         setSearchTerm(!currentId ? 'Tất cả các khoa' : (currentDept ? currentDept.departmentName : ''))
       }
@@ -91,7 +91,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
         campaignCode: examCampaign.campaignCode || '',
         campaignName: examCampaign.campaignName || '',
         moTa: examCampaign.moTa || '',
-        khoaPhongId: examCampaign.khoaPhongId || '' as any,
+        departmentId: examCampaign.departmentId || '' as any,
         thoiGianBatDau: toLocalInputString(examCampaign.thoiGianBatDau),
         thoiGianKetThuc: toLocalInputString(examCampaign.thoiGianKetThuc),
         donViToChuc: examCampaign.donViToChuc || '',
@@ -106,7 +106,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
           campaignCode: generateKyThiCode(),
           campaignName: '',
           moTa: '',
-          khoaPhongId: currentUser?.idKhoaQuanLy || '' as any,
+          departmentId: currentUser?.idKhoaQuanLy || '' as any,
           thoiGianBatDau: '',
           thoiGianKetThuc: '',
           donViToChuc: currentUser?.tenKhoaQuanLy || currentUser?.department || '',
@@ -120,7 +120,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
           campaignCode: generateKyThiCode(),
           campaignName: '',
           moTa: '',
-          khoaPhongId: '' as any,
+          departmentId: '' as any,
           thoiGianBatDau: '',
           thoiGianKetThuc: '',
           donViToChuc: '',
@@ -135,7 +135,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
 
   if (!open) return null
 
-  const selectedDeptId = form.watch('khoaPhongId')
+  const selectedDeptId = form.watch('departmentId')
   const selectedDept = departments.find(d => d.id === selectedDeptId)
   const selectedDeptName = !selectedDeptId ? 'Tất cả các khoa' : (selectedDept ? selectedDept.departmentName : '')
 
@@ -189,8 +189,8 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
                   </button>
                 )}
               </div>
-              {form.formState.errors.khoaPhongId && (
-                <p className="text-xs text-red-500">{form.formState.errors.khoaPhongId.message}</p>
+              {form.formState.errors.departmentId && (
+                <p className="text-xs text-red-500">{form.formState.errors.departmentId.message}</p>
               )}
 
               {isDropdownOpen && (
@@ -201,7 +201,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
                         !selectedDeptId ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-gray-900'
                       }`}
                       onClick={() => {
-                        form.setValue('khoaPhongId', '' as any)
+                        form.setValue('departmentId', '' as any)
                         setSearchTerm('Tất cả các khoa')
                         setIsDropdownOpen(false)
                       }}
@@ -221,7 +221,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
                           selectedDeptId === d.id ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-gray-900'
                         }`}
                         onClick={() => {
-                          form.setValue('khoaPhongId', d.id)
+                          form.setValue('departmentId', d.id)
                           setSearchTerm(d.departmentName)
                           setIsDropdownOpen(false)
                         }}

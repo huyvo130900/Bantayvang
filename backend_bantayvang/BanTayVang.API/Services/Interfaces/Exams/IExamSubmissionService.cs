@@ -13,19 +13,19 @@ namespace BanTayVang.API.Services.Interfaces.Exams
         /// Saves an individual answer with validation
         /// </summary>
         /// <param name="answerDto">Answer data</param>
-        /// <param name="taikhoanId">User ID for security validation</param>
+        /// <param name="userId">User ID for security validation</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Operation result</returns>
-        Task<BaseResponseDto> SaveAnswerAsync(SubmitAnswerDto answerDto, int taikhoanId, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto> SaveAnswerAsync(SubmitAnswerDto answerDto, int userId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Submits complete exam with auto-grading
         /// </summary>
         /// <param name="submitDto">Submission data</param>
-        /// <param name="taikhoanId">User ID for security validation</param>
+        /// <param name="userId">User ID for security validation</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Exam result</returns>
-        Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int userId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Auto-submits expired exams (background job)

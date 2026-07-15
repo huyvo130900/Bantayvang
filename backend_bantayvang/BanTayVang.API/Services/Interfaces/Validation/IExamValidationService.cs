@@ -30,28 +30,28 @@ namespace BanTayVang.API.Services.Interfaces.Validation
         /// Validates exam start request
         /// </summary>
         /// <param name="startDto">Exam start data</param>
-        /// <param name="taikhoanId">User ID</param>
+        /// <param name="userId">User ID</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Validation result</returns>
-        Task<ValidationResultDto> ValidateStartExamAsync(StartExamDto startDto, int taikhoanId, CancellationToken cancellationToken = default);
+        Task<ValidationResultDto> ValidateStartExamAsync(StartExamDto startDto, int userId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Validates answer submission
         /// </summary>
         /// <param name="answerDto">Answer data</param>
-        /// <param name="taikhoanId">User ID</param>
+        /// <param name="userId">User ID</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Validation result</returns>
-        Task<ValidationResultDto> ValidateAnswerSubmissionAsync(SubmitAnswerDto answerDto, int taikhoanId, CancellationToken cancellationToken = default);
+        Task<ValidationResultDto> ValidateAnswerSubmissionAsync(SubmitAnswerDto answerDto, int userId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Validates exam submission
         /// </summary>
         /// <param name="submitDto">Submission data</param>
-        /// <param name="taikhoanId">User ID</param>
+        /// <param name="userId">User ID</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Validation result</returns>
-        Task<ValidationResultDto> ValidateExamSubmissionAsync(SubmitExamDto submitDto, int taikhoanId, CancellationToken cancellationToken = default);
+        Task<ValidationResultDto> ValidateExamSubmissionAsync(SubmitExamDto submitDto, int userId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Validates user permissions for exam operations

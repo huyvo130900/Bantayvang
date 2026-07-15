@@ -102,7 +102,7 @@ export function AdminRegistrationPage() {
                         <div className="text-xs text-muted-foreground">{reg.soDienThoai}</div>
                       </td>
                       <td className="px-4 py-3 text-gray-600">{reg.chuyenNganh || '-'}</td>
-                      <td className="px-4 py-3 text-gray-600">{reg.donViCongTac || '-'}</td>
+                      <td className="px-4 py-3 text-gray-600">{reg.workUnit || '-'}</td>
                       <td className="px-4 py-3">
                         {reg.tenKhoaPhong ? (
                           <span className="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold bg-blue-50 text-blue-700">

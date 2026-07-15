@@ -451,7 +451,7 @@ function StudentDashboard() {
               const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
               const hetHan = end !== null && end <= now
               const isResultPublished = hetHan || congBo
-              const baithiId = r?.id
+              const examSubmissionId = r?.id
               return (
                 <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                   <div className="flex-1 min-w-0">
@@ -467,7 +467,7 @@ function StudentDashboard() {
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0 justify-start sm:justify-end">
-                    {isResultPublished && baithiId ? (
+                    {isResultPublished && examSubmissionId ? (
                       <>
                         {ky.soCauDungToiThieu !== undefined && ky.soCauDungToiThieu !== null && r?.correctAnswers != null ? (
                           r.correctAnswers >= ky.soCauDungToiThieu ? (
@@ -485,7 +485,7 @@ function StudentDashboard() {
                           </span>
                         )}
                         <button
-                          onClick={() => navigate(`/exam-result/${baithiId}`)}
+                          onClick={() => navigate(`/exam-result/${examSubmissionId}`)}
                           className="inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors border border-green-200 w-full sm:w-auto"
                         >
                           <Eye className="h-3.5 w-3.5" />

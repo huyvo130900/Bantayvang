@@ -87,7 +87,7 @@ namespace BanTayVang.API.Services.Impl
                         .FirstOrDefaultAsync();
 
                     var status = "Pending";
-                    int? baithiId = null;
+                    int? examSubmissionId = null;
                     double? diemSo = null;
                     double? totalScore = null;
                     int? correctAnswers = null;
@@ -99,7 +99,7 @@ namespace BanTayVang.API.Services.Impl
 
                     if (examSubmission != null)
                     {
-                        baithiId = examSubmission.Id;
+                        examSubmissionId = examSubmission.Id;
                         status = examSubmission.Status ?? "InProgress";
                         diemSo = examSubmission.TotalScore;
                         correctAnswers = examSubmission.CorrectAnswers;
@@ -142,7 +142,7 @@ namespace BanTayVang.API.Services.Impl
                         IsActive = a.IsActive,
                         Note = a.Note,
                         Status = status,
-                        BaithiId = baithiId,
+                        ExamSubmissionId = examSubmissionId,
                         DiemSo = diemSo,
                         TotalScore = totalScore,
                         CorrectAnswers = correctAnswers,
@@ -253,7 +253,7 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var examSubmission = await _context.ExamSubmissions.FindAsync(dto.BaiThiId);
+                var examSubmission = await _context.ExamSubmissions.FindAsync(dto.ExamSubmissionId);
                 if (examSubmission == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy bài thi" };
                 if (examSubmission.Status != "InProgress")

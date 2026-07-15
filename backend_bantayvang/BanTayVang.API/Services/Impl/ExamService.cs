@@ -21,7 +21,7 @@ namespace BanTayVang.API.Services.Impl
         private readonly IExamSessionService _sessionService;
         private readonly IExamSubmissionService _submissionService;
         private readonly IExamSecurityService _securityService;
-        private readonly ICheatWarningRepository _canhbaoRepository;
+        private readonly ICheatWarningRepository _cheatWarningRepository;
         private readonly IExamSubmissionRepository _examSubmissionRepository;
         private readonly BanTayVangDbContext _context;
         private readonly ILogger<ExamService> _logger;
@@ -40,7 +40,7 @@ namespace BanTayVang.API.Services.Impl
             _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
             _submissionService = submissionService ?? throw new ArgumentNullException(nameof(submissionService));
             _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
-            _canhbaoRepository = canhbaoRepository ?? throw new ArgumentNullException(nameof(canhbaoRepository));
+            _cheatWarningRepository = canhbaoRepository ?? throw new ArgumentNullException(nameof(canhbaoRepository));
             _examSubmissionRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -91,33 +91,33 @@ namespace BanTayVang.API.Services.Impl
             return await _managementService.DeleteExamAsync(examId, nguoiXoa);
         }
 
-        public async Task<BaseResponseDto<ExamSubmissionDto>> StartExamAsync(StartExamDto startDto, int taikhoanId)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> StartExamAsync(StartExamDto startDto, int userId)
         {
-            return await _sessionService.StartExamAsync(startDto, taikhoanId);
+            return await _sessionService.StartExamAsync(startDto, userId);
         }
 
-        public async Task<BaseResponseDto<List<ExamQuestionDto>>> GetExamQuestionsAsync(int baithiId, int taikhoanId)
+        public async Task<BaseResponseDto<List<ExamQuestionDto>>> GetExamQuestionsAsync(int examSubmissionId, int userId)
         {
-            return await _sessionService.GetExamQuestionsAsync(baithiId, taikhoanId);
+            return await _sessionService.GetExamQuestionsAsync(examSubmissionId, userId);
         }
 
-        public async Task<BaseResponseDto<ExamSubmissionDto>> GetExamProgressAsync(int baithiId, int taikhoanId)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> GetExamProgressAsync(int examSubmissionId, int userId)
         {
-            return await _sessionService.GetExamProgressAsync(baithiId, taikhoanId);
+            return await _sessionService.GetExamProgressAsync(examSubmissionId, userId);
         }
 
         #endregion
 
         #region Exam Submission Operations (Delegated to IExamSubmissionService)
 
-        public async Task<BaseResponseDto> SaveAnswerAsync(SubmitAnswerDto answerDto, int taikhoanId)
+        public async Task<BaseResponseDto> SaveAnswerAsync(SubmitAnswerDto answerDto, int userId)
         {
-            return await _submissionService.SaveAnswerAsync(answerDto, taikhoanId);
+            return await _submissionService.SaveAnswerAsync(answerDto, userId);
         }
 
-        public async Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int taikhoanId)
+        public async Task<BaseResponseDto<ExamSubmissionDto>> SubmitExamAsync(SubmitExamDto submitDto, int userId)
         {
-            return await _submissionService.SubmitExamAsync(submitDto, taikhoanId);
+            return await _submissionService.SubmitExamAsync(submitDto, userId);
         }
 
         public async Task<BaseResponseDto> AutoSubmitExpiredExamsAsync()
@@ -132,11 +132,11 @@ namespace BanTayVang.API.Services.Impl
         /// <summary>
         /// Lấy danh sách bài thi đã hoàn thành của user hiện tại
         /// </summary>
-        public async Task<BaseResponseDto<List<ExamSubmissionDto>>> GetMyResultsAsync(int taikhoanId)
+        public async Task<BaseResponseDto<List<ExamSubmissionDto>>> GetMyResultsAsync(int userId)
         {
             try
             {
-                var examSubmissions = await _examSubmissionRepository.GetByTaiKhoanAsync(taikhoanId);
+                var examSubmissions = await _examSubmissionRepository.GetByTaiKhoanAsync(userId);
                 var completed = examSubmissions
                     .Where(b => b.Status == "Completed")
                     .OrderByDescending(b => b.SubmitTime ?? b.StartTime)
@@ -175,7 +175,7 @@ namespace BanTayVang.API.Services.Impl
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting my results for user {UserId}", taikhoanId);
+                _logger.LogError(ex, "Error getting my results for user {UserId}", userId);
                 return new BaseResponseDto<List<ExamSubmissionDto>>
                 {
                     Success = false,
@@ -189,14 +189,14 @@ namespace BanTayVang.API.Services.Impl
 
         #region Security Operations (Enhanced with OWASP compliance)
 
-        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int baithiId, string loaiCanhBao, string moTa)
+        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string moTa)
         {
             try
             {
                 _logger.LogWarning("Suspicious activity detected - Session: {SessionId}, Type: {Type}, Description: {Description}",
-                    baithiId, loaiCanhBao, moTa);
+                    examSubmissionId, warningType, moTa);
 
-                var examSubmission = await _examSubmissionRepository.GetByIdAsync(baithiId);
+                var examSubmission = await _examSubmissionRepository.GetByIdAsync(examSubmissionId);
                 if (examSubmission != null)
                 {
                     if (examSubmission.Status == "Completed")
@@ -208,7 +208,7 @@ namespace BanTayVang.API.Services.Impl
                         };
                     }
 
-                    if (loaiCanhBao == "FULLSCREEN_EXIT")
+                    if (warningType == "FULLSCREEN_EXIT")
                     {
                         examSubmission.TongSoCanhBao = Math.Max(examSubmission.TongSoCanhBao ?? 0, 6);
                     }
@@ -222,20 +222,20 @@ namespace BanTayVang.API.Services.Impl
                 // OWASP A09: Security Logging - Enhanced security event logging
                 var canhbao = new CheatWarning
                 {
-                    ExamSubmissionId = baithiId,
-                    LoaiCanhBao = loaiCanhBao,
+                    ExamSubmissionId = examSubmissionId,
+                    WarningType = warningType,
                     Description = SanitizeInput(moTa), // OWASP A03: Injection prevention
                     ActionTime = DateTime.Now
                 };
 
-                await _canhbaoRepository.AddAsync(canhbao);
+                await _cheatWarningRepository.AddAsync(canhbao);
 
                 // Log to security service for centralized monitoring
                 await _securityService.LogSecurityEventAsync(
-                    $"SUSPICIOUS_ACTIVITY_{loaiCanhBao}",
+                    $"SUSPICIOUS_ACTIVITY_{warningType}",
                     moTa,
                     null, // Will be extracted from session
-                    DetermineSeverityLevel(loaiCanhBao));
+                    DetermineSeverityLevel(warningType));
 
                 return new BaseResponseDto
                 {
@@ -245,7 +245,7 @@ namespace BanTayVang.API.Services.Impl
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error logging suspicious activity for session {SessionId}", baithiId);
+                _logger.LogError(ex, "Error logging suspicious activity for session {SessionId}", examSubmissionId);
 
                 return new BaseResponseDto
                 {
@@ -256,11 +256,11 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto<int>> GetWarningCountAsync(int baithiId)
+        public async Task<BaseResponseDto<int>> GetWarningCountAsync(int examSubmissionId)
         {
             try
             {
-                var count = await _canhbaoRepository.GetTotalWarningsAsync(baithiId);
+                var count = await _cheatWarningRepository.GetTotalWarningsAsync(examSubmissionId);
 
                 return new BaseResponseDto<int>
                 {
@@ -271,7 +271,7 @@ namespace BanTayVang.API.Services.Impl
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting warning count for session {SessionId}", baithiId);
+                _logger.LogError(ex, "Error getting warning count for session {SessionId}", examSubmissionId);
 
                 return new BaseResponseDto<int>
                 {
@@ -289,9 +289,9 @@ namespace BanTayVang.API.Services.Impl
         /// <summary>
         /// Determine security event severity based on warning type
         /// </summary>
-        private string DetermineSeverityLevel(string loaiCanhBao)
+        private string DetermineSeverityLevel(string warningType)
         {
-            return loaiCanhBao.ToUpperInvariant() switch
+            return warningType.ToUpperInvariant() switch
             {
                 "TAB_SWITCH" => "Medium",
                 "COPY_PASTE" => "High",

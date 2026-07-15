@@ -5,8 +5,8 @@ namespace BanTayVang.API.Repositories.Interfaces
 {
     public interface IExamSubmissionRepository : IBaseRepository<ExamSubmission>
     {
-        Task<ExamSubmission?> GetActiveExamSessionAsync(int taikhoanId, int dethiId);
-        Task<List<ExamSubmission>> GetByTaiKhoanAsync(int taikhoanId);
+        Task<ExamSubmission?> GetActiveExamSessionAsync(int userId, int dethiId);
+        Task<List<ExamSubmission>> GetByTaiKhoanAsync(int userId);
         Task<ExamSubmission?> GetWithDetailsAsync(int id);
         Task<bool> UpdateExamStatusAsync(int id, string status);
         Task<List<ExamSubmission>> GetExpiredInProgressExamsAsync();

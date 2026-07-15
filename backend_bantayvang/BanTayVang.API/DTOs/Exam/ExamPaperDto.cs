@@ -18,7 +18,7 @@ namespace BanTayVang.API.DTOs.Exam
 
         public bool IsResultPublished { get; set; } = false;
         public DateTime? ThoiGianCongBo { get; set; }
-        public int? KyThiId { get; set; }
+        public int? ExamCampaignId { get; set; }
 
         /// <summary>
         /// Số câu đúng tối thiểu để đạt (override từ ExamCampaign nếu đề thi có cấu hình riêng)

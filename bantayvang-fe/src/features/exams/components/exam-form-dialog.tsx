@@ -86,7 +86,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       department: lockedKhoa || '',
       soCauRandom: 30,
       danhSachIdCauHoi: [],
-      kyThiId: defaultKyThiId || '' as any,
+      examCampaignId: defaultKyThiId || '' as any,
       soCauDungToiThieu: '' as any,
     },
   })
@@ -104,7 +104,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
         department: finalKhoa,
         soCauRandom: 30,
         danhSachIdCauHoi: [],
-        kyThiId: defaultKyThiId || '' as any,
+        examCampaignId: defaultKyThiId || '' as any,
         soCauDungToiThieu: '' as any,
       })
       setSelectedKhoa(finalKhoa)
@@ -168,7 +168,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
     }
   }, [lockedKhoa, form])
 
-  const selectedKyThiId = form.watch('kyThiId')
+  const selectedKyThiId = form.watch('examCampaignId')
   useEffect(() => {
     if (open && selectedKyThiId) {
       kyThiApi.getById(selectedKyThiId).then((res) => {
@@ -386,7 +386,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Kỳ thi liên kết *</label>
             <select
-              {...form.register('kyThiId', { 
+              {...form.register('examCampaignId', { 
                 valueAsNumber: true,
                 onChange: (e) => {
                   const val = Number(e.target.value)
@@ -404,8 +404,8 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                 </option>
               ))}
             </select>
-            {form.formState.errors.kyThiId && (
-              <p className="text-xs text-red-500">{form.formState.errors.kyThiId.message}</p>
+            {form.formState.errors.examCampaignId && (
+              <p className="text-xs text-red-500">{form.formState.errors.examCampaignId.message}</p>
             )}
           </div>
 

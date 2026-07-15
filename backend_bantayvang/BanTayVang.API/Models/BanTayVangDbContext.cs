@@ -95,7 +95,7 @@ public partial class BanTayVangDbContext : DbContext
 
             
 
-            entity.Property(e => e.LoaiCanhBao).HasMaxLength(100);
+            entity.Property(e => e.WarningType).HasMaxLength(100);
             entity.Property(e => e.ActionTime).HasColumnType("datetime");
 
             entity.HasOne(d => d.IdBaiThiNavigation).WithMany(p => p.CheatWarnings)
@@ -157,7 +157,7 @@ public partial class BanTayVangDbContext : DbContext
             entity.Property(e => e.ChecksumData).HasMaxLength(500);
 
             entity.HasOne(d => d.KyThiNavigation).WithMany()
-                .HasForeignKey(d => d.KyThiId)
+                .HasForeignKey(d => d.ExamCampaignId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
@@ -275,9 +275,9 @@ public partial class BanTayVangDbContext : DbContext
             
             entity.HasQueryFilter(e => !e.IsDeleted);
 
-            entity.Property(e => e.ChucDanh).HasMaxLength(100);
+            entity.Property(e => e.JobTitle).HasMaxLength(100);
             entity.Property(e => e.Department).HasMaxLength(100);
-            entity.Property(e => e.MaNhanVien).HasMaxLength(50);
+            entity.Property(e => e.EmployeeCode).HasMaxLength(50);
             entity.Property(e => e.Password).HasMaxLength(255);
             entity.Property(e => e.Username).HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(255);

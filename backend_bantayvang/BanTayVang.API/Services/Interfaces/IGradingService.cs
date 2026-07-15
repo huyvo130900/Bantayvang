@@ -11,7 +11,7 @@ namespace BanTayVang.API.Services.Interfaces
         /// <summary>
         /// Lấy chi tiết kết quả bài thi
         /// </summary>
-        Task<BaseResponseDto<ExamResultDetailDto>> GetResultDetailAsync(int baiThiId);
+        Task<BaseResponseDto<ExamResultDetailDto>> GetResultDetailAsync(int examSubmissionId);
 
         /// <summary>
         /// Lấy danh sách kết quả thi của một đề
@@ -21,7 +21,7 @@ namespace BanTayVang.API.Services.Interfaces
         /// <summary>
         /// Chấm lại bài thi (auto-grading)
         /// </summary>
-        Task<BaseResponseDto<ExamResultDetailDto>> RegradeAsync(int baiThiId);
+        Task<BaseResponseDto<ExamResultDetailDto>> RegradeAsync(int examSubmissionId);
 
         /// <summary>
         /// Chấm thủ công (cho câu tự luận)
@@ -41,11 +41,11 @@ namespace BanTayVang.API.Services.Interfaces
         /// <summary>
         /// Lấy kết quả thi phân cấp theo Kỳ thi
         /// </summary>
-        Task<BaseResponseDto<List<ExamResultDetailDto>>> GetResultsByKyThiAsync(int kyThiId);
+        Task<BaseResponseDto<List<ExamResultDetailDto>>> GetResultsByExamCampaignAsync(int examCampaignId);
 
         /// <summary>
         /// Quản lý khoa đánh giá / nhận xét bài thi của thí sinh
         /// </summary>
-        Task<BaseResponseDto> DanhGiaThiSinhAsync(int baiThiId, string danhGia);
+        Task<BaseResponseDto> EvaluateCandidateAsync(int examSubmissionId, string evaluation);
     }
 }

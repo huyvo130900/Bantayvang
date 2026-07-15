@@ -80,7 +80,7 @@ export function ExamResultsTable({
         (c) =>
           c.selectedAttempt.fullName?.toLowerCase().includes(s) ||
           c.selectedAttempt.username?.toLowerCase().includes(s) ||
-          c.selectedAttempt.maNhanVien?.toLowerCase().includes(s) ||
+          c.selectedAttempt.employeeCode?.toLowerCase().includes(s) ||
           c.selectedAttempt.department?.toLowerCase().includes(s)
       )
     }
@@ -174,7 +174,7 @@ export function ExamResultsTable({
                     <p className="text-xs text-gray-400">{r.username}</p>
                   </td>
                   <td className="px-4 py-3 text-gray-600 text-sm">
-                    {r.maNhanVien || '—'}
+                    {r.employeeCode || '—'}
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs hidden md:table-cell">{r.department || '—'}</td>
                   <td className="px-4 py-3 text-center">

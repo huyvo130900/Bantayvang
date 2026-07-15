@@ -41,18 +41,18 @@ namespace BanTayVang.API.Controllers
         public async Task<IActionResult> GetPending()
         {
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            int? khoaPhongId = null;
+            int? departmentId = null;
 
             if (userRole == "DeptManager")
             {
                 var khoaIdClaim = User.FindFirst("id_khoa_quan_ly")?.Value;
                 if (int.TryParse(khoaIdClaim, out int kId))
                 {
-                    khoaPhongId = kId;
+                    departmentId = kId;
                 }
             }
 
-            var list = await _examRegistrationService.GetPendingAsync(khoaPhongId);
+            var list = await _examRegistrationService.GetPendingRegistrationsAsync(departmentId);
             return Ok(list);
         }
 
@@ -63,14 +63,14 @@ namespace BanTayVang.API.Controllers
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            int? khoaPhongId = null;
+            int? departmentId = null;
             if (userRole == "DeptManager")
             {
                 var khoaIdClaim = User.FindFirst("id_khoa_quan_ly")?.Value;
-                if (int.TryParse(khoaIdClaim, out int kId)) khoaPhongId = kId;
+                if (int.TryParse(khoaIdClaim, out int kId)) departmentId = kId;
             }
 
-            var reg = await _examRegistrationService.GetPendingAsync(khoaPhongId);
+            var reg = await _examRegistrationService.GetPendingRegistrationsAsync(departmentId);
             if (!reg.Any(r => r.Id == id)) return BadRequest(new { Message = "Bạn không có quyền hoặc đơn không tồn tại." });
 
             var success = await _examRegistrationService.ApproveAsync(id, userId);
@@ -86,14 +86,14 @@ namespace BanTayVang.API.Controllers
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            int? khoaPhongId = null;
+            int? departmentId = null;
             if (userRole == "DeptManager")
             {
                 var khoaIdClaim = User.FindFirst("id_khoa_quan_ly")?.Value;
-                if (int.TryParse(khoaIdClaim, out int kId)) khoaPhongId = kId;
+                if (int.TryParse(khoaIdClaim, out int kId)) departmentId = kId;
             }
 
-            var reg = await _examRegistrationService.GetPendingAsync(khoaPhongId);
+            var reg = await _examRegistrationService.GetPendingRegistrationsAsync(departmentId);
             if (!reg.Any(r => r.Id == id)) return BadRequest(new { Message = "Bạn không có quyền hoặc đơn không tồn tại." });
 
             var success = await _examRegistrationService.RejectAsync(id, dto.Reason, userId);

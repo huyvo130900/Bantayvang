@@ -147,7 +147,7 @@ namespace BanTayVang.API.Controllers
                 var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
                 var examSubmission = await _context.ExamSubmissions
                     .Include(b => b.IdTaiKhoanNavigation)
-                    .FirstOrDefaultAsync(b => b.Id == dto.BaiThiId);
+                    .FirstOrDefaultAsync(b => b.Id == dto.ExamSubmissionId);
                 if (examSubmission == null || examSubmission.IdTaiKhoanNavigation?.Department != myKhoa)
                 {
                     return Forbid();

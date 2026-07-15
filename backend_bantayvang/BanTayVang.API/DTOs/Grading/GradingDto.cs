@@ -5,11 +5,11 @@ namespace BanTayVang.API.DTOs.Grading
     /// </summary>
     public class ExamResultDetailDto
     {
-        public int BaiThiId { get; set; }
+        public int ExamSubmissionId { get; set; }
         public int? UserId { get; set; }
         public string? Username { get; set; }
         public string? FullName { get; set; }
-        public string? MaNhanVien { get; set; }
+        public string? EmployeeCode { get; set; }
         public string? Department { get; set; }
         public int ExamId { get; set; }
         public int? ExamPaperId { get; set; }
@@ -47,7 +47,7 @@ namespace BanTayVang.API.DTOs.Grading
 
     public class AnswerDetailDto
     {
-        public int CauHoiId { get; set; }
+        public int QuestionId { get; set; }
         public string? NoiDungCauHoi { get; set; }
         public string? QuestionCategory { get; set; }
         public int? SelectedOptionId { get; set; }
@@ -76,8 +76,8 @@ namespace BanTayVang.API.DTOs.Grading
     /// </summary>
     public class DanhGiaThiSinhDto
     {
-        public int BaiThiId { get; set; }
-        public string DanhGia { get; set; } = string.Empty;
+        public int ExamSubmissionId { get; set; }
+        public string Evaluation { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ namespace BanTayVang.API.DTOs.Grading
     /// </summary>
     public class RegradeRequestDto
     {
-        public int BaiThiId { get; set; }
+        public int ExamSubmissionId { get; set; }
     }
 
     /// <summary>
@@ -104,7 +104,7 @@ namespace BanTayVang.API.DTOs.Grading
     /// </summary>
     public class SelectedExportItemDto
     {
-        public int BaiThiId { get; set; }
+        public int ExamSubmissionId { get; set; }
         public int LanThi { get; set; }
     }
 }

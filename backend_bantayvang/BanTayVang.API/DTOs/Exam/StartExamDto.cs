@@ -7,7 +7,7 @@ namespace BanTayVang.API.DTOs.Exam
         [Required]
         public string ExamPaperCode { get; set; } = string.Empty;
         
-        public int? KyThiId { get; set; }
+        public int? ExamCampaignId { get; set; }
         public string? ThietBiUserAgent { get; set; }
         public string? Ip { get; set; }
     }

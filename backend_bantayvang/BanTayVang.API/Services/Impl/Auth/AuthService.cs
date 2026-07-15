@@ -187,7 +187,7 @@ namespace BanTayVang.API.Services.Impl.Auth
                 }
 
                 // Check if username already exists
-                var existingUser = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Username == registerDto.Username || u.MaNhanVien == registerDto.Username);
+                var existingUser = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Username == registerDto.Username || u.EmployeeCode == registerDto.Username);
                 if (existingUser != null)
                 {
                     return new BaseResponseDto<AuthResponseDto>
@@ -213,8 +213,8 @@ namespace BanTayVang.API.Services.Impl.Auth
                     Password = hashedPassword,
                     FullName = registerDto.FullName,
                     RoleId = registerDto.RoleId,
-                    MaNhanVien = registerDto.MaNhanVien,
-                    ChucDanh = registerDto.ChucDanh,
+                    EmployeeCode = registerDto.EmployeeCode,
+                    JobTitle = registerDto.JobTitle,
                     Department = registerDto.Department,
                     Status = true,
                     CreatedAt = DateTime.Now

@@ -116,7 +116,7 @@ export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: 
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{user.fullName || user.username}</p>
-                    <p className="text-xs text-gray-400">{user.department} • {user.maNhanVien}</p>
+                    <p className="text-xs text-gray-400">{user.department} • {user.employeeCode}</p>
                   </div>
                 </div>
               ))

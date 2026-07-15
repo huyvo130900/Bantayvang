@@ -3,24 +3,24 @@ import { examTakingApi } from '../api'
 import { MAX_CHEATING_WARNINGS } from '@/lib/constants'
 
 interface UseAntiCheatOptions {
-  baithiId: number
+  examSubmissionId: number
   enabled: boolean
   onForceSubmit?: (reason: string) => void
 }
 
-export function useAntiCheat({ baithiId, enabled, onForceSubmit }: UseAntiCheatOptions) {
+export function useAntiCheat({ examSubmissionId, enabled, onForceSubmit }: UseAntiCheatOptions) {
   const [warningCount, setWarningCount] = useState(0)
   const [lastWarningType, setLastWarningType] = useState<string | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [blockedKeyMessage, setBlockedKeyMessage] = useState<string | null>(null)
   const blockedKeyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const baithiIdRef = useRef(baithiId)
+  const baithiIdRef = useRef(examSubmissionId)
   const warningCountRef = useRef(0)
   const onForceSubmitRef = useRef(onForceSubmit)
   const fullscreenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasEnteredFullscreenRef = useRef(false)
 
-  baithiIdRef.current = baithiId
+  baithiIdRef.current = examSubmissionId
   onForceSubmitRef.current = onForceSubmit
 
   const logWarning = useCallback(async (type: string, description: string) => {
@@ -32,7 +32,7 @@ export function useAntiCheat({ baithiId, enabled, onForceSubmit }: UseAntiCheatO
     try {
       await examTakingApi.logWarning({
         examSubmissionId: baithiIdRef.current,
-        loaiCanhBao: type,
+        warningType: type,
         moTa: description,
       })
     } catch {
@@ -63,7 +63,7 @@ export function useAntiCheat({ baithiId, enabled, onForceSubmit }: UseAntiCheatO
   }, [])
 
   useEffect(() => {
-    if (!enabled || !baithiId) return
+    if (!enabled || !examSubmissionId) return
 
     // Initialize fullscreen state
     const currentFull = !!document.fullscreenElement
@@ -208,7 +208,7 @@ export function useAntiCheat({ baithiId, enabled, onForceSubmit }: UseAntiCheatO
         clearTimeout(fullscreenTimeoutRef.current)
       }
     }
-  }, [enabled, baithiId, logWarning])
+  }, [enabled, examSubmissionId, logWarning])
 
   const remainingWarnings = Math.max(0, MAX_CHEATING_WARNINGS - warningCount)
   const isTerminated = warningCount > MAX_CHEATING_WARNINGS

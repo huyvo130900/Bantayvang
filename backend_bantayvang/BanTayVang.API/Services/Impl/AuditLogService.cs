@@ -20,7 +20,7 @@ namespace BanTayVang.API.Services.Impl
             string description,
             int? userId = null,
             string? username = null,
-            int? baithiId = null,
+            int? examSubmissionId = null,
             string? ipAddress = null,
             string? userAgent = null,
             string? method = null,
@@ -40,7 +40,7 @@ namespace BanTayVang.API.Services.Impl
                     DuongDan = path?.Length > 500 ? path.Substring(0, 500) : path,
                     MaHttp = statusCode,
                     ActionTime = DateTime.Now,
-                    ExamSubmissionId = baithiId,
+                    ExamSubmissionId = examSubmissionId,
                     DiaChiIp = ipAddress,
                     UserAgent = userAgent?.Length > 500 ? userAgent.Substring(0, 500) : userAgent,
                     Department = department
@@ -75,10 +75,10 @@ namespace BanTayVang.API.Services.Impl
                 .ToListAsync();
         }
 
-        public async Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int baithiId)
+        public async Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int examSubmissionId)
         {
             return await _context.AuditLogs
-                .Where(l => l.ExamSubmissionId == baithiId)
+                .Where(l => l.ExamSubmissionId == examSubmissionId)
                 .OrderByDescending(l => l.ActionTime)
                 .Select(l => MapToEntry(l))
                 .ToListAsync();
@@ -135,7 +135,7 @@ namespace BanTayVang.API.Services.Impl
             Id = l.Id,
             UserId = l.UserId,
             Username = l.Username ?? l.User?.Username,
-            BaithiId = l.ExamSubmissionId,
+            ExamSubmissionId = l.ExamSubmissionId,
             ActionType = l.LoaiThaoTac,
             Method = l.PhuongThuc,
             Path = l.DuongDan,

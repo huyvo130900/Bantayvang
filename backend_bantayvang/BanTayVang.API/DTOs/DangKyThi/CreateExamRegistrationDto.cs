@@ -19,7 +19,7 @@ namespace BanTayVang.API.DTOs.ExamRegistration
         [Required(ErrorMessage = "Mật khẩu là bắt buộc")]
         public string Password { get; set; } = null!;
 
-        public string? DonViCongTac { get; set; }
+        public string? WorkUnit { get; set; }
 
         public string? ChuyenNganh { get; set; }
 

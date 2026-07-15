@@ -26,9 +26,9 @@ export const kyThiApi = {
     apiClient.delete<ApiResponse>(`/ExamCampaign/${id}`),
 
   // Sinh đề cho kỳ thi
-  checkExamGeneration: (kyThiId: number, config: ExamGenerationConfig) =>
-    apiClient.post<ApiResponse<ExamCheckResult>>(`/ExamCampaign/${kyThiId}/check-generation`, config),
+  checkExamGeneration: (examCampaignId: number, config: ExamGenerationConfig) =>
+    apiClient.post<ApiResponse<ExamCheckResult>>(`/ExamCampaign/${examCampaignId}/check-generation`, config),
 
-  generateExams: (kyThiId: number, config: ExamGenerationConfig) =>
-    apiClient.post<ApiResponse>(`/ExamCampaign/${kyThiId}/generate-exams`, config),
+  generateExams: (examCampaignId: number, config: ExamGenerationConfig) =>
+    apiClient.post<ApiResponse>(`/ExamCampaign/${examCampaignId}/generate-exams`, config),
 }

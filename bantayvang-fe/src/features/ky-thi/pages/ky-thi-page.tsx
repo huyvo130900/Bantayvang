@@ -80,13 +80,13 @@ export function KyThiPage() {
     }
   }
 
-  const loadExamsForKyThi = async (kyThiId: number) => {
+  const loadExamsForKyThi = async (examCampaignId: number) => {
     setLoadingExams(true)
     try {
       const res = await examsApiExtended.getAll()
       if (res.data.success && res.data.data) {
-        // Lọc các đề thi có KyThiId khớp với kỳ thi hiện tại
-        const filtered = res.data.data.filter((e) => e.kyThiId === kyThiId)
+        // Lọc các đề thi có ExamCampaignId khớp với kỳ thi hiện tại
+        const filtered = res.data.data.filter((e) => e.examCampaignId === examCampaignId)
         setExams(filtered)
       }
     } catch {
@@ -110,12 +110,12 @@ export function KyThiPage() {
       }
       if (editingKyThi) {
         const updateData: any = isDeptManager
-          ? { ...formattedData, khoaPhongId: currentUser?.idKhoaQuanLy || null, status: editingKyThi.status || 'DangChuanBi' }
+          ? { ...formattedData, departmentId: currentUser?.idKhoaQuanLy || null, status: editingKyThi.status || 'DangChuanBi' }
           : { ...formattedData, status: editingKyThi.status || 'DangChuanBi' }
         await kyThiApi.update(editingKyThi.id, updateData)
       } else {
         const createData: CreateKyThiDto = isDeptManager
-          ? { ...formattedData, khoaPhongId: currentUser?.idKhoaQuanLy || null }
+          ? { ...formattedData, departmentId: currentUser?.idKhoaQuanLy || null }
           : formattedData
         await kyThiApi.create(createData)
       }
@@ -225,7 +225,7 @@ export function KyThiPage() {
         department: isDeptManager && myKhoa ? myKhoa : data.department,
         soCauRandom: data.soCauRandom,
         danhSachIdCauHoi: data.danhSachIdCauHoi ?? [],
-        kyThiId: selectedKyThi?.id,
+        examCampaignId: selectedKyThi?.id,
         soCauDungToiThieu: data.soCauDungToiThieu ?? null,
       }
       const res = await examsApi.create(createDto)
@@ -243,9 +243,9 @@ export function KyThiPage() {
     }
   }
 
-  // Scope: DeptManager chỉ thấy kỳ thi do khoa mình quản lý (khoaPhongId = idKhoaQuanLy)
+  // Scope: DeptManager chỉ thấy kỳ thi do khoa mình quản lý (departmentId = idKhoaQuanLy)
   const scopedKyThis = isDeptManager && currentUser?.idKhoaQuanLy
-    ? examCampaigns.filter((k) => k.khoaPhongId === currentUser.idKhoaQuanLy)
+    ? examCampaigns.filter((k) => k.departmentId === currentUser.idKhoaQuanLy)
     : examCampaigns
 
   // Danh sách khoa duy nhất cho tab admin

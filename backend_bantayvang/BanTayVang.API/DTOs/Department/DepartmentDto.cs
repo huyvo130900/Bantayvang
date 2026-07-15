@@ -60,7 +60,7 @@ namespace BanTayVang.API.DTOs.Department
 
     public class DepartmentDashboardDto
     {
-        public int IdKhoa { get; set; }
+        public int DeptId { get; set; }
         public string DepartmentName { get; set; } = string.Empty;
         public int TotalQuestions { get; set; }
         public int TongSoDeThi { get; set; }

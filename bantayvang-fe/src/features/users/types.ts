@@ -1,11 +1,11 @@
 export interface UserDto {
   id: number
-  maNhanVien: string | null
+  employeeCode: string | null
   username: string | null
   email: string | null
   soDienThoai: string | null
   fullName: string | null
-  chucDanh: string | null
+  jobTitle: string | null
   department: string | null
   roleId: number | null
   tenVaiTro: string | null
@@ -23,8 +23,8 @@ export interface CreateUserDto {
   email?: string
   soDienThoai?: string
   fullName: string
-  maNhanVien?: string
-  chucDanh?: string
+  employeeCode?: string
+  jobTitle?: string
   department?: string
   roleId: number
   idKhoaQuanLy?: number
@@ -35,8 +35,8 @@ export interface UpdateUserDto {
   email?: string
   soDienThoai?: string
   fullName: string
-  maNhanVien?: string
-  chucDanh?: string
+  employeeCode?: string
+  jobTitle?: string
   department?: string
   roleId: number
   idKhoaQuanLy?: number

@@ -108,9 +108,9 @@ namespace BanTayVang.API.Services.Impl
                 if (existing != null)
                     return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại" };
 
-                if (!string.IsNullOrWhiteSpace(createDto.MaNhanVien))
+                if (!string.IsNullOrWhiteSpace(createDto.EmployeeCode))
                 {
-                    var existingByEmpCode = await _context.Users.FirstOrDefaultAsync(u => u.MaNhanVien == createDto.MaNhanVien);
+                    var existingByEmpCode = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeCode == createDto.EmployeeCode);
                     if (existingByEmpCode != null)
                         return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại" };
                 }
@@ -130,8 +130,8 @@ namespace BanTayVang.API.Services.Impl
                     Username = createDto.Username,
                     Password = _passwordService.HashPassword(createDto.Password),
                     FullName = createDto.FullName,
-                    MaNhanVien = createDto.MaNhanVien,
-                    ChucDanh = createDto.ChucDanh,
+                    EmployeeCode = createDto.EmployeeCode,
+                    JobTitle = createDto.JobTitle,
                     Department = createDto.Department,
                     RoleId = createDto.RoleId,
                     Status = createDto.Status,
@@ -186,9 +186,9 @@ namespace BanTayVang.API.Services.Impl
                 if (user == null)
                     return new BaseResponseDto<UserDto> { Success = false, Message = "Không tìm thấy người dùng" };
 
-                if (!string.IsNullOrWhiteSpace(updateDto.MaNhanVien))
+                if (!string.IsNullOrWhiteSpace(updateDto.EmployeeCode))
                 {
-                    var existingByEmpCode = await _context.Users.FirstOrDefaultAsync(u => u.MaNhanVien == updateDto.MaNhanVien && u.Id != id);
+                    var existingByEmpCode = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeCode == updateDto.EmployeeCode && u.Id != id);
                     if (existingByEmpCode != null)
                         return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại" };
                 }
@@ -227,8 +227,8 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 user.FullName = updateDto.FullName;
-                user.MaNhanVien = updateDto.MaNhanVien;
-                user.ChucDanh = updateDto.ChucDanh;
+                user.EmployeeCode = updateDto.EmployeeCode;
+                user.JobTitle = updateDto.JobTitle;
                 user.Department = updateDto.Department;
                 user.RoleId = updateDto.RoleId;
                 user.Status = updateDto.Status;
@@ -434,10 +434,10 @@ namespace BanTayVang.API.Services.Impl
             return new UserDto
             {
                 Id = u.Id,
-                MaNhanVien = u.MaNhanVien,
+                EmployeeCode = u.EmployeeCode,
                 Username = u.Username,
                 FullName = u.FullName,
-                ChucDanh = u.ChucDanh,
+                JobTitle = u.JobTitle,
                 Department = u.Department,
                 RoleId = u.RoleId,
                 RoleName = GetRoleName(u.RoleId),
@@ -572,7 +572,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 using var stream = file.OpenReadStream();
-                var rawRows = new List<(int Row, string MaNhanVien, string Password, string FullName, string ChucDanh, string Department, string VaiTroStr, string SoDienThoai, string Email)>();
+                var rawRows = new List<(int Row, string EmployeeCode, string Password, string FullName, string JobTitle, string Department, string VaiTroStr, string SoDienThoai, string Email)>();
 
                 if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                 {
@@ -636,10 +636,10 @@ namespace BanTayVang.API.Services.Impl
                         row++;
                         rawRows.Add((
                             Row: row,
-                            MaNhanVien: colTaiKhoan >= 0 && colTaiKhoan < csv.Parser.Count ? csv.GetField(colTaiKhoan)?.Trim() ?? string.Empty : string.Empty,
+                            EmployeeCode: colTaiKhoan >= 0 && colTaiKhoan < csv.Parser.Count ? csv.GetField(colTaiKhoan)?.Trim() ?? string.Empty : string.Empty,
                             Password: colMatKhau >= 0 && colMatKhau < csv.Parser.Count ? csv.GetField(colMatKhau)?.Trim() ?? string.Empty : string.Empty,
                             FullName: colHoTen >= 0 && colHoTen < csv.Parser.Count ? csv.GetField(colHoTen)?.Trim() ?? string.Empty : string.Empty,
-                            ChucDanh: colChucDanh >= 0 && colChucDanh < csv.Parser.Count ? csv.GetField(colChucDanh)?.Trim() ?? string.Empty : string.Empty,
+                            JobTitle: colChucDanh >= 0 && colChucDanh < csv.Parser.Count ? csv.GetField(colChucDanh)?.Trim() ?? string.Empty : string.Empty,
                             Department: colKhoaPhong >= 0 && colKhoaPhong < csv.Parser.Count ? csv.GetField(colKhoaPhong)?.Trim() ?? string.Empty : string.Empty,
                             VaiTroStr: colVaiTro >= 0 && colVaiTro < csv.Parser.Count ? csv.GetField(colVaiTro)?.Trim() ?? string.Empty : string.Empty,
                             SoDienThoai: colSoDienThoai >= 0 && colSoDienThoai < csv.Parser.Count ? csv.GetField(colSoDienThoai)?.Trim() ?? string.Empty : string.Empty,
@@ -700,10 +700,10 @@ namespace BanTayVang.API.Services.Impl
                     {
                         rawRows.Add((
                             Row: row,
-                            MaNhanVien: colTaiKhoan > 0 ? ws.Cell(row, colTaiKhoan).GetString().Trim() : string.Empty,
+                            EmployeeCode: colTaiKhoan > 0 ? ws.Cell(row, colTaiKhoan).GetString().Trim() : string.Empty,
                             Password: colMatKhau > 0 ? ws.Cell(row, colMatKhau).GetString().Trim() : string.Empty,
                             FullName: colHoTen > 0 ? ws.Cell(row, colHoTen).GetString().Trim() : string.Empty,
-                            ChucDanh: colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty,
+                            JobTitle: colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty,
                             Department: colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty,
                             VaiTroStr: colVaiTro > 0 ? ws.Cell(row, colVaiTro).GetString().Trim() : string.Empty,
                             SoDienThoai: colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty,
@@ -717,20 +717,20 @@ namespace BanTayVang.API.Services.Impl
                 foreach (var r in rawRows)
                 {
                     int row = r.Row;
-                    var maNhanVien = r.MaNhanVien;
+                    var employeeCode = r.EmployeeCode;
                     var password = r.Password;
                     var fullName = r.FullName;
-                    var chucDanh = r.ChucDanh;
+                    var jobTitle = r.JobTitle;
                     var department = r.Department;
                     var vaiTroStr = r.VaiTroStr;
                     var soDienThoai = r.SoDienThoai;
                     var email = r.Email;
 
                     // If all columns are empty, skip row
-                    if (string.IsNullOrWhiteSpace(maNhanVien) &&
+                    if (string.IsNullOrWhiteSpace(employeeCode) &&
                         string.IsNullOrWhiteSpace(password) &&
                         string.IsNullOrWhiteSpace(fullName) &&
-                        string.IsNullOrWhiteSpace(chucDanh) &&
+                        string.IsNullOrWhiteSpace(jobTitle) &&
                         string.IsNullOrWhiteSpace(department) &&
                         string.IsNullOrWhiteSpace(vaiTroStr) &&
                         string.IsNullOrWhiteSpace(soDienThoai) &&
@@ -748,7 +748,7 @@ namespace BanTayVang.API.Services.Impl
                     // Validations
                     var rowErrors = new List<string>();
 
-                    if (string.IsNullOrWhiteSpace(maNhanVien))
+                    if (string.IsNullOrWhiteSpace(employeeCode))
                     {
                         rowErrors.Add("Mã nhân viên (tài khoản) không được để trống");
                     }
@@ -772,20 +772,20 @@ namespace BanTayVang.API.Services.Impl
                         continue;
                     }
 
-                    if (processedUsernames.Contains(maNhanVien))
+                    if (processedUsernames.Contains(employeeCode))
                     {
                         resultDto.Failed++;
-                        resultDto.Errors.Add($"Dòng {row}: Tài khoản '{maNhanVien}' bị trùng lặp trong file import");
+                        resultDto.Errors.Add($"Dòng {row}: Tài khoản '{employeeCode}' bị trùng lặp trong file import");
                         continue;
                     }
 
-                    // Check if maNhanVien / Username already exists
-                    var existingUserByUsername = await _context.Users.FirstOrDefaultAsync(u => u.Username == maNhanVien);
-                    var existingUserByEmpCode = await _context.Users.FirstOrDefaultAsync(u => u.MaNhanVien == maNhanVien);
+                    // Check if employeeCode / Username already exists
+                    var existingUserByUsername = await _context.Users.FirstOrDefaultAsync(u => u.Username == employeeCode);
+                    var existingUserByEmpCode = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeCode == employeeCode);
                     if (existingUserByUsername != null || existingUserByEmpCode != null)
                     {
                         resultDto.Failed++;
-                        resultDto.Errors.Add($"Dòng {row}: Mã nhân viên '{maNhanVien}' đã tồn tại trong hệ thống");
+                        resultDto.Errors.Add($"Dòng {row}: Mã nhân viên '{employeeCode}' đã tồn tại trong hệ thống");
                         continue;
                     }
 
@@ -813,8 +813,8 @@ namespace BanTayVang.API.Services.Impl
                         }
                     }
 
-                    // Set chucDanh to null/empty if left empty
-                    string? finalChucDanh = string.IsNullOrWhiteSpace(chucDanh) ? null : chucDanh;
+                    // Set jobTitle to null/empty if left empty
+                    string? finalChucDanh = string.IsNullOrWhiteSpace(jobTitle) ? null : jobTitle;
                     string? finalKhoaPhong = string.IsNullOrWhiteSpace(department) ? null : department;
 
                     // Auto-assign DeptManager to Department
@@ -830,11 +830,11 @@ namespace BanTayVang.API.Services.Impl
 
                     var user = new User
                     {
-                        Username = maNhanVien,
-                        MaNhanVien = maNhanVien,
+                        Username = employeeCode,
+                        EmployeeCode = employeeCode,
                         Password = _passwordService.HashPassword(password),
                         FullName = fullName,
-                        ChucDanh = finalChucDanh,
+                        JobTitle = finalChucDanh,
                         Department = finalKhoaPhong,
                         RoleId = roleId,
                         DeptManagerDeptId = idKhoaQuanLy,
@@ -851,7 +851,7 @@ namespace BanTayVang.API.Services.Impl
                     });
 
                     _context.Users.Add(user);
-                    processedUsernames.Add(maNhanVien);
+                    processedUsernames.Add(employeeCode);
                     resultDto.Success++;
                 }
 

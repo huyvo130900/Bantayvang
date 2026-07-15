@@ -9,7 +9,7 @@ public partial class CheatWarning
 
     public int? ExamSubmissionId { get; set; }
 
-    public string? LoaiCanhBao { get; set; }
+    public string? WarningType { get; set; }
 
     public string? Description { get; set; }
 

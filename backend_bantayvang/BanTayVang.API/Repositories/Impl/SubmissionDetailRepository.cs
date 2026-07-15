@@ -10,7 +10,7 @@ namespace BanTayVang.API.Repositories.Impl
         {
         }
 
-        public async Task<List<SubmissionDetail>> GetByBaiThiAsync(int baithiId)
+        public async Task<List<SubmissionDetail>> GetByBaiThiAsync(int examSubmissionId)
         {
             return await _dbSet
                 .Include(c => c.IdCauHoiNavigation)
@@ -18,14 +18,14 @@ namespace BanTayVang.API.Repositories.Impl
                 .Include(c => c.IdCauHoiNavigation)
                     .ThenInclude(ch => ch!.IdLoaiCauHoiNavigation)
                 .Include(c => c.IdLuaChonDaChonNavigation)
-                .Where(c => c.ExamSubmissionId == baithiId)
+                .Where(c => c.ExamSubmissionId == examSubmissionId)
                 .ToListAsync();
         }
 
-        public async Task<SubmissionDetail?> GetAnswerAsync(int baithiId, int cauhoiId)
+        public async Task<SubmissionDetail?> GetAnswerAsync(int examSubmissionId, int questionId)
         {
             return await _dbSet
-                .FirstOrDefaultAsync(c => c.ExamSubmissionId == baithiId && c.QuestionId == cauhoiId);
+                .FirstOrDefaultAsync(c => c.ExamSubmissionId == examSubmissionId && c.QuestionId == questionId);
         }
 
         public async Task<bool> SaveAnswerAsync(SubmissionDetail chitiet)
@@ -59,10 +59,10 @@ namespace BanTayVang.API.Repositories.Impl
             }
         }
 
-        public async Task DeleteAnswersByQuestionAsync(int baithiId, int cauhoiId)
+        public async Task DeleteAnswersByQuestionAsync(int examSubmissionId, int questionId)
         {
             var records = await _dbSet
-                .Where(c => c.ExamSubmissionId == baithiId && c.QuestionId == cauhoiId)
+                .Where(c => c.ExamSubmissionId == examSubmissionId && c.QuestionId == questionId)
                 .ToListAsync();
 
             if (records.Any())
@@ -72,11 +72,11 @@ namespace BanTayVang.API.Repositories.Impl
             }
         }
 
-        public async Task<int> CountCorrectAnswersAsync(int baithiId)
+        public async Task<int> CountCorrectAnswersAsync(int examSubmissionId)
         {
             var answers = await _dbSet
                 .Include(c => c.IdLuaChonDaChonNavigation)
-                .Where(c => c.ExamSubmissionId == baithiId && c.SelectedOptionId.HasValue)
+                .Where(c => c.ExamSubmissionId == examSubmissionId && c.SelectedOptionId.HasValue)
                 .ToListAsync();
 
             return answers.Count(a => a.IdLuaChonDaChonNavigation?.IsCorrect == true);

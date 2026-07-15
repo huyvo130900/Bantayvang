@@ -58,7 +58,7 @@ namespace BanTayVang.API.Mappings
                 .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Department))
                 .ForMember(dest => dest.IsResultPublished, opt => opt.MapFrom(src => src.IsResultPublished))
                 .ForMember(dest => dest.ThoiGianCongBo, opt => opt.MapFrom(src => src.ThoiGianCongBo))
-                .ForMember(dest => dest.KyThiId, opt => opt.MapFrom(src => src.KyThiId))
+                .ForMember(dest => dest.ExamCampaignId, opt => opt.MapFrom(src => src.ExamCampaignId))
                 .ForMember(dest => dest.MinPassQuestions, opt => opt.MapFrom(src => src.MinPassQuestions))
                 .ForMember(dest => dest.DanhSachCauHoi, opt => opt.Ignore());
 

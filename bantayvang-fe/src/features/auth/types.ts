@@ -10,8 +10,8 @@ export interface User {
   status?: boolean
   lastLoginAt?: string
   department?: string
-  maNhanVien?: string
-  chucDanh?: string
+  employeeCode?: string
+  jobTitle?: string
   idKhoaQuanLy?: number
   tenKhoaQuanLy?: string
 }

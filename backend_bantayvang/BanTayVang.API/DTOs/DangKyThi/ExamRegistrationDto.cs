@@ -9,7 +9,7 @@ namespace BanTayVang.API.DTOs.ExamRegistration
         public string Cccd { get; set; } = null!;
         public string SoDienThoai { get; set; } = null!;
         public string? Email { get; set; }
-        public string? DonViCongTac { get; set; }
+        public string? WorkUnit { get; set; }
         public string? ChuyenNganh { get; set; }
         public int? DepartmentId { get; set; }
         public string? TenKhoaPhong { get; set; }

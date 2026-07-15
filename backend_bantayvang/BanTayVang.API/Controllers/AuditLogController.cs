@@ -62,10 +62,10 @@ namespace BanTayVang.API.Controllers
             return Ok(new BaseResponseDto<List<AuditLogEntry>> { Success = true, Data = logs });
         }
 
-        [HttpGet("exam-session/{baithiId}")]
-        public async Task<ActionResult<BaseResponseDto<List<AuditLogEntry>>>> GetByExamSession(int baithiId)
+        [HttpGet("exam-session/{examSubmissionId}")]
+        public async Task<ActionResult<BaseResponseDto<List<AuditLogEntry>>>> GetByExamSession(int examSubmissionId)
         {
-            var logs = await _auditLogService.GetExamSessionLogsAsync(baithiId);
+            var logs = await _auditLogService.GetExamSessionLogsAsync(examSubmissionId);
             return Ok(new BaseResponseDto<List<AuditLogEntry>> { Success = true, Data = logs });
         }
 

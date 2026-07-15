@@ -4,9 +4,9 @@ export interface ExamRegistrationDto {
   cccd: string;
   soDienThoai: string;
   email?: string;
-  donViCongTac?: string;
+  workUnit?: string;
   chuyenNganh?: string;
-  khoaPhongId?: number;
+  departmentId?: number;
   tenKhoaPhong?: string;
   mucDichThi?: string;
   status: string;
@@ -20,9 +20,9 @@ export interface CreateExamRegistrationDto {
   soDienThoai: string;
   email?: string;
   password: string;
-  donViCongTac?: string;
+  workUnit?: string;
   chuyenNganh?: string;
-  khoaPhongId?: number;
+  departmentId?: number;
   mucDichThi?: string;
 }
 

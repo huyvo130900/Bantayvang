@@ -7,7 +7,7 @@ namespace BanTayVang.API.Services.Interfaces
             string description,
             int? userId = null,
             string? username = null,
-            int? baithiId = null,
+            int? examSubmissionId = null,
             string? ipAddress = null,
             string? userAgent = null,
             string? method = null,
@@ -16,7 +16,7 @@ namespace BanTayVang.API.Services.Interfaces
             string? department = null);
 
         Task<List<AuditLogEntry>> GetUserLogsAsync(int userId, int top = 100);
-        Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int baithiId);
+        Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int examSubmissionId);
         Task<List<AuditLogEntry>> GetRecentLogsAsync(int top = 500);
         Task<List<AuditLogEntry>> SearchLogsAsync(
             string? actionType = null,
@@ -33,7 +33,7 @@ namespace BanTayVang.API.Services.Interfaces
         public int Id { get; set; }
         public int? UserId { get; set; }
         public string? Username { get; set; }
-        public int? BaithiId { get; set; }
+        public int? ExamSubmissionId { get; set; }
         public string? ActionType { get; set; }
         /// <summary>HTTP Method: GET, POST, PUT, DELETE</summary>
         public string? Method { get; set; }
