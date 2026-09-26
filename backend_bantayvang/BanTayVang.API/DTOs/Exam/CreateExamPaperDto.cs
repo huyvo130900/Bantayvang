@@ -25,15 +25,12 @@ namespace BanTayVang.API.DTOs.Exam
         /// <summary>
         /// Số câu hỏi random từ ngân hàng (nếu null thì lấy tất cả)
         /// </summary>
-
-
+        public int? RandomQuestionCount { get; set; }
 
         /// <summary>
         /// Tương thích ngược - nếu truyền list câu hỏi cụ thể (legacy)
         /// </summary>
         public List<int> QuestionIds { get; set; } = new();
-
-
 
         /// <summary>
         /// Kỳ thi liên kết

@@ -7,6 +7,6 @@ namespace BanTayVang.API.DTOs.Exam
         [Required]
         public int ExamSubmissionId { get; set; }
         
-        public List<SubmitAnswerDto> DanhSachCauTraLoi { get; set; } = new();
+        public List<SubmitAnswerDto> Answers { get; set; } = new();
     }
 }

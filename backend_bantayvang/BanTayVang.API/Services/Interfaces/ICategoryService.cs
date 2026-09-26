@@ -10,10 +10,10 @@ namespace BanTayVang.API.Services.Interfaces
     public interface ICategoryService
     {
         // Question type (Loai cau hoi) operations
-        Task<BaseResponseDto<List<LoaicauhoiDto>>> GetAllQuestionTypesAsync();
-        Task<BaseResponseDto<LoaicauhoiDto>> GetQuestionTypeByIdAsync(int id);
-        Task<BaseResponseDto<LoaicauhoiDto>> CreateQuestionTypeAsync(CreateLoaicauhoiDto createDto);
-        Task<BaseResponseDto<LoaicauhoiDto>> UpdateQuestionTypeAsync(int id, CreateLoaicauhoiDto updateDto);
+        Task<BaseResponseDto<List<QuestionCategoryDto>>> GetAllQuestionTypesAsync();
+        Task<BaseResponseDto<QuestionCategoryDto>> GetQuestionTypeByIdAsync(int id);
+        Task<BaseResponseDto<QuestionCategoryDto>> CreateQuestionTypeAsync(CreateQuestionCategoryDto createDto);
+        Task<BaseResponseDto<QuestionCategoryDto>> UpdateQuestionTypeAsync(int id, CreateQuestionCategoryDto updateDto);
         Task<BaseResponseDto> DeleteQuestionTypeAsync(int id);
     }
 }

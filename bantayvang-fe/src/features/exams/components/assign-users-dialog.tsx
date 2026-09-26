@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { usersApi } from '@/features/users/api'
 import type { UserDto } from '@/features/users/types'
 import type { ExamPaperDto } from '../types'
+import { examsApi } from '../api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X, Search, Check } from 'lucide-react'
@@ -17,19 +18,30 @@ interface AssignUsersDialogProps {
 export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: AssignUsersDialogProps) {
   const [users, setUsers] = useState<UserDto[]>([])
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  // BUG FIX: this dialog used to always start with every checkbox unticked, with no idea who was
+  // already assigned to this exam - the API (getAssignmentsByExam) and a Redux thunk for it existed
+  // but nothing ever called them. Admins had no way to see existing assignments and no way to
+  // unassign anyone from the UI at all (removeAssignment was likewise defined but never called).
+  // Now fetched on open, pre-ticked, and unticking a previously-assigned student on Save unassigns them.
+  const [assignmentIdByUserId, setAssignmentIdByUserId] = useState<Record<number, number>>({})
+  const [initialUserIds, setInitialUserIds] = useState<number[]>([])
   const [searchKeyword, setSearchKeyword] = useState('')
   const [note, setNote] = useState('')
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [removing, setRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (open) {
+    if (open && exam) {
       loadUsers()
-      setSelectedIds([])
+      loadExistingAssignments(exam.id)
       setNote('')
+      setRemoveError(null)
     }
-  }, [open])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, exam?.id])
 
-  const loadUsers = async () => {
+  async function loadUsers() {
     setLoadingUsers(true)
     try {
       const response = await usersApi.list({
@@ -49,6 +61,29 @@ export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: 
     }
   }
 
+  async function loadExistingAssignments(examId: number) {
+    try {
+      const response = await examsApi.getAssignmentsByExam(examId)
+      if (response.data.success && response.data.data) {
+        const active = response.data.data.filter((a) => a.isActive)
+        const map: Record<number, number> = {}
+        active.forEach((a) => { map[a.userId] = a.id })
+        setAssignmentIdByUserId(map)
+        const userIds = active.map((a) => a.userId)
+        setInitialUserIds(userIds)
+        setSelectedIds(userIds)
+      } else {
+        setAssignmentIdByUserId({})
+        setInitialUserIds([])
+        setSelectedIds([])
+      }
+    } catch {
+      setAssignmentIdByUserId({})
+      setInitialUserIds([])
+      setSelectedIds([])
+    }
+  }
+
   const toggleUser = (id: number) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -57,6 +92,44 @@ export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: 
 
   const selectAll = () => {
     setSelectedIds(users.map((u) => u.id))
+  }
+
+  const toAdd = selectedIds.filter((id) => !initialUserIds.includes(id))
+  const toRemove = initialUserIds.filter((id) => !selectedIds.includes(id))
+
+  async function handleSubmit() {
+    if (!exam) return
+    setRemoveError(null)
+    let failedCount = 0
+    if (toRemove.length > 0) {
+      setRemoving(true)
+      try {
+        // BUG FIX: was Promise.all() in an empty catch - a single failed removal rejected the
+        // whole batch (leaving successfully-removed users unknown to the admin) and the dialog
+        // still closed as if everything succeeded, silently leaving those students assigned.
+        // allSettled + counting failures lets us report exactly what happened.
+        const results = await Promise.allSettled(
+          toRemove.map((userId) => {
+            const assignmentId = assignmentIdByUserId[userId]
+            return assignmentId ? examsApi.removeAssignment(assignmentId) : Promise.resolve()
+          })
+        )
+        failedCount = results.filter((r) => r.status === 'rejected').length
+      } finally {
+        setRemoving(false)
+      }
+    }
+
+    if (failedCount > 0) {
+      setRemoveError(`Hủy phân công thất bại cho ${failedCount} thí sinh. Vui lòng thử lại.`)
+      return
+    }
+
+    if (toAdd.length > 0) {
+      onSubmit(exam.id, toAdd, note || undefined)
+    } else if (toRemove.length > 0) {
+      onClose()
+    }
   }
 
   if (!open || !exam) return null
@@ -91,7 +164,10 @@ export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: 
             </Button>
           </div>
 
-          <p className="text-sm text-gray-500">{selectedIds.length} thí sinh đã chọn</p>
+          <p className="text-sm text-gray-500">
+            {selectedIds.length} thí sinh đã chọn
+            {initialUserIds.length > 0 && ` (${initialUserIds.length} đã được phân công từ trước)`}
+          </p>
 
           <div className="max-h-60 overflow-y-auto border rounded divide-y">
             {loadingUsers ? (
@@ -99,27 +175,35 @@ export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: 
             ) : users.length === 0 ? (
               <p className="p-3 text-sm text-gray-500">Không tìm thấy thí sinh</p>
             ) : (
-              users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => toggleUser(user.id)}
-                >
+              users.map((user) => {
+                const isAlreadyAssigned = initialUserIds.includes(user.id)
+                return (
                   <div
-                    className={`h-5 w-5 rounded border flex items-center justify-center shrink-0 ${
-                      selectedIds.includes(user.id)
-                        ? 'bg-primary border-primary text-white'
-                        : 'border-gray-300'
-                    }`}
+                    key={user.id}
+                    className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => toggleUser(user.id)}
                   >
-                    {selectedIds.includes(user.id) && <Check className="h-3 w-3" />}
+                    <div
+                      className={`h-5 w-5 rounded border flex items-center justify-center shrink-0 ${
+                        selectedIds.includes(user.id)
+                          ? 'bg-primary border-primary text-white'
+                          : 'border-gray-300'
+                      }`}
+                    >
+                      {selectedIds.includes(user.id) && <Check className="h-3 w-3" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{user.fullName || user.username}</p>
+                      <p className="text-xs text-gray-400">{user.department} • {user.employeeCode}</p>
+                    </div>
+                    {isAlreadyAssigned && (
+                      <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5 shrink-0">
+                        Đã phân công
+                      </span>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{user.fullName || user.username}</p>
-                    <p className="text-xs text-gray-400">{user.department} • {user.employeeCode}</p>
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
 
@@ -132,13 +216,25 @@ export function AssignUsersDialog({ open, exam, onClose, onSubmit, isLoading }: 
             />
           </div>
 
+          {removeError && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">{removeError}</p>
+          )}
+
           <div className="flex justify-end gap-2 pt-2 border-t">
             <Button variant="outline" onClick={onClose}>Hủy</Button>
             <Button
-              onClick={() => onSubmit(exam.id, selectedIds, note || undefined)}
-              disabled={selectedIds.length === 0 || isLoading}
+              onClick={handleSubmit}
+              disabled={(toAdd.length === 0 && toRemove.length === 0) || isLoading || removing}
             >
-              {isLoading ? 'Đang phân công...' : `Phân công (${selectedIds.length})`}
+              {removing
+                ? 'Đang hủy phân công...'
+                : isLoading
+                  ? 'Đang phân công...'
+                  : toAdd.length > 0 && toRemove.length > 0
+                    ? `Lưu (+${toAdd.length} / -${toRemove.length})`
+                    : toRemove.length > 0
+                      ? `Hủy phân công (${toRemove.length})`
+                      : `Phân công (${toAdd.length})`}
             </Button>
           </div>
         </div>

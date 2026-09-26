@@ -22,13 +22,16 @@ export function LoginForm() {
     defaultValues: { username: '', password: '', rememberMe: false },
   })
 
-  const onSubmit = async (data: LoginFormData) => {
+  async function onSubmit(data: LoginFormData) {
     dispatch(clearError())
     const result = await dispatch(login(data))
     if (login.fulfilled.match(result)) {
       const user = result.payload.user
-      if ((user.role || user.roleName) === ROLES.STUDENT) {
+      const role = user.role || user.roleName || ''
+      if (role === ROLES.STUDENT || role === ROLES.THI_SINH_NGOAI) {
         navigate('/exam-waiting')
+      } else if (role === ROLES.DEPT_MANAGER) {
+        navigate('/dept-manager/dashboard')
       } else {
         navigate('/admin/dashboard')
       }
@@ -76,16 +79,21 @@ export function LoginForm() {
         )}
       </div>
 
-      <div className="flex items-center space-x-2">
-        <input
-          {...register('rememberMe')}
-          type="checkbox"
-          id="rememberMe"
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-        />
-        <label htmlFor="rememberMe" className="text-sm text-gray-600">
-          Ghi nhớ đăng nhập
-        </label>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <input
+            {...register('rememberMe')}
+            type="checkbox"
+            id="rememberMe"
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <label htmlFor="rememberMe" className="text-sm text-gray-600">
+            Ghi nhớ
+          </label>
+        </div>
+        <a href="/quen-mat-khau" className="text-sm font-medium text-primary hover:underline">
+          Quên mật khẩu?
+        </a>
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>

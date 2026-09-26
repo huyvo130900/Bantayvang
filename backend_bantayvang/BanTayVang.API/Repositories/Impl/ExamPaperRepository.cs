@@ -55,22 +55,22 @@ namespace BanTayVang.API.Repositories.Impl
                 .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
         }
 
-        public async Task<bool> AddQuestionsToExamAsync(int dethiId, List<int> cauhoiIds)
+        public async Task<bool> AddQuestionsToExamAsync(int ExamPaperId, List<int> questionIds)
         {
             try
             {
                 // Xóa câu hỏi cũ
                 var existingQuestions = await _context.ExamPaperQuestions
-                    .Where(dc => dc.ExamPaperId == dethiId)
+                    .Where(dc => dc.ExamPaperId == ExamPaperId)
                     .ToListAsync();
                 _context.ExamPaperQuestions.RemoveRange(existingQuestions);
 
                 // Thêm câu hỏi mới
-                foreach (var questionId in cauhoiIds)
+                foreach (var questionId in questionIds)
                 {
                     _context.ExamPaperQuestions.Add(new ExamPaperQuestion
                     {
-                        ExamPaperId = dethiId,
+                        ExamPaperId = ExamPaperId,
                         QuestionId = questionId
                     });
                 }
@@ -178,23 +178,24 @@ namespace BanTayVang.API.Repositories.Impl
 
             // 3. Determine the preferred starting exam index for the candidate
             int startIndex = -1;
-            var examCampaign = await _context.Set<ExamCampaign>().FindAsync(new object[] { examCampaignId }, cancellationToken);
-            if (examCampaign != null && examCampaign.DepartmentId.HasValue)
+            // A campaign can now be scoped to 1-n departments (ExamCampaignDepartments) instead of
+            // one - pool students from every linked department for the round-robin index.
+            var campaignDeptNames = await _context.Set<ExamCampaignDepartment>()
+                .Where(kd => kd.ExamCampaignId == examCampaignId)
+                .Select(kd => kd.Department!.DepartmentName)
+                .ToListAsync(cancellationToken);
+            if (campaignDeptNames.Count > 0)
             {
-                var khoa = await _context.Set<Department>().FindAsync(new object[] { examCampaign.DepartmentId.Value }, cancellationToken);
-                if (khoa != null)
-                {
-                    var students = await _context.Users
-                        .Where(u => u.Department == khoa.DepartmentName && u.RoleId == 3)
-                        .OrderBy(u => u.Id)
-                        .Select(u => u.Id)
-                        .ToListAsync(cancellationToken);
+                var students = await _context.Users
+                    .Where(u => u.Department != null && campaignDeptNames.Contains(u.Department) && u.RoleId == 3)
+                    .OrderBy(u => u.Id)
+                    .Select(u => u.Id)
+                    .ToListAsync(cancellationToken);
 
-                    var studentIndex = students.IndexOf(userId);
-                    if (studentIndex >= 0)
-                    {
-                        startIndex = studentIndex % kyThiExams.Count;
-                    }
+                var studentIndex = students.IndexOf(userId);
+                if (studentIndex >= 0)
+                {
+                    startIndex = studentIndex % kyThiExams.Count;
                 }
             }
 

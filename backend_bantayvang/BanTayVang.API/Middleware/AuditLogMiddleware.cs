@@ -18,7 +18,8 @@ namespace BanTayVang.API.Middleware
             "/api/exam/answer",
             "/swagger",
             "/health",
-            "/hubs"
+            "/hubs",
+            "/api/auth/login"
         };
 
         public AuditLogMiddleware(RequestDelegate next, ILogger<AuditLogMiddleware> logger)
@@ -38,7 +39,7 @@ namespace BanTayVang.API.Middleware
                 // Extract user info from JWT claims
                 var userId = GetUserId(context);
                 var username = GetUsername(context);
-                var department = context.User?.FindFirst("khoa_phong")?.Value;
+                var department = context.User?.FindFirst("department_claim")?.Value;
 
                 var ipAddress = GetClientIp(context);
                 var userAgent = context.Request.Headers.UserAgent.ToString();

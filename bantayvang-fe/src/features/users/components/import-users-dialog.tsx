@@ -31,7 +31,7 @@ export function ImportUsersDialog({ open, onClose, onSuccess }: ImportUsersDialo
     setError(null)
   }
 
-  const handleImport = async () => {
+  async function handleImport() {
     if (!file) return
     setImporting(true)
     setError(null)
@@ -49,7 +49,7 @@ export function ImportUsersDialog({ open, onClose, onSuccess }: ImportUsersDialo
       } else {
         setResult(res.data.data as ImportResult)
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       const errData = (err as { response?: { data?: { data?: ImportResult; message?: string } } })?.response?.data
       if (errData?.data) {
         // 400 response vẫn có thể kèm chi tiết lỗi từng dòng
@@ -62,7 +62,7 @@ export function ImportUsersDialog({ open, onClose, onSuccess }: ImportUsersDialo
     }
   }
 
-  const handleDownloadTemplate = async () => {
+  async function handleDownloadTemplate() {
     try {
       const res = await usersApi.downloadTemplate()
       const url = window.URL.createObjectURL(new Blob([res.data]))

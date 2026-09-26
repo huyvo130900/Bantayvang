@@ -177,7 +177,10 @@ namespace BanTayVang.API.Services.Impl
                         Type = createDto.Type ?? "Info",
                         RelatedUrl = createDto.RelatedUrl,
                         IsRead = false,
-                        CreatedAt = DateTime.UtcNow
+                        // BUG FIX (ục 44): dùng đúng quy ước giờ VN giả như các entity khác (Frontend hiển thị trực tiếp
+                        // không convert timezone - xác nhận qua formatDate() trong utils.ts).
+                        // UTC thật trước đây làm thông báo hiển thị lệch ~7 tiệng so với thời gian thực.
+                        CreatedAt = DateTime.UtcNow.AddHours(7)
                     };
                     _context.Notifications.Add(notification);
                     createdNotifications.Add(notification);
@@ -268,7 +271,7 @@ namespace BanTayVang.API.Services.Impl
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy thông báo" };
 
                 notification.IsRead = true;
-                notification.ReadAt = DateTime.UtcNow;
+                notification.ReadAt = DateTime.UtcNow.AddHours(7); // BUG FIX (mục 44): xem giải thích ở CreatedAt phía trên
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseDto { Success = true, Message = "Đã đánh dấu đã đọc" };
@@ -291,7 +294,7 @@ namespace BanTayVang.API.Services.Impl
                 foreach (var n in notifications)
                 {
                     n.IsRead = true;
-                    n.ReadAt = DateTime.UtcNow;
+                    n.ReadAt = DateTime.UtcNow.AddHours(7); // BUG FIX (mục 44)
                 }
 
                 await _context.SaveChangesAsync();
@@ -331,7 +334,11 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var now = DateTime.Now;
+                // BUG FIX: ExamPaper.StartTime is stored as TRUE UTC (copied from ExamCampaign.StartTime,
+                // set via the frontend's .toISOString()). Comparing it against the fake-VN
+                // DateTime.UtcNow.AddHours(7) convention used elsewhere in this file made the
+                // "upcoming exams" list off by ~7 hours. Use real UTC here instead.
+                var now = DateTime.UtcNow;
                 var exams = await _context.ExamPapers
                     .Where(d => d.Status == "Active" && d.StartTime != null && d.StartTime > now)
                     .Include(d => d.ExamPaperQuestions)
@@ -375,7 +382,9 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                var now = DateTime.Now;
+                // BUG FIX: same reasoning as GetUpcomingExamsAsync above - ExamPaper.StartTime is
+                // TRUE UTC, so compare against real UTC "now" instead of the fake-VN convention.
+                var now = DateTime.UtcNow;
                 var allExams = await _context.ExamPapers
                     .Where(d => d.Status == "Active" && d.StartTime != null && d.StartTime <= now)
                     .Include(d => d.ExamPaperQuestions)

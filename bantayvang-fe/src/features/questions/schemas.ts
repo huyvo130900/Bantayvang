@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const luachonSchema = z.object({
+const optionSchema = z.object({
   content: z.string().min(1, 'Nội dung lựa chọn không được trống'),
   orderIndex: z.number(),
   isCorrect: z.boolean(),
@@ -12,7 +12,7 @@ export const createQuestionSchema = z.object({
   difficulty: z.string().optional(),
   department: z.string().optional(),
   imageUrl: z.string().optional(),
-  options: z.array(luachonSchema).optional(),
+  options: z.array(optionSchema).optional(),
 })
 
 export type CreateQuestionFormData = z.infer<typeof createQuestionSchema>

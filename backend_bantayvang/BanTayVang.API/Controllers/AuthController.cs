@@ -1,7 +1,9 @@
 using BanTayVang.API.Attributes;
 using BanTayVang.API.DTOs.Auth;
+using BanTayVang.API.Services.Interfaces;
 using BanTayVang.API.Services.Interfaces.Auth;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace BanTayVang.API.Controllers
 {
@@ -16,11 +18,19 @@ namespace BanTayVang.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IEmailVerificationService _emailVerificationService;
+        private readonly IAuditLogService _auditLogService;
         private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService, ILogger<AuthController> logger)
+        public AuthController(
+            IAuthService authService,
+            IEmailVerificationService emailVerificationService,
+            IAuditLogService auditLogService,
+            ILogger<AuthController> logger)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+            _emailVerificationService = emailVerificationService ?? throw new ArgumentNullException(nameof(emailVerificationService));
+            _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -70,9 +80,35 @@ namespace BanTayVang.API.Controllers
                 
                 if (result.Success)
                 {
+                    await _auditLogService.LogActionAsync(
+                        actionType: "POST /api/auth/login",
+                        description: "Đăng nhập hệ thống",
+                        userId: result.Data?.User?.Id,
+                        username: result.Data?.User?.Username ?? loginDto.Username,
+                        examSubmissionId: null,
+                        ipAddress: loginDto.IpAddress,
+                        userAgent: loginDto.UserAgent,
+                        method: "POST",
+                        path: "/api/auth/login",
+                        statusCode: 200,
+                        department: null // Department will be extracted from JWT on subsequent requests
+                    );
                     return Ok(result);
                 }
 
+                await _auditLogService.LogActionAsync(
+                    actionType: "POST /api/auth/login",
+                    description: $"Đăng nhập thất bại: {result.Message}",
+                    userId: null,
+                    username: loginDto.Username,
+                    examSubmissionId: null,
+                    ipAddress: loginDto.IpAddress,
+                    userAgent: loginDto.UserAgent,
+                    method: "POST",
+                    path: "/api/auth/login",
+                    statusCode: 400,
+                    department: null
+                );
                 return BadRequest(result);
             }
             catch (Exception ex)
@@ -134,6 +170,10 @@ namespace BanTayVang.API.Controllers
 
                 return BadRequest(result);
             }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new { success = false, message = "Không tìm thấy thông tin xác thực" });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in logout endpoint");
@@ -162,6 +202,10 @@ namespace BanTayVang.API.Controllers
                 }
 
                 return BadRequest(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new { success = false, message = "Không tìm thấy thông tin xác thực" });
             }
             catch (Exception ex)
             {
@@ -222,6 +266,10 @@ namespace BanTayVang.API.Controllers
                 }
 
                 return BadRequest(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new { success = false, message = "Không tìm thấy thông tin xác thực" });
             }
             catch (Exception ex)
             {
@@ -301,10 +349,87 @@ namespace BanTayVang.API.Controllers
 
                 return BadRequest(result);
             }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new { success = false, message = "Không tìm thấy thông tin xác thực" });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in revoke sessions endpoint");
                 return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi thu hồi phiên đăng nhập" });
+            }
+        }
+
+        /// <summary>
+        /// Gửi mã OTP xác nhận tới email (dùng khi thí sinh ngoại đăng ký dự thi)
+        /// </summary>
+        [HttpPost("send-verification-code")]
+        public async Task<IActionResult> SendVerificationCode([FromBody] SendEmailVerificationCodeDto dto, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var ip = GetClientIpAddress();
+                var (success, message) = await _emailVerificationService.SendCodeAsync(dto.Email, "RegisterVerification", ip, cancellationToken);
+
+                if (success)
+                {
+                    return Ok(new { success = true, message });
+                }
+
+                return BadRequest(new { success = false, message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in send-verification-code endpoint");
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi gửi mã xác nhận" });
+            }
+        }
+
+        /// <summary>
+        /// Xác nhận mã OTP đã gửi tới email (đăng ký)
+        /// </summary>
+        [HttpPost("verify-email-code")]
+        public async Task<IActionResult> VerifyEmailCode([FromBody] VerifyEmailCodeDto dto, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var (success, message) = await _emailVerificationService.VerifyCodeAsync(dto.Email, dto.Code, "RegisterVerification", cancellationToken);
+
+                if (success)
+                {
+                    return Ok(new { success = true, message });
+                }
+
+                return BadRequest(new { success = false, message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in verify-email-code endpoint");
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi xác thực mã" });
+            }
+        }
+
+        /// <summary>
+        /// Xác nhận mã OTP quên mật khẩu, trả về reset token để dùng ở bước reset-password
+        /// </summary>
+        [HttpPost("verify-reset-code")]
+        public async Task<IActionResult> VerifyResetCode([FromBody] VerifyPasswordResetCodeDto dto, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var result = await _authService.VerifyPasswordResetCodeAsync(dto.Email, dto.Code, cancellationToken);
+
+                if (result.Success)
+                {
+                    return Ok(result);
+                }
+
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in verify-reset-code endpoint");
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi xác thực mã" });
             }
         }
 
@@ -358,6 +483,38 @@ namespace BanTayVang.API.Controllers
         }
 
         #endregion
+    }
+
+    // ===== DTOs cho tính năng OTP =====
+
+    /// <summary>DTO gửi mã OTP xác thực email</summary>
+    public class SendEmailVerificationCodeDto
+    {
+        [Required(ErrorMessage = "Email là bắt buộc")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ")]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    /// <summary>DTO xác nhận mã OTP đăng ký</summary>
+    public class VerifyEmailCodeDto
+    {
+        [Required(ErrorMessage = "Email là bắt buộc")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Mã xác nhận là bắt buộc")]
+        public string Code { get; set; } = string.Empty;
+    }
+
+    /// <summary>DTO xác nhận mã OTP quên mật khẩu</summary>
+    public class VerifyPasswordResetCodeDto
+    {
+        [Required(ErrorMessage = "Email là bắt buộc")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Mã xác nhận là bắt buộc")]
+        public string Code { get; set; } = string.Empty;
     }
 
     /// <summary>

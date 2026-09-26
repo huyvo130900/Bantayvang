@@ -27,6 +27,9 @@ public partial class Question
 
     public string? ImageUrl { get; set; }
 
+    /// <summary>Đáp án mẫu / gợi ý cho câu Tự luận (không bắt buộc)</summary>
+    public string? SuggestedAnswer { get; set; }
+
     public virtual ICollection<SubmissionDetail> SubmissionDetails { get; set; } = new List<SubmissionDetail>();
 
     public virtual ICollection<ExamPaperQuestion> ExamPaperQuestions { get; set; } = new List<ExamPaperQuestion>();

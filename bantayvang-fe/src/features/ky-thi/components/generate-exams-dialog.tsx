@@ -5,21 +5,28 @@ import { z } from 'zod'
 import { X, Sparkles, AlertTriangle, CheckCircle, HelpCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { kyThiApi } from '../api'
+import { examCampaignApi } from '../api'
 import type { ExamCampaignDto, ExamGenerationConfig } from '../types'
 
 const schema = z.object({
-  soLuongDe: z.number().min(1, 'Số lượng đề tối thiểu là 1').max(100, 'Số lượng đề tối đa là 100'),
-  tongSoCau: z.number().min(1, 'Tổng số câu tối thiểu là 1').max(200, 'Tổng số câu tối đa là 200'),
-  soCauMC: z.number().nonnegative(),
-  soCauEssay: z.number().nonnegative(),
-  soCauEasy: z.number().nonnegative(),
-  soCauMedium: z.number().nonnegative(),
-  soCauHard: z.number().nonnegative(),
-  department: z.string().optional(),
+  numberOfExams: z.number().min(1, 'Số lượng đề tối thiểu là 1').max(100, 'Số lượng đề tối đa là 100'),
+  totalQuestions: z.number().min(1, 'Tổng số câu tối thiểu là 1').max(200, 'Tổng số câu tối đa là 200'),
+  multipleChoiceQuestions: z.number().nonnegative(),
+  essayQuestions: z.number().nonnegative(),
+  easyQuestions: z.number().nonnegative(),
+  mediumQuestions: z.number().nonnegative(),
+  hardQuestions: z.number().nonnegative(),
 })
 
 type FormData = z.infer<typeof schema>
+
+// Kỳ thi giờ có thể gán 1-n khoa - trả về TOÀN BỘ danh sách khoa của kỳ thi (rỗng = không giới
+// hạn khoa) để lọc ngân hàng câu hỏi đúng theo (các) khoa đó, thay vì thu gọn về 1 chuỗi đơn
+// (BUG FIX: thu gọn về 1 chuỗi từng khiến kỳ thi 0 hoặc 2+ khoa bị sinh đề từ TOÀN BỘ ngân hàng
+// câu hỏi mọi khoa thay vì đúng phạm vi khoa của kỳ thi đó).
+function campaignDeptNames(examCampaign: ExamCampaignDto | null): string[] {
+  return examCampaign?.departmentNames ?? []
+}
 
 interface GenerateExamsDialogProps {
   open: boolean
@@ -39,30 +46,27 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      soLuongDe: 3,
-      tongSoCau: 20,
-      soCauMC: 15,
-      soCauEssay: 5,
-      soCauEasy: 10,
-      soCauMedium: 7,
-      soCauHard: 3,
-      department: '',
+      numberOfExams: 3,
+      totalQuestions: 20,
+      multipleChoiceQuestions: 15,
+      essayQuestions: 5,
+      easyQuestions: 10,
+      mediumQuestions: 7,
+      hardQuestions: 3,
     },
   })
 
   // Load initial form values
   useEffect(() => {
     if (open) {
-      // Load department from ExamCampaign departmentName or donViToChuc if possible as default
       if (examCampaign) {
-        form.setValue('department', examCampaign.departmentName || examCampaign.donViToChuc || '')
-        if (examCampaign.tongSoCauHoi) {
-          form.setValue('tongSoCau', examCampaign.tongSoCauHoi)
-          form.setValue('soCauMC', examCampaign.tongSoCauHoi)
-          form.setValue('soCauEssay', 0)
-          form.setValue('soCauEasy', examCampaign.tongSoCauHoi)
-          form.setValue('soCauMedium', 0)
-          form.setValue('soCauHard', 0)
+        if (examCampaign?.totalQuestions) {
+          form.setValue('totalQuestions', examCampaign.totalQuestions)
+          form.setValue('multipleChoiceQuestions', examCampaign.totalQuestions)
+          form.setValue('essayQuestions', 0)
+          form.setValue('easyQuestions', examCampaign.totalQuestions)
+          form.setValue('mediumQuestions', 0)
+          form.setValue('hardQuestions', 0)
         }
       }
       setCheckWarnings([])
@@ -73,37 +77,35 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
 
   // Watch form fields for live validation
   const watchAllFields = form.watch()
-  const { tongSoCau, soCauMC, soCauEssay, soCauEasy, soCauMedium, soCauHard } = watchAllFields
+  const { totalQuestions, multipleChoiceQuestions, essayQuestions, easyQuestions, mediumQuestions, hardQuestions } = watchAllFields
 
   useEffect(() => {
-    if (tongSoCau !== (soCauMC + soCauEssay)) {
+    if (totalQuestions !== (multipleChoiceQuestions + essayQuestions)) {
       setValidationError('Tổng số câu Trắc nghiệm + Tự luận phải bằng Tổng số câu hỏi.')
       setCheckPassed(null)
       return
     }
-    if (tongSoCau !== (soCauEasy + soCauMedium + soCauHard)) {
+    if (totalQuestions !== (easyQuestions + mediumQuestions + hardQuestions)) {
       setValidationError('Tổng số câu Dễ + Trung bình + Khó phải bằng Tổng số câu hỏi.')
       setCheckPassed(null)
       return
     }
     setValidationError(null)
-  }, [tongSoCau, soCauMC, soCauEssay, soCauEasy, soCauMedium, soCauHard])
+  }, [totalQuestions, multipleChoiceQuestions, essayQuestions, easyQuestions, mediumQuestions, hardQuestions])
 
   if (!open || !examCampaign) return null
 
-  const handleCheck = async () => {
+  async function handleCheck() {
     if (validationError) return
     setChecking(true)
     setCheckWarnings([])
     setCheckPassed(null)
     try {
-      const khoaPhongValue = (examCampaign.departmentName || examCampaign.donViToChuc || '').trim()
-      const isAllDepts = !khoaPhongValue || khoaPhongValue === 'Tất cả các khoa' || khoaPhongValue === 'Tất cả khoa phòng'
       const config: ExamGenerationConfig = {
         ...form.getValues(),
-        department: isAllDepts ? undefined : khoaPhongValue,
+        departmentNames: campaignDeptNames(examCampaign),
       }
-      const res = await kyThiApi.checkExamGeneration(examCampaign.id, config)
+      const res = await examCampaignApi.checkExamGeneration(examCampaign?.id || 0, config)
       if (res.data.success && res.data.data) {
         setCheckWarnings(res.data.data.warnings)
         setCheckPassed(res.data.data.canGenerate)
@@ -119,17 +121,15 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
     }
   }
 
-  const handleGenerate = async (data: FormData) => {
+  async function handleGenerate(data: FormData) {
     if (validationError || checkPassed === false) return
     setGenerating(true)
     try {
-      const khoaPhongValue = (examCampaign.departmentName || examCampaign.donViToChuc || '').trim()
-      const isAllDepts = !khoaPhongValue || khoaPhongValue === 'Tất cả các khoa' || khoaPhongValue === 'Tất cả khoa phòng'
       const config: ExamGenerationConfig = {
         ...data,
-        department: isAllDepts ? undefined : khoaPhongValue,
+        departmentNames: campaignDeptNames(examCampaign),
       }
-      const res = await kyThiApi.generateExams(examCampaign.id, config)
+      const res = await examCampaignApi.generateExams(examCampaign?.id || 0, config)
       if (res.data.success) {
         onSuccess(res.data.message || 'Tạo bộ đề thi thành công!')
         onClose()
@@ -182,18 +182,14 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
                 type="number"
                 min={1}
                 max={100}
-                {...form.register('soLuongDe', { valueAsNumber: true })}
+                {...form.register('numberOfExams', { valueAsNumber: true })}
                 className="h-10 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Tổng số câu hỏi mỗi đề *</label>
-              <Input
-                type="number"
-                readOnly
-                {...form.register('tongSoCau', { valueAsNumber: true })}
-                className="h-10 rounded-lg border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-              />
+              <label className="text-xs font-medium text-gray-700 uppercase">Tổng số câu hỏi mỗi đề *</label>
+              <Input type="number" {...form.register('totalQuestions', { valueAsNumber: true })} className="h-10 text-gray-700 bg-gray-50 border-gray-200 pointer-events-none" readOnly />
+              {form.formState.errors.totalQuestions && <p className="text-xs text-red-500">{form.formState.errors.totalQuestions.message}</p>}
             </div>
           </div>
 
@@ -204,7 +200,7 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
               type="text"
               readOnly
               disabled
-              value={examCampaign.departmentName || examCampaign.donViToChuc || 'Tất cả các khoa'}
+              value={campaignDeptNames(examCampaign).length > 0 ? campaignDeptNames(examCampaign).join(', ') : 'Tất cả các khoa'}
               className="h-10 rounded-lg border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
             />
           </div>
@@ -228,7 +224,7 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
                   <Input
                     type="number"
                     min={0}
-                    {...form.register('soCauMC', { valueAsNumber: true })}
+                    {...form.register('multipleChoiceQuestions', { valueAsNumber: true })}
                     className="w-16 h-8 text-center rounded border-gray-200"
                   />
                 </div>
@@ -237,7 +233,7 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
                   <Input
                     type="number"
                     min={0}
-                    {...form.register('soCauEssay', { valueAsNumber: true })}
+                    {...form.register('essayQuestions', { valueAsNumber: true })}
                     className="w-16 h-8 text-center rounded border-gray-200"
                   />
                 </div>
@@ -253,7 +249,7 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
                   <Input
                     type="number"
                     min={0}
-                    {...form.register('soCauEasy', { valueAsNumber: true })}
+                    {...form.register('easyQuestions', { valueAsNumber: true })}
                     className="w-16 h-8 text-center rounded border-gray-200"
                   />
                 </div>
@@ -262,7 +258,7 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
                   <Input
                     type="number"
                     min={0}
-                    {...form.register('soCauMedium', { valueAsNumber: true })}
+                    {...form.register('mediumQuestions', { valueAsNumber: true })}
                     className="w-16 h-8 text-center rounded border-gray-200"
                   />
                 </div>
@@ -271,7 +267,7 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
                   <Input
                     type="number"
                     min={0}
-                    {...form.register('soCauHard', { valueAsNumber: true })}
+                    {...form.register('hardQuestions', { valueAsNumber: true })}
                     className="w-16 h-8 text-center rounded border-gray-200"
                   />
                 </div>
@@ -305,7 +301,7 @@ export function GenerateExamsDialog({ open, examCampaign, onClose, onSuccess }: 
           {checkPassed === true && (
             <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 text-xs flex items-center gap-2">
               <CheckCircle className="h-4 w-4 shrink-0 text-green-600" />
-              <span className="font-medium">Ngân hàng câu hỏi đủ điều kiện! Có thể tạo {form.watch('soLuongDe')} đề thi không trùng lặp.</span>
+              <span className="font-medium">Ngân hàng câu hỏi đủ điều kiện! Có thể tạo {form.watch('numberOfExams')} đề thi không trùng lặp.</span>
             </div>
           )}
 

@@ -7,7 +7,7 @@ namespace BanTayVang.API.Services.Interfaces
     {
         Task<BaseResponseDto<DashboardDto>> GetDashboardAsync();
         Task<BaseResponseDto<ExamStatisticsDto>> GetExamStatisticsAsync(int examCampaignId);
-        Task<BaseResponseDto<List<UserExamHistoryDto>>> GetUserExamHistoryAsync(int userId);
+        Task<BaseResponseDto<List<UserExamHistoryDto>>> GetUserExamHistoryAsync(int userId, bool applyPublishGate = false);
         Task<BaseResponseDto<List<TopPerformerDto>>> GetTopPerformersAsync(int top = 10);
     }
 }

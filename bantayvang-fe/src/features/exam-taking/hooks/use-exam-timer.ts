@@ -2,8 +2,8 @@
 // FILE: src/features/exam-taking/hooks/use-exam-timer.ts
 // FIX: Bài thi kết thúc ngay khi vào
 //
-// LỖI: initialSeconds = examInfo?.thoiGianConLai ?? 0
-//   → Khi component mount, examInfo chưa load xong → thoiGianConLai = undefined
+// LỖI: initialSeconds = examInfo?.remainingTimeSeconds ?? 0
+//   → Khi component mount, examInfo chưa load xong → remainingTimeSeconds = undefined
 //   → initialSeconds = 0 → useEffect thấy remainingSeconds <= 0 → gọi onTimeUp() ngay
 //   → nộp bài luôn dù chưa làm gì!
 //
@@ -23,11 +23,14 @@ export function useExamTimer({ initialSeconds, isLoaded, onTimeUp }: UseExamTime
   const [remainingSeconds, setRemainingSeconds] = useState(initialSeconds)
   const hasStartedRef = useRef(false)
   const onTimeUpRef = useRef(onTimeUp)
-  onTimeUpRef.current = onTimeUp
+  useEffect(() => {
+    onTimeUpRef.current = onTimeUp
+  }, [onTimeUp])
 
   useEffect(() => {
     if (isLoaded) {
       hasStartedRef.current = true
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRemainingSeconds(initialSeconds)
       if (initialSeconds <= 0) {
         onTimeUpRef.current()

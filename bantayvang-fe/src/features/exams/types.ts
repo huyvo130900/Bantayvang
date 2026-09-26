@@ -4,32 +4,32 @@ export interface ExamPaperDto {
   examPaperName: string | null
   durationMinutes: number | null
   totalScore: number | null
-  thoiGianBatDau: string | null
+  startTime: string | null
   linkTruyCap: string | null
   status: string | null
   createdAt: string | null
   totalQuestions: number
   department?: string | null
-  soCauRandom?: number | null
+  randomQuestionCount?: number | null
   isResultPublished?: boolean
-  thoiGianCongBo?: string | null
+  publishedAt?: string | null
   examCampaignId?: number | null
-  soCauDungToiThieu?: number | null
+  minPassQuestions?: number | null
 }
 
 export interface CreateExamPaperDto {
   examPaperCode: string
   examPaperName?: string
   durationMinutes: number
-  thoiGianBatDau?: string
+  startTime?: string
   status?: string
   // Mới: chọn câu hỏi theo khoa + số câu random
   department?: string
-  soCauRandom?: number
+  randomQuestionCount?: number
   // Legacy: chọn tay (không dùng nữa nhưng giữ tương thích)
-  danhSachIdCauHoi: number[]
+  questionIds: number[]
   examCampaignId?: number
-  soCauDungToiThieu?: number | null
+  minPassQuestions?: number | null
 }
 
 export interface ExamAssignmentDto {
@@ -52,11 +52,11 @@ export interface ExamAssignmentDto {
   diemSo: number | null
   totalScore: number | null
   correctAnswers: number | null
-  tongSoCau: number | null
+  totalQuestions: number | null
   ngayHoanThanh: string | null
   datYeuCau: boolean | null
-  thoiGianBatDau: string | null
-  thoiGianKetThuc: string | null
+  startTime: string | null
+  endTime: string | null
   durationMinutes: number | null
 }
 
@@ -68,7 +68,7 @@ export interface CreateExamAssignmentDto {
 }
 
 export interface ExtendExamTimeDto {
-  baiThiId: number
+  examSubmissionId: number
   additionalMinutes: number
   reason?: string
 }
@@ -79,12 +79,12 @@ export interface MyExamDto {
   examId: number
   examPaperCode: string | null
   examPaperName: string | null
-  thoiGianBatDau: string | null
-  thoiGianKetThuc: string | null
+  startTime: string | null
+  endTime: string | null
   durationMinutes: number | null
   status: string | null
   examSubmissionId: number | null
-  ghiChu: string | null
+  note: string | null
   extraMinutes: number | null
 }
 
@@ -102,6 +102,7 @@ export interface ExamPreviewDtoFE {
 export interface QuestionPreviewFE {
   id: number
   content: string | null
+  imageUrl?: string | null
   chuDe: string | null
   questionOptions: ChoicePreviewFE[]
 }

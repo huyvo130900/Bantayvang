@@ -1,8 +1,8 @@
 import apiClient from '@/lib/axios'
 import type { ApiResponse } from '@/types'
-import type { ExamCampaignDto, CreateKyThiDto, UpdateKyThiDto, ExamGenerationConfig, ExamCheckResult } from './types'
+import type { ExamCampaignDto, CreateKyThiDto, UpdateKyThiDto, ExamGenerationConfig, ExamCheckResult, ExamCampaignEligibilityDto, AssignFromExcelResultDto } from './types'
 
-export const kyThiApi = {
+export const examCampaignApi = {
   getAll: (status?: string) => {
     const params = status ? `?status=${status}` : ''
     return apiClient.get<ApiResponse<ExamCampaignDto[]>>(`/ExamCampaign${params}`)
@@ -31,4 +31,30 @@ export const kyThiApi = {
 
   generateExams: (examCampaignId: number, config: ExamGenerationConfig) =>
     apiClient.post<ApiResponse>(`/ExamCampaign/${examCampaignId}/generate-exams`, config),
+
+  // Báo cáo "ai đủ điều kiện thi / ai đã thi" theo (các) khoa của kỳ thi
+  getEligibility: (examCampaignId: number) =>
+    apiClient.get<ApiResponse<ExamCampaignEligibilityDto[]>>(`/ExamCampaign/${examCampaignId}/eligibility`),
+
+  // Úp danh sách Excel/CSV để chỉ định người được thi (chế độ AccessMode = AssignedList)
+  assignFromExcel: (examCampaignId: number, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiClient.post<ApiResponse<AssignFromExcelResultDto>>(
+      `/ExamCampaign/${examCampaignId}/assign-from-excel`,
+      formData,
+      // BUG FIX: literal 'multipart/form-data' (no boundary) makes the browser send that exact
+      // Content-Type instead of auto-generating one with a boundary - `undefined` deletes
+      // apiClient's default 'application/json' header so the browser computes it correctly.
+      { headers: { 'Content-Type': undefined } }
+    )
+  },
+}
+
+export const examMonitorApi = {
+  getActiveSessions: (examCampaignId: number) =>
+    apiClient.get<ApiResponse<any[]>>(`/Exam/campaign/${examCampaignId}/monitor/active`),
+
+  forceSubmitSession: (examSubmissionId: number) =>
+    apiClient.post<ApiResponse>(`/Exam/${examSubmissionId}/force-submit`),
 }

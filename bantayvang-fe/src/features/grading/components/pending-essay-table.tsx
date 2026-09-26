@@ -5,7 +5,7 @@ import type { PendingEssayDto } from '../types'
 interface PendingEssayTableProps {
   items: PendingEssayDto[]
   isLoading: boolean
-  onViewDetail: (baiThiId: number) => void
+  onViewDetail: (examSubmissionId: number) => void
   isGraded?: boolean
 }
 
@@ -49,7 +49,7 @@ export function PendingEssayTable({ items, isLoading, onViewDetail, isGraded }: 
         </thead>
         <tbody className="divide-y divide-orange-100">
           {items.map(item => (
-            <tr key={item.baiThiId} className="hover:bg-orange-50/50 transition-colors">
+            <tr key={item.examSubmissionId} className="hover:bg-orange-50/50 transition-colors">
               <td className="px-4 py-3">
                 <p className="font-semibold text-gray-900">{item.fullName || '—'}</p>
                 <p className="text-xs text-gray-400">{item.username} {item.employeeCode ? `· ${item.employeeCode}` : ''}</p>
@@ -69,7 +69,7 @@ export function PendingEssayTable({ items, isLoading, onViewDetail, isGraded }: 
               <td className="px-4 py-3 text-center">
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700 border border-orange-300">
                   <PenLine className="h-3 w-3" />
-                  {item.soCauTuLuanChuaCham}/{item.tongSoCauTuLuan} câu
+                  {item.ungradedEssayQuestions}/{item.totalEssayQuestions} câu
                 </span>
               </td>
               <td className="px-4 py-3 text-right">
@@ -77,7 +77,7 @@ export function PendingEssayTable({ items, isLoading, onViewDetail, isGraded }: 
                   size="sm"
                   variant="outline"
                   className="border-orange-400 text-orange-700 hover:bg-orange-100 h-8 text-xs"
-                  onClick={() => onViewDetail(item.baiThiId)}
+                  onClick={() => onViewDetail(item.examSubmissionId)}
                 >
                   {isGraded ? 'Xem / Chấm lại' : 'Chấm ngay'}
                   <ChevronRight className="h-3 w-3 ml-1" />

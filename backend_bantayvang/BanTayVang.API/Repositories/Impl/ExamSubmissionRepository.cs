@@ -11,11 +11,11 @@ namespace BanTayVang.API.Repositories.Impl
         {
         }
 
-        public async Task<ExamSubmission?> GetActiveExamSessionAsync(int userId, int dethiId)
+        public async Task<ExamSubmission?> GetActiveExamSessionAsync(int userId, int ExamPaperId)
         {
             return await _dbSet
                 .FirstOrDefaultAsync(b => b.UserId == userId 
-                                       && b.ExamPaperId == dethiId 
+                                       && b.ExamPaperId == ExamPaperId 
                                        && (b.Status == "InProgress" || b.Status == "Paused"));
         }
 
@@ -49,7 +49,7 @@ namespace BanTayVang.API.Repositories.Impl
                 examSubmission.Status = status;
                 if (status == "Completed")
                 {
-                    examSubmission.SubmitTime = DateTime.Now;
+                    examSubmission.SubmitTime = DateTime.UtcNow.AddHours(7);
                 }
 
                 await UpdateAsync(examSubmission);
@@ -63,13 +63,23 @@ namespace BanTayVang.API.Repositories.Impl
 
         public async Task<List<ExamSubmission>> GetExpiredInProgressExamsAsync()
         {
+            // BUG FIX: this used to ignore ExamAssignment.ExtraMinutes entirely, so a supervisor
+            // granting a student extra time via "extend-time" had zero effect - this job would
+            // still auto-submit the student's exam at the ORIGINAL duration, right on schedule.
+            // Now folds in the per-user grant (if any, and only while IsActive) before comparing.
+            var now = DateTime.UtcNow.AddHours(7);
             return await _dbSet
+                .Include(b => b.User)
                 .Include(b => b.ExamPaper)
-                .Where(b => b.Status == "InProgress" 
+                .Where(b => b.Status == "InProgress"
                          && b.ExamPaper != null
                          && b.ExamPaper.DurationMinutes != null
                          && b.StartTime != null
-                         && DateTime.Now > b.StartTime.Value.AddMinutes(b.ExamPaper.DurationMinutes.Value))
+                         && now > b.StartTime.Value.AddMinutes(b.ExamPaper.DurationMinutes.Value +
+                                (_context.ExamAssignments
+                                    .Where(a => a.UserId == b.UserId && a.ExamId == b.ExamPaperId && a.IsActive)
+                                    .Select(a => a.ExtraMinutes ?? 0)
+                                    .FirstOrDefault())))
                 .ToListAsync();
         }
 
@@ -92,6 +102,15 @@ namespace BanTayVang.API.Repositories.Impl
             return await _dbSet
                 .Include(b => b.User)
                 .Where(b => b.ExamPaperId == examId && b.Status == "InProgress")
+                .ToListAsync();
+        }
+
+        public async Task<List<ExamSubmission>> GetActiveSessionsByCampaignAsync(int examCampaignId)
+        {
+            return await _dbSet
+                .Include(b => b.User)
+                .Include(b => b.ExamPaper)
+                .Where(b => b.ExamCampaignId == examCampaignId && b.Status == "InProgress")
                 .ToListAsync();
         }
 

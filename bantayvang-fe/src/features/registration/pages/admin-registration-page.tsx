@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Check, X } from 'lucide-react'
@@ -15,7 +15,7 @@ export function AdminRegistrationPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const fetchRegistrations = async () => {
+  const fetchRegistrations = useCallback(async () => {
     try {
       const res = await registrationApi.getPending()
       setRegistrations(res.data)
@@ -24,13 +24,13 @@ export function AdminRegistrationPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchRegistrations()
-  }, [])
+  }, [fetchRegistrations])
 
-  const handleApprove = async (id: number) => {
+  async function handleApprove(id: number) {
     try {
       await registrationApi.approve(id)
       showToast('Đã duyệt và tạo tài khoản thành công', true)
@@ -40,7 +40,7 @@ export function AdminRegistrationPage() {
     }
   }
 
-  const handleReject = async (id: number) => {
+  async function handleReject(id: number) {
     const reason = window.prompt('Nhập lý do từ chối (tùy chọn):')
     if (reason === null) return // Canceled
 
@@ -98,20 +98,20 @@ export function AdminRegistrationPage() {
                     <tr key={reg.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-900">{reg.fullName}</td>
                       <td className="px-4 py-3">
-                        <div className="text-sm">{reg.cccd}</div>
+                        <div className="text-sm">{reg.idCardNumber}</div>
                         <div className="text-xs text-muted-foreground">{reg.phoneNumber}</div>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{reg.chuyenNganh || '-'}</td>
+                      <td className="px-4 py-3 text-gray-600">{reg.major || '-'}</td>
                       <td className="px-4 py-3 text-gray-600">{reg.workUnit || '-'}</td>
                       <td className="px-4 py-3">
-                        {reg.tenKhoaPhong ? (
+                        {reg.departmentName ? (
                           <span className="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold bg-blue-50 text-blue-700">
-                            {reg.tenKhoaPhong}
+                            {reg.departmentName}
                           </span>
                         ) : '-'}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{reg.mucDichThi || '-'}</td>
-                      <td className="px-4 py-3 text-gray-600">{new Date(reg.ngayDangKy).toLocaleDateString('vi-VN')}</td>
+                      <td className="px-4 py-3 text-gray-600">{reg.examPurpose || '-'}</td>
+                      <td className="px-4 py-3 text-gray-600">{new Date(reg.registrationDate).toLocaleDateString('vi-VN')}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
                           <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50" onClick={() => handleApprove(reg.id)}>

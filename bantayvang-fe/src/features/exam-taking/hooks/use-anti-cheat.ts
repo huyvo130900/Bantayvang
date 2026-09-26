@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { HubConnectionBuilder } from '@microsoft/signalr'
 import { examTakingApi } from '../api'
 import { MAX_CHEATING_WARNINGS } from '@/lib/constants'
 
@@ -14,14 +15,16 @@ export function useAntiCheat({ examSubmissionId, enabled, onForceSubmit }: UseAn
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [blockedKeyMessage, setBlockedKeyMessage] = useState<string | null>(null)
   const blockedKeyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const baithiIdRef = useRef(examSubmissionId)
+  const examSubmissionIdRef = useRef(examSubmissionId)
   const warningCountRef = useRef(0)
   const onForceSubmitRef = useRef(onForceSubmit)
   const fullscreenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasEnteredFullscreenRef = useRef(false)
 
-  baithiIdRef.current = examSubmissionId
-  onForceSubmitRef.current = onForceSubmit
+  useEffect(() => {
+    examSubmissionIdRef.current = examSubmissionId
+    onForceSubmitRef.current = onForceSubmit
+  }, [examSubmissionId, onForceSubmit])
 
   const logWarning = useCallback(async (type: string, description: string) => {
     const newCount = warningCountRef.current + 1
@@ -31,7 +34,7 @@ export function useAntiCheat({ examSubmissionId, enabled, onForceSubmit }: UseAn
 
     try {
       await examTakingApi.logWarning({
-        examSubmissionId: baithiIdRef.current,
+        examSubmissionId: examSubmissionIdRef.current,
         warningType: type,
         description: description,
       })
@@ -65,6 +68,50 @@ export function useAntiCheat({ examSubmissionId, enabled, onForceSubmit }: UseAn
   useEffect(() => {
     if (!enabled || !examSubmissionId) return
 
+    // BUG FIX: warningCount/warningCountRef always started at 0 on mount, so a student who
+    // already had violations recorded server-side and then reloaded the page (now a normal,
+    // safe action since answers autosave - see exam-taking-page.tsx) saw "6/6 warnings
+    // remaining" again, even though the server's real count - the one that actually decides
+    // when to force-submit - was already close to the limit. Enforcement itself was never at
+    // risk (the server always force-submits off its own authoritative count regardless of what
+    // this hook displays), but the displayed "remaining warnings" was misleadingly optimistic.
+    examTakingApi.getWarningCount(examSubmissionId)
+      .then(res => {
+        const serverCount = res.data?.data
+        if (typeof serverCount === 'number' && serverCount > warningCountRef.current) {
+          warningCountRef.current = serverCount
+          setWarningCount(serverCount)
+        }
+      })
+      .catch(() => {
+        // Silent fail - worst case the display just starts from 0 again, enforcement is unaffected
+      })
+
+    // Setup SignalR connection for ForceSubmitTriggered
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5293'
+    const connection = new HubConnectionBuilder()
+      .withUrl(`${baseUrl}/hubs/exam-monitor`, {
+        accessTokenFactory: () => localStorage.getItem('accessToken') ?? ''
+      })
+      .withAutomaticReconnect()
+      .build()
+
+    connection.on('ForceSubmitTriggered', () => {
+      onForceSubmitRef.current?.('Bạn đã bị giám thị đình chỉ thi')
+    })
+
+    // [FIX] withAutomaticReconnect() chỉ tự khôi phục kết nối WebSocket, KHÔNG tự rejoin lại
+    // group "session-{id}" vì ConnectionId đổi mới hoàn toàn sau reconnect. Nếu không gọi lại
+    // JoinExamSession ở đây, thí sinh rớt WiFi vài giây rồi có mạng lại sẽ "miễn nhiễm" hoàn
+    // toàn với lệnh Đuổi thi cho tới khi họ tự F5 trang.
+    connection.onreconnected(() => {
+      connection.invoke('JoinExamSession', examSubmissionId).catch(console.error)
+    })
+
+    connection.start()
+      .then(() => connection.invoke('JoinExamSession', examSubmissionId))
+      .catch(console.error)
+
     // Initialize fullscreen state
     const currentFull = !!document.fullscreenElement
     setIsFullscreen(currentFull)
@@ -72,15 +119,30 @@ export function useAntiCheat({ examSubmissionId, enabled, onForceSubmit }: UseAn
       hasEnteredFullscreenRef.current = true
     }
 
+    // BUG FIX: switching tabs / minimizing the window fires BOTH 'visibilitychange' and window
+    // 'blur' for the same single user action in every major browser, and each handler used to
+    // call logWarning independently - so one honest tab-switch counted as 2 violations instead
+    // of 1, quietly halving the student's real "warning budget" versus what the UI shows them.
+    // Share one timestamp so whichever event fires first logs the warning and the other (arriving
+    // within this short window) is treated as the same event, not a second violation.
+    const lastFocusLossWarningTimeRef = { current: 0 }
+    const FOCUS_LOSS_DEDUPE_MS = 500
+
     // 1. Tab visibility change
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        const now = Date.now()
+        if (now - lastFocusLossWarningTimeRef.current < FOCUS_LOSS_DEDUPE_MS) return
+        lastFocusLossWarningTimeRef.current = now
         logWarning('TAB_SWITCH', 'Thí sinh chuyển tab hoặc minimize cửa sổ')
       }
     }
 
     // 2. Window blur/focus
     const handleBlur = () => {
+      const now = Date.now()
+      if (now - lastFocusLossWarningTimeRef.current < FOCUS_LOSS_DEDUPE_MS) return
+      lastFocusLossWarningTimeRef.current = now
       logWarning('BROWSER_FOCUS_LOST', 'Cửa sổ trình duyệt mất focus')
     }
 
@@ -207,6 +269,8 @@ export function useAntiCheat({ examSubmissionId, enabled, onForceSubmit }: UseAn
       if (fullscreenTimeoutRef.current) {
         clearTimeout(fullscreenTimeoutRef.current)
       }
+      
+      connection.stop()
     }
   }, [enabled, examSubmissionId, logWarning])
 

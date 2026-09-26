@@ -25,5 +25,11 @@ namespace BanTayVang.API.Services.Interfaces
         /// Send exam result notification
         /// </summary>
         Task<bool> SendExamResultEmailAsync(string toEmail, string fullName, string examName, double score, bool pass);
+
+        /// <summary>
+        /// Gửi mã OTP xác thực email (dùng cho đăng ký thí sinh ngoại và quên mật khẩu)
+        /// purpose: "RegisterVerification" | "PasswordReset"
+        /// </summary>
+        Task<bool> SendVerificationCodeEmailAsync(string toEmail, string code, string purpose);
     }
 }

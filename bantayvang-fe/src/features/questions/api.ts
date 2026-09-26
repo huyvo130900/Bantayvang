@@ -19,7 +19,7 @@ const buildQueryString = (filter: QuestionFilterDto): string => {
   if (filter.searchKeyword) params.set('searchKeyword', filter.searchKeyword)
   if (filter.showDuplicatesOnly) params.set('showDuplicatesOnly', String(filter.showDuplicatesOnly))
   if (filter.examCampaignId) params.set('examCampaignId', String(filter.examCampaignId))
-  if (filter.deThiId) params.set('deThiId', String(filter.deThiId))
+  if (filter.examPaperId) params.set('examPaperId', String(filter.examPaperId))
   return params.toString()
 }
 
@@ -53,16 +53,65 @@ export const questionsApi = {
     formData.append('file', file)
     formData.append('department', department)
     formData.append('questionCategoryId', String(questionCategoryId))
-    if (isExamImport !== undefined) {
-      formData.append('isExamImport', String(isExamImport))
-    }
-    if (expectedCount !== undefined && expectedCount !== null) {
-      formData.append('expectedCount', String(expectedCount))
-    }
+    if (isExamImport !== undefined) formData.append('isExamImport', String(isExamImport))
+    if (expectedCount !== undefined && expectedCount !== null) formData.append('expectedCount', String(expectedCount))
     return apiClient.post<ApiResponse<QuestionDto[]>>('/question/import', formData, {
+      // BUG FIX: literal 'multipart/form-data' (no boundary) makes axios/the browser send that
+      // exact Content-Type instead of auto-generating one with a boundary - `undefined` deletes
+      // apiClient's default 'application/json' header so the browser computes it correctly.
       headers: { 'Content-Type': undefined },
     })
   },
+
+  /** Parse file Excel, trả về danh sách câu hỏi để preview — KHÔNG lưu DB */
+  previewExcel: (file: File, department: string, questionCategoryId: number) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('department', department)
+    formData.append('questionCategoryId', String(questionCategoryId))
+    return apiClient.post<ApiResponse<QuestionDto[]>>('/question/preview-excel', formData, {
+      // BUG FIX: literal 'multipart/form-data' (no boundary) makes axios/the browser send that
+      // exact Content-Type instead of auto-generating one with a boundary - `undefined` deletes
+      // apiClient's default 'application/json' header so the browser computes it correctly.
+      headers: { 'Content-Type': undefined },
+    })
+  },
+
+
+  importWord: (file: File, department: string, questionCategoryId: number) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('department', department)
+    formData.append('questionCategoryId', String(questionCategoryId))
+    return apiClient.post<ApiResponse<QuestionDto[]>>('/question/import-word', formData, {
+      // BUG FIX: literal 'multipart/form-data' (no boundary) makes axios/the browser send that
+      // exact Content-Type instead of auto-generating one with a boundary - `undefined` deletes
+      // apiClient's default 'application/json' header so the browser computes it correctly.
+      headers: { 'Content-Type': undefined },
+    })
+  },
+
+  /** Parse file Word/Excel, trả về danh sách câu hỏi để preview (KHÔNG lưu DB) */
+  previewWord: (file: File, department: string, questionCategoryId: number) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('department', department)
+    formData.append('questionCategoryId', String(questionCategoryId))
+    return apiClient.post<ApiResponse<QuestionDto[]>>('/question/preview-word', formData, {
+      // BUG FIX: literal 'multipart/form-data' (no boundary) makes axios/the browser send that
+      // exact Content-Type instead of auto-generating one with a boundary - `undefined` deletes
+      // apiClient's default 'application/json' header so the browser computes it correctly.
+      headers: { 'Content-Type': undefined },
+    })
+  },
+
+  /** Nhận danh sách đã chỉnh sửa từ FE và lưu vào DB */
+  importFromPreview: (questions: CreateQuestionDto[], department: string, questionCategoryId: number) =>
+    apiClient.post<ApiResponse<string>>(
+      `/question/import-from-preview?department=${encodeURIComponent(department)}&questionCategoryId=${questionCategoryId}`,
+      questions
+    ),
+
 
   downloadTemplate: (questionCategoryId: number, isExamImport?: boolean) => {
     const params = new URLSearchParams()
@@ -73,7 +122,10 @@ export const questionsApi = {
     return apiClient.get(`/question/import-template?${params.toString()}`, { responseType: 'blob' })
   },
 
-  // ✨ Template soạn sẵn đề thi (thông tin đề + danh sách câu hỏi)
+  downloadWordTemplate: () =>
+    apiClient.get('/question/import-word-template', { responseType: 'blob' }),
+
+  // Cũ: Template soạn sẵn đề thi (thông tin đề + danh sách câu hỏi)
   downloadDeThiTemplate: () =>
     apiClient.get('/question/import-template-examPaper', { responseType: 'blob' }),
 
@@ -100,6 +152,9 @@ export const questionsApi = {
     const formData = new FormData()
     formData.append('file', file)
     return apiClient.post<ApiResponse<{ url: string; message: string }>>('/upload/image?folder=questions', formData, {
+      // BUG FIX: literal 'multipart/form-data' (no boundary) makes axios/the browser send that
+      // exact Content-Type instead of auto-generating one with a boundary - `undefined` deletes
+      // apiClient's default 'application/json' header so the browser computes it correctly.
       headers: { 'Content-Type': undefined },
     })
   },

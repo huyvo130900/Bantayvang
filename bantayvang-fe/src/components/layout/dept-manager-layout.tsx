@@ -25,10 +25,10 @@ export function DeptManagerLayout() {
   const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
 
-  const displayName = user?.fullName || user?.fullName || user?.username || user?.username || ''
+  const displayName = user?.fullName || user?.username || ''
   const department = user?.department || ''
 
-  const handleLogout = async () => {
+  async function handleLogout() {
     await dispatch(logout())
     navigate('/login')
   }

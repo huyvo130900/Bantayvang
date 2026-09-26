@@ -45,6 +45,7 @@ namespace BanTayVang.API.DTOs.Exam
         public int Id { get; set; }
         public string? Content { get; set; }
         public string? ChuDe { get; set; }
+        public string? ImageUrl { get; set; }
         public List<ChoicePreviewDto> QuestionOptions { get; set; } = new();
     }
 

@@ -11,9 +11,9 @@ namespace BanTayVang.API.Repositories.Interfaces
         Task<int> GetFilteredCountAsync(QuestionFilterDto filter);
         Task<List<Question>> GetByKhoaPhongAsync(string department);
         Task<bool> SoftDeleteAsync(int id, int updatedBy);
-        Task<List<Question>> GetRandomQuestionsAsync(int count);
+        Task<List<Question>> GetRandomQuestionsAsync(int count, int? categoryId = null);
         Task<Question?> GetWithChoicesAsync(int id);
-        Task<Question?> FindDuplicateAsync(string noiDungChuan, string? department);
+        Task<Question?> FindDuplicateAsync(string standardizedContent, string? department);
         Task<List<int>> GetValidQuestionIdsAsync(List<int> questionIds);
         Task<IDbContextTransaction> BeginTransactionAsync();
     }

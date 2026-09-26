@@ -11,6 +11,7 @@ namespace BanTayVang.API.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminOnly")]
     public class SeedController : ControllerBase
     {
         private readonly IUserRepository _userRepository;

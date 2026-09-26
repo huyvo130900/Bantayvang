@@ -14,6 +14,7 @@ export interface QuestionDto {
   difficulty: string | null
   department: string | null
   imageUrl: string | null
+  suggestedAnswer?: string | null
   createdAt: string | null
   updatedAt: string | null
   options: QuestionOptionDto[]
@@ -27,6 +28,7 @@ export interface CreateQuestionDto {
   difficulty?: string
   level?: string
   imageUrl?: string
+  suggestedAnswer?: string
   department?: string
   options?: CreateQuestionOptionDto[]
 }
@@ -48,7 +50,7 @@ export interface QuestionFilterDto {
   searchKeyword?: string
   showDuplicatesOnly?: boolean
   examCampaignId?: number
-  deThiId?: number
+  examPaperId?: number
   pageNumber: number
   pageSize: number
 }

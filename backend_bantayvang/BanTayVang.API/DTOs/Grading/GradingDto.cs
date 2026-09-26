@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace BanTayVang.API.DTOs.Grading
 {
     /// <summary>
@@ -5,6 +7,7 @@ namespace BanTayVang.API.DTOs.Grading
     /// </summary>
     public class ExamResultDetailDto
     {
+        [JsonPropertyName("examSubmissionId")]
         public int ExamSubmissionId { get; set; }
         public int? UserId { get; set; }
         public string? Username { get; set; }
@@ -25,39 +28,46 @@ namespace BanTayVang.API.DTOs.Grading
         public string? Status { get; set; }
         public bool Pass { get; set; }
         public int? MinPassQuestions { get; set; }
-        public int? SoCanhBao { get; set; }
+        public int? WarningCount { get; set; }
         /// <summary>Số câu đã được chấm điểm</summary>
-        public int SoCauDaCham { get; set; } = 0;
+        public int QuestionsGraded { get; set; } = 0;
         /// <summary>Tổng số lần đã thi (kể cả lần đầu)</summary>
-        public int SoLanThi { get; set; } = 1;
+        public int AttemptCount { get; set; } = 1;
         /// <summary>Tổng số lần gian lận tích lũy qua các lần thi</summary>
-        public int SoLanGianLan { get; set; } = 0;
+        public int CheatingCount { get; set; } = 0;
         /// <summary>Số lần thi lại (LanThi - 1)</summary>
-        public int SoLanThiLai { get; set; } = 0;
+        public int RetakeCount { get; set; } = 0;
         /// <summary>Đề thi có công bố kết quả hay không</summary>
         public bool IsResultPublished { get; set; } = false;
         /// <summary>Nhận xét của quản lý khoa về thí sinh</summary>
-        public string? DanhGiaKhoa { get; set; }
-        public int TongSoCauTracNghiem { get; set; } = 0;
-        public int SoCauTracNghiemDaCham { get; set; } = 0;
-        public int TongSoCauTuLuan { get; set; } = 0;
-        public int SoCauTuLuanDaCham { get; set; } = 0;
+        public string? DepartmentEvaluation { get; set; }
+        public int TotalMultipleChoiceQuestions { get; set; } = 0;
+        public int MultipleChoiceQuestionsGraded { get; set; } = 0;
+        public int TotalEssayQuestions { get; set; } = 0;
+        public int EssayQuestionsGraded { get; set; } = 0;
         public List<AnswerDetailDto> Answers { get; set; } = new();
     }
 
     public class AnswerDetailDto
     {
         public int QuestionId { get; set; }
-        public string? NoiDungCauHoi { get; set; }
+        public string? QuestionContent { get; set; }
         public string? QuestionCategory { get; set; }
         public int? SelectedOptionId { get; set; }
-        public string? NoiDungDapAn { get; set; }
+        public string? AnswerContent { get; set; }
         public string? EssayAnswer { get; set; }
+        public string? EssayImageUrl { get; set; }
+        public string? SuggestedAnswer { get; set; }
+        public string? TeacherComment { get; set; }
         public bool IsCorrect { get; set; }
         public double? ScoreObtained { get; set; }
-        public int? IdLuaChonDung { get; set; }
-        public string? NoiDungDapAnDung { get; set; }
-        public int? ChiTietLamBaiId { get; set; }
+        public int? CorrectOptionId { get; set; }
+        public string? CorrectAnswerContent { get; set; }
+        public int? SubmissionDetailId { get; set; }
+        // AI Grading fields
+        public double? AiScore { get; set; }
+        public string? AiComment { get; set; }
+        public string? AiGradingStatus { get; set; }
     }
 
     /// <summary>
@@ -65,10 +75,10 @@ namespace BanTayVang.API.DTOs.Grading
     /// </summary>
     public class ManualGradingDto
     {
-        public int ChiTietLamBaiId { get; set; }
-        /// <summary>Đánh dấu câu trả lời là Đúng (true) hay Sai (false)</summary>
-        public bool? IsCorrect { get; set; }
-        public string? NhanXet { get; set; }
+        public int SubmissionDetailId { get; set; }
+        /// <summary>Điểm câu tự luận: chỉ nhận 0, 0.5, hoặc 1. null = chưa chấm/chấm lại.</summary>
+        public double? Score { get; set; }
+        public string? Comment { get; set; }
     }
 
     /// <summary>
@@ -105,6 +115,22 @@ namespace BanTayVang.API.DTOs.Grading
     public class SelectedExportItemDto
     {
         public int ExamSubmissionId { get; set; }
-        public int LanThi { get; set; }
+        public int AttemptNumber { get; set; }
+    }
+
+    /// <summary>
+    /// Kích hoạt AI chấm hàng loạt câu tự luận
+    /// </summary>
+    public class AiGradeBatchDto
+    {
+        public List<int> SubmissionDetailIds { get; set; } = new();
+
+        /// <summary>
+        /// true (default): AI writes ScoreObtained directly - the score counts as final immediately.
+        /// false: AI only fills AiScore/AiComment as a suggestion; ScoreObtained stays null until a
+        /// grader picks a score by hand in the review UI (result-detail-dialog.tsx), which already
+        /// shows the AI's suggestion alongside the 0/0.5/1 buttons.
+        /// </summary>
+        public bool AutoFinalize { get; set; } = true;
     }
 }

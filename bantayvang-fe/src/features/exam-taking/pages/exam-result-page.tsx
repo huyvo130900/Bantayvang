@@ -15,14 +15,14 @@ export function ExamResultPage() {
   const [showAnswers, setShowAnswers] = useState(false)
 
   // Forced termination reason passed from exam-taking-page
-  const forcedReason = (location.state as any)?.forcedReason as string | undefined
+  const forcedReason = (location.state as Record<string, unknown> | null)?.forcedReason as string | undefined
 
   useEffect(() => {
     if (!examSubmissionId) return
     loadResult()
   }, [examSubmissionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadResult = async () => {
+  async function loadResult() {
     try {
       const response = await gradingApi.getResultDetail(Number(examSubmissionId))
       if (response.data.success && response.data.data) {
@@ -60,8 +60,8 @@ export function ExamResultPage() {
     )
   }
 
-  const percent = result.tongSoCau
-    ? Math.round(((result.correctAnswers ?? 0) / result.tongSoCau) * 100)
+  const percent = result.totalQuestions
+    ? Math.round(((result.correctAnswers ?? 0) / result.totalQuestions) * 100)
     : 0
 
   const isTimeout = forcedReason === 'Hết giờ làm bài'
@@ -128,7 +128,7 @@ export function ExamResultPage() {
                       <circle cx="60" cy="60" r="50" fill="none" stroke="#e5e7eb" strokeWidth="12" />
                       <circle
                         cx="60" cy="60" r="50" fill="none"
-                        stroke={!!forcedReason ? '#ef4444' : '#3b82f6'}
+                        stroke={forcedReason ? '#ef4444' : '#3b82f6'}
                         strokeWidth="12"
                         strokeDasharray={`${2 * Math.PI * 50}`}
                         strokeDashoffset={`${2 * Math.PI * 50 * (1 - percent / 100)}`}
@@ -142,13 +142,13 @@ export function ExamResultPage() {
                       </span>
                       <span className="text-xs text-gray-500 font-medium">Điểm</span>
                       <span className="text-[11px] text-gray-400 mt-0.5">
-                        {result.correctAnswers ?? 0}/{result.tongSoCau ?? 0} câu
+                        {result.correctAnswers ?? 0}/{result.totalQuestions ?? 0} câu
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {result.soCauDungToiThieu !== undefined && result.soCauDungToiThieu !== null && (
+                {result.minPassQuestions !== undefined && result.minPassQuestions !== null && (
                   <div className={`mb-5 p-4 rounded-xl text-center border font-semibold flex flex-col items-center justify-center gap-1.5 transition-all ${
                     result.pass
                       ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -168,7 +168,7 @@ export function ExamResultPage() {
                       )}
                     </div>
                     <p className="text-xs font-normal opacity-85">
-                      Yêu cầu tối thiểu để đạt: {result.soCauDungToiThieu} câu đúng
+                      Yêu cầu tối thiểu để đạt: {result.minPassQuestions} câu đúng
                       (Kết quả của bạn: {result.correctAnswers} câu đúng)
                     </p>
                   </div>
@@ -181,12 +181,12 @@ export function ExamResultPage() {
                   </div>
                   <div className="bg-red-50 rounded-xl p-3">
                     <p className="text-xl font-bold text-red-500">
-                      {(result.tongSoCau ?? 0) - (result.correctAnswers ?? 0)}
+                      {(result.totalQuestions ?? 0) - (result.correctAnswers ?? 0)}
                     </p>
                     <p className="text-xs text-red-600">Câu sai</p>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-3">
-                    <p className="text-xl font-bold text-gray-700">{result.tongSoCau ?? 0}</p>
+                    <p className="text-xl font-bold text-gray-700">{result.totalQuestions ?? 0}</p>
                     <p className="text-xs text-gray-500">Tổng câu</p>
                   </div>
                 </div>
@@ -204,13 +204,13 @@ export function ExamResultPage() {
                       </strong></span>
                     </div>
                   )}
-                  {((result.soCanhBao ?? 0) > 0 || (result.soLanGianLan ?? 0) > 0) && (
+                  {((result.warningCount ?? 0) > 0 || (result.cheatingCount ?? 0) > 0) && (
                     <div className="flex items-center gap-2 text-orange-600">
                       <AlertTriangle className="h-4 w-4 shrink-0" />
                       <span>
-                        Cảnh báo vi phạm: <strong>{result.soCanhBao ?? 0}</strong> lần
-                        {(result.soLanGianLan ?? 0) > (result.soCanhBao ?? 0) && (
-                          <> (Tổng tích lũy: <strong>{result.soLanGianLan}</strong> lần)</>
+                        Cảnh báo vi phạm: <strong>{result.warningCount ?? 0}</strong> lần
+                        {(result.cheatingCount ?? 0) > (result.warningCount ?? 0) && (
+                          <> (Tổng tích lũy: <strong>{result.cheatingCount}</strong> lần)</>
                         )}
                       </span>
                     </div>
@@ -246,14 +246,14 @@ export function ExamResultPage() {
                       }
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800">
-                          Câu {idx + 1}: {a.noiDungCauHoi}
+                          Câu {idx + 1}: {a.questionContent}
                         </p>
                         <p className={`text-xs mt-1.5 ${a.isCorrect ? 'text-green-600' : 'text-red-500'}`}>
-                          Bạn chọn: {a.noiDungDapAn || a.cauTraLoiTuLuan || <em>Không trả lời</em>}
+                          Câu trả lời của bạn: {a.answerContent || a.essayAnswer || <em>Chưa trả lời</em>}
                         </p>
-                        {!a.isCorrect && a.noiDungDapAnDung && (
+                        {!a.isCorrect && a.correctAnswerContent && (
                           <p className="text-xs mt-0.5 text-green-600">
-                            ✓ Đáp án đúng: {a.noiDungDapAnDung}
+                            ✓ Đáp án đúng: {a.correctAnswerContent}
                           </p>
                         )}
                       </div>

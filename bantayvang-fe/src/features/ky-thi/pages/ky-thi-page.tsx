@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { kyThiApi } from '../api'
+import { useNavigate } from 'react-router-dom'
+import { examCampaignApi } from '../api'
 import { KyThiTable } from '../components/ky-thi-table'
 import { KyThiFormDialog } from '../components/ky-thi-form-dialog'
 import { GenerateExamsDialog } from '../components/generate-exams-dialog'
+import { EligibilityDialog } from '../components/eligibility-dialog'
 import type { ExamCampaignDto, CreateKyThiDto } from '../types'
 import type { CreateKyThiFormData } from '../schemas'
 import { Button } from '@/components/ui/button'
-import { Plus, ArrowLeft, RefreshCw, Building2, Sparkles, Search } from 'lucide-react'
+import { Plus, ArrowLeft, RefreshCw, Building2, Sparkles, Search, Users } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
 import { fetchActiveExams } from '@/features/exams/slice'
 import { ROLES } from '@/lib/constants'
@@ -30,6 +32,7 @@ const STATUS_OPTIONS = [
 ]
 
 export function KyThiPage() {
+  const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const currentUser = useAppSelector((state) => state.auth.user)
 
@@ -37,7 +40,7 @@ export function KyThiPage() {
   const isAdmin = !isDeptManager
   const myKhoa = currentUser?.deptManagerDeptName || currentUser?.department || null
 
-  const [examCampaigns, setKyThis] = useState<ExamCampaignDto[]>([])
+  const [examCampaigns, setExamCampaigns] = useState<ExamCampaignDto[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editingKyThi, setEditingKyThi] = useState<ExamCampaignDto | null>(null)
@@ -59,6 +62,7 @@ export function KyThiPage() {
   const [selectedExam, setSelectedExam] = useState<ExamPaperDto | null>(null)
   const [previewExam, setPreviewExam] = useState<ExamPaperDto | null>(null)
   const [generateExamsOpen, setGenerateExamsOpen] = useState(false)
+  const [eligibilityOpen, setEligibilityOpen] = useState(false)
   const [statsExam, setStatsExam] = useState<ExamPaperDto | null>(null)
 
   useEffect(() => {
@@ -66,12 +70,12 @@ export function KyThiPage() {
     dispatch(fetchActiveExams())
   }, [dispatch, filterStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadKyThis = async () => {
+  async function loadKyThis() {
     setIsLoading(true)
     try {
-      const response = await kyThiApi.getAll(filterStatus || undefined)
+      const response = await examCampaignApi.getAll(filterStatus || undefined)
       if (response.data.success && response.data.data) {
-        setKyThis(response.data.data)
+        setExamCampaigns(response.data.data)
       }
     } catch {
       // silent
@@ -80,7 +84,7 @@ export function KyThiPage() {
     }
   }
 
-  const loadExamsForKyThi = async (examCampaignId: number) => {
+  async function loadExamsForKyThi(examCampaignId: number) {
     setLoadingExams(true)
     try {
       const res = await examsApiExtended.getAll()
@@ -100,24 +104,24 @@ export function KyThiPage() {
   const handleOpenCreate = () => { setEditingKyThi(null); setFormOpen(true) }
   const handleOpenEdit = (examCampaign: ExamCampaignDto) => { setEditingKyThi(examCampaign); setFormOpen(true) }
 
-  const handleSubmitKyThi = async (data: CreateKyThiFormData) => {
+  async function handleSubmitKyThi(data: CreateKyThiFormData) {
     setSubmitting(true)
     try {
       const formattedData = {
         ...data,
-        thoiGianBatDau: data.thoiGianBatDau ? new Date(data.thoiGianBatDau).toISOString() : null,
-        thoiGianKetThuc: data.thoiGianKetThuc ? new Date(data.thoiGianKetThuc).toISOString() : null,
+        startTime: data.startTime ? new Date(data.startTime).toISOString() : null,
+        endTime: data.endTime ? new Date(data.endTime).toISOString() : null,
       }
       if (editingKyThi) {
         const updateData: any = isDeptManager
-          ? { ...formattedData, departmentId: currentUser?.deptManagerDeptId || null, status: editingKyThi.status || 'DangChuanBi' }
+          ? { ...formattedData, departmentIds: currentUser?.deptManagerDeptId ? [currentUser.deptManagerDeptId] : [], status: editingKyThi.status || 'DangChuanBi' }
           : { ...formattedData, status: editingKyThi.status || 'DangChuanBi' }
-        await kyThiApi.update(editingKyThi.id, updateData)
+        await examCampaignApi.update(editingKyThi.id, updateData)
       } else {
         const createData: CreateKyThiDto = isDeptManager
-          ? { ...formattedData, departmentId: currentUser?.deptManagerDeptId || null }
+          ? { ...formattedData, departmentIds: currentUser?.deptManagerDeptId ? [currentUser.deptManagerDeptId] : [] }
           : formattedData
-        await kyThiApi.create(createData)
+        await examCampaignApi.create(createData)
       }
       setFormOpen(false)
       setEditingKyThi(null)
@@ -129,10 +133,10 @@ export function KyThiPage() {
     }
   }
 
-  const handleDeleteKyThi = async (examCampaign: ExamCampaignDto) => {
+  async function handleDeleteKyThi(examCampaign: ExamCampaignDto) {
     if (!window.confirm(`Xóa kỳ thi "${examCampaign.campaignName}"? Tất cả đề thi bên trong cũng sẽ bị ảnh hưởng.`)) return
     try {
-      await kyThiApi.delete(examCampaign.id)
+      await examCampaignApi.delete(examCampaign.id)
       loadKyThis()
       if (selectedKyThi?.id === examCampaign.id) setSelectedKyThi(null)
     } catch {
@@ -140,9 +144,9 @@ export function KyThiPage() {
     }
   }
 
-  const handleChangeStatus = async (examCampaign: ExamCampaignDto, newStatus: string) => {
+  async function handleChangeStatus(examCampaign: ExamCampaignDto, newStatus: string) {
     try {
-      await kyThiApi.updateStatus(examCampaign.id, newStatus)
+      await examCampaignApi.updateStatus(examCampaign.id, newStatus)
       loadKyThis()
       if (selectedKyThi?.id === examCampaign.id) {
         setSelectedKyThi((prev) => prev ? { ...prev, status: newStatus } : prev)
@@ -158,7 +162,7 @@ export function KyThiPage() {
   }
 
   // ---- EXAM CRUD & HANDLERS ----
-  const handleToggleStatus = async (exam: ExamPaperDto) => {
+  async function handleToggleStatus(exam: ExamPaperDto) {
     const isActive = exam.status === 'Active'
     const newStatus = isActive ? 'Inactive' : 'Active'
     const label = isActive ? 'Tắt' : 'Bật'
@@ -171,7 +175,7 @@ export function KyThiPage() {
     }
   }
 
-  const handleToggleCongBo = async (exam: ExamPaperDto) => {
+  async function handleToggleCongBo(exam: ExamPaperDto) {
     const newVal = !exam.isResultPublished
     try {
       await departmentApi.toggleExamVisibility(exam.id, { isResultPublished: newVal })
@@ -181,7 +185,7 @@ export function KyThiPage() {
     }
   }
 
-  const handleDeleteExam = async (exam: ExamPaperDto) => {
+  async function handleDeleteExam(exam: ExamPaperDto) {
     if (!window.confirm(`Xóa đề thi "${exam.examPaperName}"? Hành động này không thể hoàn tác.`)) return
     try {
       await examsApiExtended.delete(exam.id)
@@ -196,7 +200,7 @@ export function KyThiPage() {
     setAssignOpen(true)
   }
 
-  const handleAssignUsers = async (examId: number, userIds: number[], note?: string) => {
+  async function handleAssignUsers(examId: number, userIds: number[], note?: string) {
     setSubmitting(true)
     try {
       const res = await examsApi.assignUsers({ examId, userIds, note })
@@ -213,20 +217,20 @@ export function KyThiPage() {
     }
   }
 
-  const handleCreateExamSubmit = async (data: CreateExamFormData) => {
+  async function handleCreateExamSubmit(data: CreateExamFormData) {
     setSubmitting(true)
     try {
       const createDto = {
         examPaperCode: data.examPaperCode,
         examPaperName: data.examPaperName,
         durationMinutes: data.durationMinutes ?? 60,
-        thoiGianBatDau: data.thoiGianBatDau ? data.thoiGianBatDau : undefined,
+        startTime: data.startTime ? data.startTime : undefined,
         status: data.status,
         department: isDeptManager && myKhoa ? myKhoa : data.department,
-        soCauRandom: data.soCauRandom,
-        danhSachIdCauHoi: data.danhSachIdCauHoi ?? [],
+        randomQuestionCount: data.randomQuestionCount,
+        questionIds: data.questionIds ?? [],
         examCampaignId: selectedKyThi?.id,
-        soCauDungToiThieu: data.soCauDungToiThieu ?? null,
+        minPassQuestions: data.minPassQuestions ?? null,
       }
       const res = await examsApi.create(createDto)
       if (res.data.success) {
@@ -243,19 +247,20 @@ export function KyThiPage() {
     }
   }
 
-  // Scope: DeptManager chỉ thấy kỳ thi do khoa mình quản lý (departmentId = deptManagerDeptId)
+  // Scope: DeptManager chỉ thấy kỳ thi có khoa mình quản lý trong danh sách khoa của kỳ thi
+  // (1 kỳ thi giờ có thể gán cho 1-n khoa qua departmentIds thay vì đúng 1 khoa)
   const scopedKyThis = isDeptManager && currentUser?.deptManagerDeptId
-    ? examCampaigns.filter((k) => k.departmentId === currentUser.deptManagerDeptId)
+    ? examCampaigns.filter((k) => k.departmentIds.includes(currentUser.deptManagerDeptId!))
     : examCampaigns
 
   // Danh sách khoa duy nhất cho tab admin
   const khoaList = isAdmin
-    ? Array.from(new Set(examCampaigns.map((k) => k.departmentName).filter(Boolean) as string[])).sort()
+    ? Array.from(new Set(examCampaigns.flatMap((k) => k.departmentNames))).sort()
     : []
 
   // Áp filter khoa (admin)
   const khoaFiltered = isAdmin && khoaFilter
-    ? scopedKyThis.filter((k) => k.departmentName === khoaFilter)
+    ? scopedKyThis.filter((k) => k.departmentNames.includes(khoaFilter))
     : scopedKyThis
 
   const finalFilteredKyThis = khoaFiltered.filter(k => 
@@ -303,7 +308,9 @@ export function KyThiPage() {
           <div>
             <h1 className="text-xl font-bold text-gray-900">{selectedKyThi.campaignName}</h1>
             <p className="text-sm text-gray-500">
-              {selectedKyThi.campaignCode} • Khoa: {selectedKyThi.departmentName || 'Tất cả các khoa'}
+              {selectedKyThi.campaignCode} • {selectedKyThi.accessMode === 'AssignedList'
+                ? 'Danh sách chỉ định'
+                : `Khoa: ${selectedKyThi.departmentNames.length > 0 ? selectedKyThi.departmentNames.join(', ') : 'Tất cả các khoa'}`}
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -335,6 +342,10 @@ export function KyThiPage() {
               <Button size="sm" variant="outline" onClick={() => loadExamsForKyThi(selectedKyThi.id)} className="h-9 gap-1 text-gray-600">
                 <RefreshCw className="h-3.5 w-3.5" />
                 Làm mới
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEligibilityOpen(true)} className="h-9 gap-1 text-gray-600">
+                <Users className="h-3.5 w-3.5" />
+                Ai được thi
               </Button>
               <Button size="sm" variant="outline" onClick={() => setGenerateExamsOpen(true)} className="h-9 gap-1 text-blue-600 border-blue-200 hover:bg-blue-50/50">
                 <Sparkles className="h-3.5 w-3.5" />
@@ -374,11 +385,18 @@ export function KyThiPage() {
         </div>
 
         <KyThiFormDialog
+          key={editingKyThi?.id ?? 'new'}
           open={formOpen}
           examCampaign={editingKyThi}
           onClose={() => { setFormOpen(false); setEditingKyThi(null) }}
           onSubmit={handleSubmitKyThi}
           isLoading={submitting}
+        />
+
+        <EligibilityDialog
+          open={eligibilityOpen}
+          examCampaign={selectedKyThi}
+          onClose={() => setEligibilityOpen(false)}
         />
 
         <GenerateExamsDialog
@@ -454,7 +472,7 @@ export function KyThiPage() {
             Tất cả ({scopedKyThis.length})
           </button>
           {khoaList.map((khoa) => {
-            const count = scopedKyThis.filter((k) => k.donViToChuc === khoa).length
+            const count = scopedKyThis.filter((k) => k.organizedBy === khoa).length
             return (
               <button
                 key={khoa}
@@ -507,10 +525,11 @@ export function KyThiPage() {
         onEdit={handleOpenEdit}
         onDelete={handleDeleteKyThi}
         onChangeStatus={handleChangeStatus}
+        onMonitor={(k) => navigate(`${isAdmin ? '/admin' : '/dept-manager'}/ky-thi/${k.id}/monitor`)}
       />
 
-
       <KyThiFormDialog
+        key={editingKyThi?.id ?? 'new'}
         open={formOpen}
         examCampaign={editingKyThi}
         onClose={() => { setFormOpen(false); setEditingKyThi(null) }}

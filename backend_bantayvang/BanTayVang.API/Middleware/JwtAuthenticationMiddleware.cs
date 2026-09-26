@@ -48,6 +48,23 @@ namespace BanTayVang.API.Middleware
                     return;
                 }
 
+                // BUG FIX (OWASP A01/A07): special-purpose tokens (currently only password-reset
+                // tokens, marked with a "purpose" claim) must never be usable as a normal bearer
+                // token here. Without this check, a password-reset token - obtainable via a
+                // "forgot password" email and valid for 15 minutes - could be sent as a normal
+                // Authorization header and would authenticate the caller for any [RequireAuth]
+                // endpoint, even though it was only ever meant to be consumed by the dedicated
+                // reset-password flow (which reads it from the request body, not this header, and
+                // whose path is already in ShouldSkipAuthentication above - so this check does not
+                // affect that flow at all).
+                if (principal.FindFirst("purpose")?.Value is string purpose && !string.IsNullOrEmpty(purpose))
+                {
+                    _logger.LogWarning("SECURITY: Special-purpose token (purpose={Purpose}) rejected for general API access from {IpAddress}",
+                        purpose, GetClientIpAddress(context));
+                    await _next(context);
+                    return;
+                }
+
                 // Set user context
                 context.User = principal;
 
@@ -91,6 +108,9 @@ namespace BanTayVang.API.Middleware
                 "/api/auth/refresh",
                 "/api/auth/reset-password",
                 "/api/auth/request-reset",
+                "/api/auth/send-verification-code",
+                "/api/auth/verify-email-code",
+                "/api/auth/verify-reset-code",
                 "/api/seed",
                 "/swagger",
                 "/health",

@@ -2,7 +2,7 @@ import { Outlet, useNavigate, NavLink } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
 import { logout } from '@/features/auth/slice'
 import { Button } from '@/components/ui/button'
-import { LogOut, Home, ClipboardList, Bell, X, CheckCheck } from 'lucide-react'
+import { LogOut, Home, ClipboardList, Bell, X, CheckCheck, KeyRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { notificationsApi, type NotificationDto } from '@/features/notifications/api'
 import { formatDate } from '@/lib/utils'
@@ -28,7 +28,7 @@ function StudentNotificationBell() {
   const panelRef = useRef<HTMLDivElement>(null)
 
   // Load unread count periodically
-  const loadUnreadCount = async () => {
+  async function loadUnreadCount() {
     try {
       const res = await notificationsApi.getUnreadCount()
       if (res.data.success && res.data.data != null) {
@@ -38,7 +38,7 @@ function StudentNotificationBell() {
   }
 
   // Load full notification list
-  const loadNotifications = async () => {
+  async function loadNotifications() {
     setLoading(true)
     try {
       const res = await notificationsApi.getMyNotifications()
@@ -72,7 +72,7 @@ function StudentNotificationBell() {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const handleMarkRead = async (id: number) => {
+  async function handleMarkRead(id: number) {
     try {
       await notificationsApi.markAsRead(id)
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)))
@@ -80,7 +80,7 @@ function StudentNotificationBell() {
     } catch { /* silent */ }
   }
 
-  const handleMarkAllRead = async () => {
+  async function handleMarkAllRead() {
     try {
       await notificationsApi.markAllAsRead()
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
@@ -190,7 +190,7 @@ export function StudentLayout() {
   const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
 
-  const handleLogout = async () => {
+  async function handleLogout() {
     await dispatch(logout())
     navigate('/login')
   }
@@ -228,6 +228,17 @@ export function StudentLayout() {
             >
               <ClipboardList className="h-4 w-4" />
               Phòng chờ thi
+            </NavLink>
+            <NavLink
+              to="/doi-mat-khau"
+              className={({ isActive }) =>
+                `flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                  isActive ? 'bg-white/25 text-white font-medium' : 'text-white/85 hover:bg-white/15 hover:text-white'
+                }`
+              }
+            >
+              <KeyRound className="h-4 w-4" />
+              Đổi mật khẩu
             </NavLink>
           </nav>
         </div>
@@ -274,6 +285,17 @@ export function StudentLayout() {
         >
           <ClipboardList className="h-5 w-5" />
           <span>Phòng chờ</span>
+        </NavLink>
+        <NavLink
+          to="/doi-mat-khau"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center gap-1 text-[11px] w-20 py-1 transition-colors ${
+              isActive ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-900'
+            }`
+          }
+        >
+          <KeyRound className="h-5 w-5" />
+          <span>Đổi mật khẩu</span>
         </NavLink>
       </nav>
     </div>

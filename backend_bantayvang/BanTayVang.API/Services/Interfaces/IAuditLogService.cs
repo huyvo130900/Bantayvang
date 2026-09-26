@@ -15,17 +15,18 @@ namespace BanTayVang.API.Services.Interfaces
             int? statusCode = null,
             string? department = null);
 
-        Task<List<AuditLogEntry>> GetUserLogsAsync(int userId, int top = 100);
-        Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int examSubmissionId);
-        Task<List<AuditLogEntry>> GetRecentLogsAsync(int top = 500);
+        Task<List<AuditLogEntry>> GetUserLogsAsync(int userId, int top = 100, string? department = null);
+        Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int examSubmissionId, string? department = null);
+        Task<List<AuditLogEntry>> GetRecentLogsAsync(int top = 500, string? department = null);
         Task<List<AuditLogEntry>> SearchLogsAsync(
             string? actionType = null,
             string? username = null,
             DateTime? from = null,
             DateTime? to = null,
             int page = 1,
-            int pageSize = 50);
-        Task<int> GetTotalCountAsync(string? actionType = null, string? username = null, DateTime? from = null, DateTime? to = null);
+            int pageSize = 50,
+            string? department = null);
+        Task<int> GetTotalCountAsync(string? actionType = null, string? username = null, DateTime? from = null, DateTime? to = null, string? department = null);
     }
 
     public class AuditLogEntry

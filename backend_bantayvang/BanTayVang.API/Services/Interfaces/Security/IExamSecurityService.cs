@@ -28,7 +28,7 @@ namespace BanTayVang.API.Services.Interfaces.Security
         /// <param name="description">Description</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Operation result</returns>
-        Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string description, CancellationToken cancellationToken = default);
+        Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, int userId, string warningType, string description, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets warning count for an exam session

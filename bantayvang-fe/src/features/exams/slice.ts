@@ -24,7 +24,7 @@ export const fetchAllExams = createAsyncThunk(
       const response = await examsApiExtended.getAll()
       if (!response.data.success) return rejectWithValue(response.data.message)
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi tải đề thi')
     }
@@ -39,7 +39,7 @@ export const fetchActiveExams = createAsyncThunk(
       const response = await examsApi.getActive()
       if (!response.data.success) return rejectWithValue(response.data.message)
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi tải đề thi')
     }
@@ -53,7 +53,7 @@ export const fetchAssignmentsByExam = createAsyncThunk(
       const response = await examsApi.getAssignmentsByExam(examId)
       if (!response.data.success) return rejectWithValue(response.data.message)
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi tải phân công')
     }

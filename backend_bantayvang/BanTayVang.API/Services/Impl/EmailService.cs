@@ -83,14 +83,15 @@ namespace BanTayVang.API.Services.Impl
         public async Task<bool> SendPasswordResetEmailAsync(string toEmail, string fullName, string resetToken)
         {
             var resetUrl = $"https://localhost:7249/reset-password?token={Uri.EscapeDataString(resetToken)}";
-            
+            var safeFullName = System.Net.WebUtility.HtmlEncode(fullName);
+
             var subject = "[BanTayVang] Đặt lại mật khẩu";
             var body = $@"
 <html>
 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
     <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
         <h2 style='color: #2c5aa0;'>Yêu cầu đặt lại mật khẩu</h2>
-        <p>Xin chào <strong>{fullName}</strong>,</p>
+        <p>Xin chào <strong>{safeFullName}</strong>,</p>
         <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
         <p>Nhấn vào nút bên dưới để đặt lại mật khẩu:</p>
         <p style='text-align: center; margin: 30px 0;'>
@@ -114,17 +115,21 @@ namespace BanTayVang.API.Services.Impl
 
         public async Task<bool> SendWelcomeEmailAsync(string toEmail, string username, string fullName)
         {
+            var safeFullName = System.Net.WebUtility.HtmlEncode(fullName);
+            var safeUsername = System.Net.WebUtility.HtmlEncode(username);
+            var safeToEmail = System.Net.WebUtility.HtmlEncode(toEmail);
+
             var subject = "[BanTayVang] Chào mừng đến với hệ thống";
             var body = $@"
 <html>
 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
     <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
         <h2 style='color: #2c5aa0;'>Chào mừng đến với BanTayVang!</h2>
-        <p>Xin chào <strong>{fullName}</strong>,</p>
+        <p>Xin chào <strong>{safeFullName}</strong>,</p>
         <p>Tài khoản của bạn đã được tạo thành công với thông tin:</p>
         <ul>
-            <li><strong>Tên đăng nhập:</strong> {username}</li>
-            <li><strong>Email:</strong> {toEmail}</li>
+            <li><strong>Tên đăng nhập:</strong> {safeUsername}</li>
+            <li><strong>Email:</strong> {safeToEmail}</li>
         </ul>
         <p>Bạn có thể đăng nhập vào hệ thống để bắt đầu sử dụng.</p>
         <p style='text-align: center; margin: 30px 0;'>
@@ -141,6 +146,8 @@ namespace BanTayVang.API.Services.Impl
 
         public async Task<bool> SendExamResultEmailAsync(string toEmail, string fullName, string examName, double score, bool pass)
         {
+            var safeFullName = System.Net.WebUtility.HtmlEncode(fullName);
+            var safeExamName = System.Net.WebUtility.HtmlEncode(examName);
             var resultText = pass ? "<span style='color: #28a745;'>✓ Đạt</span>" : "<span style='color: #dc3545;'>✗ Không đạt</span>";
             var subject = $"[BanTayVang] Kết quả thi: {examName}";
             var body = $@"
@@ -148,8 +155,8 @@ namespace BanTayVang.API.Services.Impl
 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
     <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
         <h2 style='color: #2c5aa0;'>Kết quả bài thi</h2>
-        <p>Xin chào <strong>{fullName}</strong>,</p>
-        <p>Bạn vừa hoàn thành bài thi <strong>{examName}</strong></p>
+        <p>Xin chào <strong>{safeFullName}</strong>,</p>
+        <p>Bạn vừa hoàn thành bài thi <strong>{safeExamName}</strong></p>
         <div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;'>
             <p style='margin: 5px 0;'><strong>Điểm:</strong> {score:F2}</p>
             <p style='margin: 5px 0;'><strong>Kết quả:</strong> {resultText}</p>
@@ -158,6 +165,46 @@ namespace BanTayVang.API.Services.Impl
     </div>
 </body>
 </html>";
+
+            return await SendEmailAsync(toEmail, subject, body, isHtml: true);
+        }
+
+        public async Task<bool> SendVerificationCodeEmailAsync(string toEmail, string code, string purpose)
+        {
+            var isPasswordReset = purpose == "PasswordReset";
+            var subject = isPasswordReset
+                ? "[BanTayVang] Mã xác nhận đặt lại mật khẩu"
+                : "[BanTayVang] Mã xác nhận email đăng ký";
+
+            var introText = isPasswordReset
+                ? "Bạn vừa yêu cầu đặt lại mật khẩu. Vui lòng sử dụng mã xác nhận bên dưới:"
+                : "Vui lòng sử dụng mã xác nhận bên dưới để xác thực địa chỉ email của bạn:";
+
+            var body = $@"
+<html>
+<body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+        <h2 style='color: #2c5aa0;'>Mã xác nhận</h2>
+        <p>{introText}</p>
+        <p style='text-align: center; margin: 30px 0;'>
+            <span style='display: inline-block; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2c5aa0; background-color: #f0f4fa; padding: 15px 30px; border-radius: 8px;'>
+                {code}
+            </span>
+        </p>
+        <p style='color: #666; font-size: 14px;'>Mã có hiệu lực trong <strong>10 phút</strong>. Không chia sẻ mã này cho bất kỳ ai.</p>
+        <p style='color: #666; font-size: 14px;'>Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email này.</p>
+        <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;' />
+        <p style='color: #999; font-size: 12px;'>Hệ thống kiểm tra năng lực - Bệnh viện Nhi Đồng 2</p>
+    </div>
+</body>
+</html>";
+
+            // Dev mode: log mã OTP ra console để dễ test mà không cần SMTP thật
+            if (!_settings.EnableEmailSending)
+            {
+                _logger.LogInformation("OTP [DEV MODE - NOT SENT]: To={ToEmail}, Purpose={Purpose}, Code={Code}", toEmail, purpose, code);
+                return true;
+            }
 
             return await SendEmailAsync(toEmail, subject, body, isHtml: true);
         }

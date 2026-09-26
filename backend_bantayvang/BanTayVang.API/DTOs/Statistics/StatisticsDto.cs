@@ -67,7 +67,7 @@ namespace BanTayVang.API.DTOs.Statistics
         public int? CorrectAnswers { get; set; }
         public int? TotalQuestions { get; set; }
         public double? TotalScore { get; set; }
-        public int? SoCanhBao { get; set; }
+        public int? WarningCount { get; set; }
     }
 
     /// <summary>

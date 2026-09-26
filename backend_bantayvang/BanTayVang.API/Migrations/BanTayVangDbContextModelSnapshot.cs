@@ -33,6 +33,14 @@ namespace BanTayVang.API.Migrations
                     b.Property<DateTime?>("ActionTime")
                         .HasColumnType("datetime");
 
+                    b.Property<string>("ActionType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ApiPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("Department")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -40,28 +48,19 @@ namespace BanTayVang.API.Migrations
                     b.Property<string>("Detail")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("DiaChiIp")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("DiaChi_IP");
-
-                    b.Property<string>("DuongDan")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<int?>("ExamSubmissionId")
                         .HasColumnType("int");
 
-                    b.Property<string>("LoaiThaoTac")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int?>("MaHttp")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PhuongThuc")
+                    b.Property<string>("HttpMethod")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
+
+                    b.Property<int?>("HttpStatusCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("UserAgent")
                         .HasMaxLength(500)
@@ -166,6 +165,58 @@ namespace BanTayVang.API.Migrations
                     b.ToTable("Departments");
                 });
 
+            modelBuilder.Entity("BanTayVang.API.Models.EmailVerificationCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email", "Purpose");
+
+                    b.ToTable("EmailVerificationCodes");
+                });
+
             modelBuilder.Entity("BanTayVang.API.Models.ExamAssignment", b =>
                 {
                     b.Property<int>("Id")
@@ -216,6 +267,11 @@ namespace BanTayVang.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AccessMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("CampaignCode")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -245,6 +301,9 @@ namespace BanTayVang.API.Migrations
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsPracticeMode")
+                        .HasColumnType("bit");
+
                     b.Property<int?>("MinPassQuestions")
                         .HasColumnType("int");
 
@@ -271,6 +330,30 @@ namespace BanTayVang.API.Migrations
                     b.HasIndex("DepartmentId");
 
                     b.ToTable("ExamCampaigns");
+                });
+
+            modelBuilder.Entity("BanTayVang.API.Models.ExamCampaignDepartment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DepartmentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExamCampaignId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("ExamCampaignId", "DepartmentId")
+                        .IsUnique();
+
+                    b.ToTable("ExamCampaignDepartments");
                 });
 
             modelBuilder.Entity("BanTayVang.API.Models.ExamPaper", b =>
@@ -362,7 +445,7 @@ namespace BanTayVang.API.Migrations
                     b.Property<int?>("QuestionId")
                         .HasColumnType("int");
 
-                    b.Property<double?>("TrongSo")
+                    b.Property<double?>("Weight")
                         .HasColumnType("float");
 
                     b.HasKey("Id")
@@ -383,14 +466,11 @@ namespace BanTayVang.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Cccd")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<DateTime?>("ApprovalDate")
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("ChuyenNganh")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                    b.Property<int?>("ApproverId")
+                        .HasColumnType("int");
 
                     b.Property<int?>("DepartmentId")
                         .HasColumnType("int");
@@ -399,37 +479,40 @@ namespace BanTayVang.API.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<string>("ExamPurpose")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("GhiChu")
+                    b.Property<string>("IdCardNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Major")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<string>("MatKhauHash")
+                    b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("MucDichThi")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<DateTime>("NgayDangKy")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("NgayDuyet")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("NguoiDuyetId")
-                        .HasColumnType("int");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("RegistrationDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -455,13 +538,10 @@ namespace BanTayVang.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("CongBoRieng")
-                        .HasColumnType("bit");
-
                     b.Property<int?>("CorrectAnswers")
                         .HasColumnType("int");
 
-                    b.Property<string>("DanhGiaKhoa")
+                    b.Property<string>("DepartmentEvaluation")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ExamCampaignId")
@@ -477,8 +557,11 @@ namespace BanTayVang.API.Migrations
                     b.Property<DateTime?>("IndividualPublishedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("NguoiCongBoRieng")
+                    b.Property<int?>("IndividualPublisherId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsIndividualResultPublished")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("StartTime")
                         .HasColumnType("datetime2");
@@ -490,9 +573,6 @@ namespace BanTayVang.API.Migrations
                     b.Property<DateTime?>("SubmitTime")
                         .HasColumnType("datetime");
 
-                    b.Property<int?>("TongSoCanhBao")
-                        .HasColumnType("int");
-
                     b.Property<int?>("TotalQuestions")
                         .HasColumnType("int");
 
@@ -500,6 +580,9 @@ namespace BanTayVang.API.Migrations
                         .HasColumnType("float");
 
                     b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WarningCount")
                         .HasColumnType("int");
 
                     b.HasKey("Id")
@@ -533,10 +616,10 @@ namespace BanTayVang.API.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("IP");
 
-                    b.Property<string>("ThietBiUserAgent")
+                    b.Property<string>("Token")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Token")
+                    b.Property<string>("UserAgent")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("UserId")
@@ -631,6 +714,9 @@ namespace BanTayVang.API.Migrations
 
                     b.Property<int?>("QuestionCategoryId")
                         .HasColumnType("int");
+
+                    b.Property<string>("SuggestedAnswer")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime");
@@ -754,7 +840,7 @@ namespace BanTayVang.API.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("MaVaiTro")
+                    b.Property<string>("RoleCode")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -776,10 +862,22 @@ namespace BanTayVang.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AiComment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AiGradingStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("AiScore")
+                        .HasColumnType("float");
+
                     b.Property<DateTime?>("AnswerTime")
                         .HasColumnType("datetime");
 
                     b.Property<string>("EssayAnswer")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EssayImageUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ExamSubmissionId")
@@ -798,6 +896,9 @@ namespace BanTayVang.API.Migrations
 
                     b.Property<int?>("SelectedOptionId")
                         .HasColumnType("int");
+
+                    b.Property<string>("TeacherComment")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id")
                         .HasName("PK__CHITIETL__3214EC07199D44E7");
@@ -837,6 +938,9 @@ namespace BanTayVang.API.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("int");
+
                     b.Property<string>("FullName")
                         .HasColumnType("nvarchar(max)");
 
@@ -848,6 +952,9 @@ namespace BanTayVang.API.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LockoutEnd")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Password")
@@ -1016,6 +1123,25 @@ namespace BanTayVang.API.Migrations
                         .HasForeignKey("DepartmentId");
 
                     b.Navigation("Department");
+                });
+
+            modelBuilder.Entity("BanTayVang.API.Models.ExamCampaignDepartment", b =>
+                {
+                    b.HasOne("BanTayVang.API.Models.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BanTayVang.API.Models.ExamCampaign", "ExamCampaign")
+                        .WithMany("ExamCampaignDepartments")
+                        .HasForeignKey("ExamCampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Department");
+
+                    b.Navigation("ExamCampaign");
                 });
 
             modelBuilder.Entity("BanTayVang.API.Models.ExamPaper", b =>
@@ -1189,6 +1315,11 @@ namespace BanTayVang.API.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BanTayVang.API.Models.ExamCampaign", b =>
+                {
+                    b.Navigation("ExamCampaignDepartments");
                 });
 
             modelBuilder.Entity("BanTayVang.API.Models.ExamPaper", b =>

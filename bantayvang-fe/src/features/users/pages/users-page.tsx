@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
-import { fetchUsers, createUser, updateUser, toggleUserStatus, setFilter, deleteUser, restoreUser, hardDeleteUser, bulkDeleteUsers } from '../slice'
+import { fetchUsers, createUser, updateUser, toggleUserStatus, setFilter, deleteUser, restoreUser, hardDeleteUser, bulkDeleteUsers, bulkHardDeleteUsers } from '../slice'
 import { usersApi } from '../api'
 import { UserFilter } from '../components/user-filter'
 import { UserTable } from '../components/user-table'
@@ -37,7 +37,7 @@ export function UsersPage() {
 
   useEffect(() => {
     dispatch(fetchUsers(filter))
-    setSelectedIds([])
+    setTimeout(() => setSelectedIds([]), 0)
   }, [dispatch, filter])
 
   const hasNextPage = users.length === filter.pageSize
@@ -65,10 +65,10 @@ export function UsersPage() {
   const handleCreate = () => { setEditingUser(null); setFormOpen(true) }
   const handleEdit = (user: UserDto) => { setEditingUser(user); setFormOpen(true) }
 
-  const handleFormSubmit = async (data: CreateUserFormData | UpdateUserFormData) => {
+  async function handleFormSubmit(data: CreateUserFormData | UpdateUserFormData) {
     setSubmitting(true)
     try {
-      const sanitizedData = {
+      const sanitizedData: Record<string, unknown> = {
         ...data,
         deptManagerDeptId: data.deptManagerDeptId || undefined
       } as any
@@ -87,7 +87,7 @@ export function UsersPage() {
       }
       setFormOpen(false)
       dispatch(fetchUsers(filter))
-    } catch (err: unknown) {
+    } catch (err: any) {
       const errorMessage = typeof err === 'string' ? err : (err as { message?: string })?.message || 'Có lỗi xảy ra'
       showMsg(errorMessage, true)
     } finally {
@@ -95,7 +95,7 @@ export function UsersPage() {
     }
   }
 
-  const handleDelete = async (user: UserDto) => {
+  async function handleDelete(user: UserDto) {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa tài khoản "${user.fullName || user.username}" không?\nTài khoản sẽ được đưa vào Thùng rác và có thể khôi phục lại sau.`)) {
       return
     }
@@ -105,7 +105,7 @@ export function UsersPage() {
       await dispatch(deleteUser(user.id)).unwrap()
       showMsg('Xóa tài khoản thành công')
       dispatch(fetchUsers(filter))
-    } catch (err: unknown) {
+    } catch (err: any) {
       const errorMessage = typeof err === 'string' ? err : (err as { message?: string })?.message || 'Có lỗi xảy ra khi xóa'
       showMsg(errorMessage, true)
     } finally {
@@ -113,7 +113,7 @@ export function UsersPage() {
     }
   }
 
-  const handleRestore = async (user: UserDto) => {
+  async function handleRestore(user: UserDto) {
     if (!window.confirm(`Bạn có chắc chắn muốn khôi phục tài khoản "${user.fullName || user.username}" không?`)) {
       return
     }
@@ -123,7 +123,7 @@ export function UsersPage() {
       await dispatch(restoreUser(user.id)).unwrap()
       showMsg('Khôi phục tài khoản thành công')
       dispatch(fetchUsers(filter))
-    } catch (err: unknown) {
+    } catch (err: any) {
       const errorMessage = typeof err === 'string' ? err : (err as { message?: string })?.message || 'Có lỗi xảy ra khi khôi phục'
       showMsg(errorMessage, true)
     } finally {
@@ -131,7 +131,7 @@ export function UsersPage() {
     }
   }
 
-  const handleHardDelete = async (user: UserDto) => {
+  async function handleHardDelete(user: UserDto) {
     if (!window.confirm(`XÓA VĨNH VIỄN: Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản "${user.fullName || user.username}" không?\nToàn bộ bài thi, điểm số và dữ liệu liên quan sẽ bị xóa sạch và KHÔNG THỂ HOÀN TÁC.`)) {
       return
     }
@@ -141,7 +141,7 @@ export function UsersPage() {
       await dispatch(hardDeleteUser(user.id)).unwrap()
       showMsg('Xóa vĩnh viễn tài khoản thành công')
       dispatch(fetchUsers(filter))
-    } catch (err: unknown) {
+    } catch (err: any) {
       const errorMessage = typeof err === 'string' ? err : (err as { message?: string })?.message || 'Có lỗi xảy ra khi xóa vĩnh viễn'
       showMsg(errorMessage, true)
     } finally {
@@ -157,18 +157,31 @@ export function UsersPage() {
     setSelectedIds(selected ? users.map(u => u.id) : [])
   }, [users])
 
-  const handleBulkDelete = async () => {
-    if (!window.confirm(`Bạn có chắc chắn muốn đưa ${selectedIds.length} tài khoản đã chọn vào Thùng rác không?`)) {
-      return
+  async function handleBulkDelete() {
+    const isTrashMode = !!filter.includeDeleted
+
+    if (isTrashMode) {
+      if (!window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn ${selectedIds.length} tài khoản đã chọn không? Hành động này không thể hoàn tác và sẽ xóa tất cả dữ liệu bài thi liên quan!`)) {
+        return
+      }
+    } else {
+      if (!window.confirm(`Bạn có chắc chắn muốn đưa ${selectedIds.length} tài khoản đã chọn vào Thùng rác không?`)) {
+        return
+      }
     }
     
     setSubmitting(true)
     try {
-      await dispatch(bulkDeleteUsers(selectedIds)).unwrap()
-      showMsg(`Đã xóa ${selectedIds.length} tài khoản thành công`)
+      if (isTrashMode) {
+        const message = await dispatch(bulkHardDeleteUsers(selectedIds)).unwrap()
+        showMsg(message || `Đã xóa vĩnh viễn ${selectedIds.length} tài khoản thành công`)
+      } else {
+        const message = await dispatch(bulkDeleteUsers(selectedIds)).unwrap()
+        showMsg(message || `Đã xóa ${selectedIds.length} tài khoản thành công`)
+      }
       setSelectedIds([])
       dispatch(fetchUsers(filter))
-    } catch (err: unknown) {
+    } catch (err: any) {
       const errorMessage = typeof err === 'string' ? err : (err as { message?: string })?.message || 'Có lỗi xảy ra khi xóa hàng loạt'
       showMsg(errorMessage, true)
     } finally {
@@ -176,7 +189,7 @@ export function UsersPage() {
     }
   }
 
-  const handleToggleStatus = async (user: UserDto) => {
+  async function handleToggleStatus(user: UserDto) {
     const activate = !user.status
     if (!window.confirm(
       activate
@@ -191,7 +204,7 @@ export function UsersPage() {
     }
   }
 
-  const handleResetPassword = async (userId: number, newPassword: string) => {
+  async function handleResetPassword(userId: number, newPassword: string) {
     setSubmitting(true)
     try {
       await usersApi.resetPassword(userId, newPassword)

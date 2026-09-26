@@ -92,5 +92,10 @@ namespace BanTayVang.API.Services.Interfaces.Auth
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Operation result</returns>
         Task<BaseResponseDto> ResetPasswordAsync(string token, string newPassword, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Xác thực mã OTP quên mật khẩu, trả về reset token để dùng ở bước reset-password
+        /// </summary>
+        Task<BaseResponseDto<string>> VerifyPasswordResetCodeAsync(string email, string code, CancellationToken cancellationToken = default);
     }
 }

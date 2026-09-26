@@ -25,25 +25,28 @@ namespace BanTayVang.API.Services.Impl
         private readonly IExamSubmissionRepository _examSubmissionRepository;
         private readonly BanTayVangDbContext _context;
         private readonly ILogger<ExamService> _logger;
+        private readonly Hubs.IExamMonitorNotifier _examMonitorNotifier;
 
         public ExamService(
             IExamManagementService managementService,
             IExamSessionService sessionService,
             IExamSubmissionService submissionService,
             IExamSecurityService securityService,
-            ICheatWarningRepository canhbaoRepository,
+            ICheatWarningRepository cheatWarningRepository,
             IExamSubmissionRepository baithiRepository,
             BanTayVangDbContext context,
-            ILogger<ExamService> logger)
+            ILogger<ExamService> logger,
+            Hubs.IExamMonitorNotifier examMonitorNotifier)
         {
             _managementService = managementService ?? throw new ArgumentNullException(nameof(managementService));
             _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
             _submissionService = submissionService ?? throw new ArgumentNullException(nameof(submissionService));
             _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
-            _cheatWarningRepository = canhbaoRepository ?? throw new ArgumentNullException(nameof(canhbaoRepository));
+            _cheatWarningRepository = cheatWarningRepository ?? throw new ArgumentNullException(nameof(cheatWarningRepository));
             _examSubmissionRepository = baithiRepository ?? throw new ArgumentNullException(nameof(baithiRepository));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _examMonitorNotifier = examMonitorNotifier ?? throw new ArgumentNullException(nameof(examMonitorNotifier));
         }
 
         #region Exam Management Operations (Delegated to IExamManagementService)
@@ -143,7 +146,7 @@ namespace BanTayVang.API.Services.Impl
                     .GroupBy(b => b.ExamPaperCode ?? b.ExamPaperId?.ToString())
                     .Select(g => g.First())
                     .Select(b => {
-                        var isPublished = b.CongBoRieng || (b.ExamPaper?.IsResultPublished ?? false);
+                        var isPublished = b.IsIndividualResultPublished || (b.ExamPaper?.IsResultPublished ?? false);
                         return new ExamSubmissionDto
                         {
                             Id = b.Id,
@@ -151,18 +154,14 @@ namespace BanTayVang.API.Services.Impl
                             ExamPaperId = b.ExamPaperId ?? 0,
                             Status = b.Status,
                             SubmitTime = b.SubmitTime,
-                            TotalScore = isPublished ? (b.TotalQuestions > 0
-                                ? Math.Round((b.CorrectAnswers ?? 0) * 10.0 / b.TotalQuestions!.Value, 2)
-                                : b.TotalScore) : null,
+                            TotalScore = isPublished ? b.TotalScore : null,
                             CorrectAnswers = isPublished ? b.CorrectAnswers : null,
                             TotalQuestions = b.TotalQuestions,
                             ExamPaperName = b.ExamPaper?.ExamPaperName,
                             ExamPaperCode = b.ExamPaperCode ?? b.ExamPaper?.ExamPaperCode,
                             StartTime = b.StartTime,
                             IsResultPublished = isPublished,
-                            Pass = isPublished ? (b.TotalQuestions > 0
-                                ? (b.CorrectAnswers ?? 0) * 10.0 / b.TotalQuestions!.Value >= 5
-                                : (b.TotalScore ?? 0) >= 5) : false,
+                            Pass = isPublished && (b.CorrectAnswers ?? 0) >= (b.ExamPaper?.MinPassQuestions ?? 0),
                         };
                     })
                     .ToList();
@@ -189,7 +188,70 @@ namespace BanTayVang.API.Services.Impl
 
         #region Security Operations (Enhanced with OWASP compliance)
 
-        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string description)
+        public async Task<BaseResponseDto<List<DTOs.AntiCheat.ActiveStudentMonitorDto>>> GetActiveMonitorListAsync(int examCampaignId, int? myDeptId, bool isDeptManager = false)
+        {
+            try
+            {
+                // BUG FIX: `myDeptId` is null both for Admin (unrestricted, correct) AND for a
+                // DeptManager whose managed_department_id claim is empty (created via the
+                // single-user API path, which - unlike bulk import - doesn't require a department).
+                // The old `if (myDeptId.HasValue)` skipped this whole check for the latter case too,
+                // letting such an account see every department's live exam-monitoring data
+                // (student names, employee codes, cheating-warning counts). The caller
+                // (ExamController.GetActiveMonitorList) already resolves myDeptId via
+                // DepartmentAuthHelper.GetDeptManagerDepartmentId, which itself returns null for
+                // Admin - so we can't tell the two cases apart here. Callers must pass an
+                // unambiguous flag instead of relying on null-means-admin.
+                if (isDeptManager)
+                {
+                    if (myDeptId == null)
+                        return new BaseResponseDto<List<DTOs.AntiCheat.ActiveStudentMonitorDto>> { Success = false, Message = "Tài khoản quản lý khoa chưa được gán Khoa/Phòng để quản lý." };
+
+                    var campaignExists = await _context.ExamCampaigns.AnyAsync(k => k.Id == examCampaignId);
+                    if (!campaignExists)
+                        return new BaseResponseDto<List<DTOs.AntiCheat.ActiveStudentMonitorDto>> { Success = false, Message = "Không tìm thấy kỳ thi" };
+
+                    // A campaign can now be scoped to 1-n departments (ExamCampaignDepartments)
+                    // instead of one - check membership there instead of the old DepartmentId column.
+                    var isLinkedToMyDept = await _context.Set<ExamCampaignDepartment>()
+                        .AnyAsync(kd => kd.ExamCampaignId == examCampaignId && kd.DepartmentId == myDeptId.Value);
+                    if (!isLinkedToMyDept)
+                        return new BaseResponseDto<List<DTOs.AntiCheat.ActiveStudentMonitorDto>> { Success = false, Message = "Kỳ thi này không thuộc khoa bạn quản lý" };
+                }
+
+                var sessions = await _examSubmissionRepository.GetActiveSessionsByCampaignAsync(examCampaignId);
+                
+                var dtos = sessions.Select(s => new DTOs.AntiCheat.ActiveStudentMonitorDto
+                {
+                    ExamSubmissionId = s.Id,
+                    UserId = s.UserId ?? 0,
+                    FullName = s.User?.FullName ?? "Unknown",
+                    UserCode = s.User?.EmployeeCode,
+                    ExamPaperCode = s.ExamPaper?.ExamPaperCode,
+                    WarningCount = s.WarningCount ?? 0,
+                    StartTime = s.StartTime,
+                    Status = s.Status
+                }).ToList();
+
+                return new BaseResponseDto<List<DTOs.AntiCheat.ActiveStudentMonitorDto>>
+                {
+                    Success = true,
+                    Data = dtos
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting active monitor list for campaign {CampaignId}", examCampaignId);
+                return new BaseResponseDto<List<DTOs.AntiCheat.ActiveStudentMonitorDto>> { Success = false, Message = "Lỗi khi lấy danh sách giám sát" };
+            }
+        }
+
+        public async Task<BaseResponseDto> ForceSubmitAsync(int examSubmissionId, int? supervisorId, int? supervisorDeptId, string? supervisorDeptName = null, bool isDeptManager = false)
+        {
+            return await _submissionService.ForceSubmitAsync(examSubmissionId, supervisorId, supervisorDeptId, supervisorDeptName, isDeptManager);
+        }
+
+        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, int userId, string warningType, string description)
         {
             try
             {
@@ -199,6 +261,10 @@ namespace BanTayVang.API.Services.Impl
                 var examSubmission = await _examSubmissionRepository.GetByIdAsync(examSubmissionId);
                 if (examSubmission != null)
                 {
+                    if (examSubmission.UserId != userId)
+                    {
+                        return new BaseResponseDto { Success = false, Message = "Người dùng không hợp lệ" };
+                    }
                     if (examSubmission.Status == "Completed")
                     {
                         return new BaseResponseDto
@@ -208,15 +274,34 @@ namespace BanTayVang.API.Services.Impl
                         };
                     }
 
+                    // [FIX] Race condition: đọc WarningCount, +1 rồi UpdateAsync (read-modify-write) có thể
+                    // mất dữ liệu nếu thí sinh đổi tab liên tục -> nhiều request chạm cùng lúc, request sau
+                    // ghi đè request trước dựa trên giá trị cũ. Chuyển sang ExecuteUpdateAsync để DB tự cộng
+                    // dồn nguyên tử (tương đương UPDATE ... SET WarningCount = WarningCount + 1), không cần
+                    // đọc giá trị cũ vào bộ nhớ trước.
                     if (warningType == "FULLSCREEN_EXIT")
                     {
-                        examSubmission.TongSoCanhBao = Math.Max(examSubmission.TongSoCanhBao ?? 0, 6);
+                        await _context.ExamSubmissions
+                            .Where(e => e.Id == examSubmissionId)
+                            .ExecuteUpdateAsync(s => s.SetProperty(
+                                e => e.WarningCount,
+                                e => (e.WarningCount ?? 0) < 6 ? 6 : e.WarningCount));
                     }
                     else
                     {
-                        examSubmission.TongSoCanhBao = (examSubmission.TongSoCanhBao ?? 0) + 1;
+                        await _context.ExamSubmissions
+                            .Where(e => e.Id == examSubmissionId)
+                            .ExecuteUpdateAsync(s => s.SetProperty(
+                                e => e.WarningCount,
+                                e => (e.WarningCount ?? 0) + 1));
                     }
-                    await _examSubmissionRepository.UpdateAsync(examSubmission);
+
+                    // Đọc lại giá trị thật vừa ghi (không dùng examSubmission.WarningCount trong bộ nhớ nữa
+                    // vì có thể đã lỗi thời so với DB do request khác chạy song song).
+                    examSubmission.WarningCount = await _context.ExamSubmissions
+                        .Where(e => e.Id == examSubmissionId)
+                        .Select(e => e.WarningCount)
+                        .FirstOrDefaultAsync();
                 }
 
                 // OWASP A09: Security Logging - Enhanced security event logging
@@ -225,7 +310,7 @@ namespace BanTayVang.API.Services.Impl
                     ExamSubmissionId = examSubmissionId,
                     WarningType = warningType,
                     Description = SanitizeInput(description), // OWASP A03: Injection prevention
-                    ActionTime = DateTime.Now
+                    ActionTime = DateTime.UtcNow.AddHours(7)
                 };
 
                 await _cheatWarningRepository.AddAsync(warning);
@@ -236,6 +321,44 @@ namespace BanTayVang.API.Services.Impl
                     description,
                     null, // Will be extracted from session
                     DetermineSeverityLevel(warningType));
+
+                if (examSubmission != null && examSubmission.ExamCampaignId.HasValue)
+                {
+                    var user = examSubmission.User ?? await _context.Users.FindAsync(examSubmission.UserId);
+                    await _examMonitorNotifier.NotifyCheatingWarning(
+                        examSubmission.ExamCampaignId.Value,
+                        examSubmissionId,
+                        user?.FullName ?? "Unknown",
+                        warningType,
+                        description,
+                        examSubmission.WarningCount ?? 0);
+                }
+
+                // [FIX v2] Trước đây việc "ép nộp bài" hoàn toàn phó mặc cho Frontend gọi onForceSubmit.
+                // Thí sinh có thể chặn/sửa JS để hàm đó không bao giờ chạy -> backend vẫn ghi nhận đủ
+                // số lần vi phạm nhưng bài thi vẫn ở trạng thái InProgress vô thời hạn. Chốt quyền
+                // sinh sát ở Server: khi đạt ngưỡng, tự gọi ForceSubmitAsync NGAY SAU KHI đã ghi nhận
+                // và thông báo cảnh báo thứ N (không return sớm, để CheatWarning + NotifyCheatingWarning
+                // của chính lần vi phạm gây khóa vẫn được lưu/hiển thị trên activity feed của giám thị).
+                // BUG FIX: FE only terminates/calls onForceSubmit when warningCount > MAX_CHEATING_WARNINGS
+                // (i.e. on the 7th violation - see isTerminated in use-anti-cheat.ts), but this used
+                // `>= maxCheatingWarnings` which force-submitted on the 6th violation already - one
+                // violation earlier than the student's own UI believes the exam ends. That silently
+                // locked the submission server-side (Status becomes "Completed") while the student's
+                // screen still showed the exam as in-progress, so their next answer/warning calls would
+                // start failing with "Bài thi đã kết thúc" for no reason they could see on screen.
+                const int maxCheatingWarnings = 6; // đồng bộ với MAX_CHEATING_WARNINGS bên FE (lib/constants.ts)
+                if (examSubmission != null &&
+                    (warningType == "FULLSCREEN_EXIT" || (examSubmission.WarningCount ?? 0) > maxCheatingWarnings))
+                {
+                    await _submissionService.ForceSubmitAsync(examSubmissionId, null, null);
+
+                    return new BaseResponseDto
+                    {
+                        Success = true,
+                        Message = "Đã ghi nhận cảnh báo. Bài thi đã bị hệ thống tự động khóa do vượt ngưỡng vi phạm."
+                    };
+                }
 
                 return new BaseResponseDto
                 {
@@ -329,6 +452,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var examPaper = await _context.ExamPapers
+                    .AsNoTracking()
                     .Include(d => d.ExamCampaign)
                     .Include(d => d.ExamPaperQuestions)
                         .ThenInclude(dc => dc.Question)
@@ -357,6 +481,7 @@ namespace BanTayVang.API.Services.Impl
                         {
                             Id = dc.Question?.Id ?? 0,
                             Content = dc.Question?.Content,
+                            ImageUrl = dc.Question?.ImageUrl,
                             ChuDe = null,
                             // Shuffle thứ tự đáp án
                             QuestionOptions = dc.Question?.QuestionOptions
@@ -374,6 +499,7 @@ namespace BanTayVang.API.Services.Impl
                 if (!preview.Questions.Any() && !string.IsNullOrEmpty(examPaper.Department))
                 {
                     var allPoolQuestions = await _context.Questions
+                        .AsNoTracking()
                         .Include(c => c.QuestionOptions)
                         .Where(c => c.Department == examPaper.Department && c.IsDeleted != true)
                         .ToListAsync();
@@ -390,6 +516,7 @@ namespace BanTayVang.API.Services.Impl
                     {
                         Id = c.Id,
                         Content = c.Content,
+                        ImageUrl = c.ImageUrl,
                         ChuDe = null,
                         QuestionOptions = c.QuestionOptions.OrderBy(_ => rng.Next()).Select(lc => new ChoicePreviewDto
                         {
@@ -411,3 +538,4 @@ namespace BanTayVang.API.Services.Impl
 
     }
 }
+

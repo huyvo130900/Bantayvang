@@ -16,25 +16,25 @@ public partial class AuditLog
     public int? ExamSubmissionId { get; set; }
 
     /// <summary>HTTP Method: GET, POST, PUT, DELETE, PATCH</summary>
-    public string? PhuongThuc { get; set; }
+    public string? HttpMethod { get; set; }
 
     /// <summary>API Path: /api/Question/123</summary>
-    public string? DuongDan { get; set; }
+    public string? ApiPath { get; set; }
 
     /// <summary>Loại thao tác: POST_CAUHOI, DELETE_USER, etc.</summary>
-    public string? LoaiThaoTac { get; set; }
+    public string? ActionType { get; set; }
 
     /// <summary>Chi tiết thao tác (ghi chú)</summary>
     public string? Detail { get; set; }
 
     public DateTime? ActionTime { get; set; }
 
-    public string? DiaChiIp { get; set; }
+    public string? IpAddress { get; set; }
 
     public string? UserAgent { get; set; }
 
     /// <summary>HTTP status code: 200, 400, 500...</summary>
-    public int? MaHttp { get; set; }
+    public int? HttpStatusCode { get; set; }
 
     /// <summary>Khoa/Phòng của người thực hiện</summary>
     public string? Department { get; set; }

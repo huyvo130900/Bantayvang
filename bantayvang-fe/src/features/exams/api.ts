@@ -19,6 +19,9 @@ export const examsApi = {
 
   create: (data: CreateExamPaperDto) =>
     apiClient.post<ApiResponse<ExamPaperDto>>('/exam', data),
+    
+  update: (id: number, data: CreateExamPaperDto) =>
+    apiClient.put<ApiResponse<ExamPaperDto>>(`/exam/${id}`, { ...data, id }),
 
   // Assignments
   getAssignmentsByExam: (examId: number) =>

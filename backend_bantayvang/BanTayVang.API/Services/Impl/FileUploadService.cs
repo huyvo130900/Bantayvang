@@ -115,10 +115,47 @@ namespace BanTayVang.API.Services.Impl
             {
                 if (string.IsNullOrEmpty(fileUrl)) return false;
 
-                // Extract relative path from URL
-                var uri = new Uri(fileUrl);
-                var relativePath = uri.AbsolutePath.TrimStart('/');
-                var filePath = Path.Combine(_env.ContentRootPath, "wwwroot", relativePath);
+                // BUG FIX (arbitrary file deletion): this used to build the target path as
+                // Path.Combine(ContentRootPath, "wwwroot", new Uri(fileUrl).AbsolutePath.TrimStart('/'))
+                // with no further checks. Any ManagementOnly caller (Admin OR DeptManager) could pass
+                // fileUrl="file:///C:/anything/anywhere.ext" - Uri.AbsolutePath then returns
+                // "/C:/anything/anywhere.ext", and Path.Combine's documented behavior is to DISCARD
+                // every earlier segment once it sees one that looks rooted (a drive letter), so the
+                // "safe" base path was silently dropped entirely and File.Delete ran on the raw
+                // attacker-supplied absolute path - confirmed live: this deleted an arbitrary test
+                // file placed completely outside wwwroot. Every real upload URL this app ever hands
+                // out looks like "{scheme}://{host}/uploads/{subFolder}/{guid}.{ext}" (see
+                // UploadImageAsync above), so only ever resolve within wwwroot/uploads, and verify
+                // the final resolved path is still inside that directory before deleting anything.
+                var uploadsRoot = Path.GetFullPath(Path.Combine(_env.ContentRootPath, "wwwroot", "uploads"));
+
+                string relativePath;
+                if (Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                {
+                    relativePath = uri.AbsolutePath.TrimStart('/');
+                }
+                else
+                {
+                    // Not an http(s) URL (e.g. a bare "/uploads/questions/x.png" path) - treat the
+                    // whole string as a relative path candidate; still fully validated below.
+                    relativePath = fileUrl.TrimStart('/');
+                }
+
+                if (!relativePath.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase))
+                    return false;
+                relativePath = relativePath.Substring("uploads/".Length);
+
+                if (Path.IsPathRooted(relativePath) || relativePath.Contains(".."))
+                    return false;
+
+                var filePath = Path.GetFullPath(Path.Combine(uploadsRoot, relativePath));
+
+                // Defense in depth: the resolved path must still be inside uploadsRoot.
+                if (!filePath.StartsWith(uploadsRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("Blocked attempt to delete a file outside the uploads directory: {FileUrl}", fileUrl);
+                    return false;
+                }
 
                 if (File.Exists(filePath))
                 {
@@ -145,12 +182,13 @@ namespace BanTayVang.API.Services.Impl
             if (!FileSignatures.ContainsKey(extension))
                 return false;
 
-            using var reader = new BinaryReader(file.OpenReadStream());
+            using var stream = file.OpenReadStream();
+            using var reader = new BinaryReader(stream, System.Text.Encoding.UTF8, leaveOpen: true);
             var signatures = FileSignatures[extension];
             var headerBytes = reader.ReadBytes(signatures.Max(s => s.Length));
 
             // Reset stream position
-            file.OpenReadStream().Position = 0;
+            stream.Position = 0;
 
             return signatures.Any(signature =>
                 headerBytes.Take(signature.Length).SequenceEqual(signature));

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { statisticsApi, type DashboardDto, type TopPerformerDto } from '@/features/statistics/api'
-import { kyThiApi } from '@/features/ky-thi/api'
+import { examCampaignApi } from '@/features/ky-thi/api'
 import { examTakingApi } from '@/features/exam-taking/api'
 import type { ExamCampaignDto } from '@/features/ky-thi/types'
 import type { ExamSubmissionDto } from '@/features/exam-taking/types'
@@ -57,8 +57,7 @@ function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const load = async () => {
-      setIsLoading(true)
+    async function load() {
       try {
         const [dashRes, topRes] = await Promise.all([
           statisticsApi.getDashboard(),
@@ -185,7 +184,7 @@ function AdminDashboard() {
 // --- Student Dashboard ---
 function StudentDashboard() {
   const navigate = useNavigate()
-  const [examCampaigns, setKyThis] = useState<ExamCampaignDto[]>([])
+  const [examCampaigns, setExamCampaigns] = useState<ExamCampaignDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [myResults, setMyResults] = useState<Map<string, ExamSubmissionDto>>(new Map())
   const { user } = useAppSelector((state) => state.auth)
@@ -194,16 +193,11 @@ function StudentDashboard() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  useEffect(() => {
-    load()
-  }, [])
-
-  const load = async () => {
-    setIsLoading(true)
+  async function load() {
     try {
-      const res = await kyThiApi.getAll()
+      const res = await examCampaignApi.getAll()
       const list = res.data.success && res.data.data ? res.data.data : []
-      setKyThis(list)
+      setExamCampaigns(list)
 
       const myRes = await examTakingApi.getMyResults()
       if (myRes.data.success && myRes.data.data) {
@@ -220,33 +214,38 @@ function StudentDashboard() {
     }
   }
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load()
+  }, [])
+
   const now = new Date()
 
-  const hasTakenKyThi = (ky: ExamCampaignDto) => {
+  const hasTakenExamCampaign = (examCampaign: ExamCampaignDto) => {
     const resultsArray = Array.from(myResults.values())
-    const hasByKyThiId = resultsArray.some((r) => r.examCampaignId === ky.id)
+    const hasByKyThiId = resultsArray.some((r) => r.examCampaignId === examCampaign.id)
     if (hasByKyThiId) return true
 
-    if (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0) {
-      return ky.danhSachMaDeThi.some((code) => myResults.has(code))
+    if (examCampaign.examPaperCodes && examCampaign.examPaperCodes.length > 0) {
+      return examCampaign.examPaperCodes.some((code) => myResults.has(code))
     }
 
-    return ky.examPaperCode ? myResults.has(ky.examPaperCode) : false
+    return examCampaign.examPaperCode ? myResults.has(examCampaign.examPaperCode) : false
   }
 
-  const getKyThiResult = (ky: ExamCampaignDto) => {
+  const getExamCampaignResult = (examCampaign: ExamCampaignDto) => {
     const resultsArray = Array.from(myResults.values())
-    const byKyThiId = resultsArray.find((r) => r.examCampaignId === ky.id)
+    const byKyThiId = resultsArray.find((r) => r.examCampaignId === examCampaign.id)
     if (byKyThiId) return byKyThiId
 
-    if (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0) {
-      for (const code of ky.danhSachMaDeThi) {
+    if (examCampaign.examPaperCodes && examCampaign.examPaperCodes.length > 0) {
+      for (const code of examCampaign.examPaperCodes) {
         const res = myResults.get(code)
         if (res) return res
       }
     }
 
-    return ky.examPaperCode ? myResults.get(ky.examPaperCode) : undefined
+    return examCampaign.examPaperCode ? myResults.get(examCampaign.examPaperCode) : undefined
   }
 
   const clearFilters = () => {
@@ -255,25 +254,30 @@ function StudentDashboard() {
     setEndDate('')
   }
 
-  const filteredKyThis = examCampaigns.filter((ky) => {
+  const filteredExamCampaigns = examCampaigns.filter((examCampaign) => {
+    // Kỳ thi luyện tập tồn tại vĩnh viễn, không có thời hạn thật và không tính đạt/không đạt -
+    // không thuộc về các mục "đã xong"/"bỏ lỡ" của trang này (đã có mục Luyện tập riêng ở
+    // /exam-waiting, trang mặc định sau đăng nhập).
+    if (examCampaign.isPracticeMode) return false
+
     if (searchQuery.trim()) {
       const term = searchQuery.toLowerCase().trim()
-      const matchesName = ky.campaignName?.toLowerCase().includes(term)
-      const matchesCode = ky.campaignCode?.toLowerCase().includes(term)
+      const matchesName = examCampaign.campaignName?.toLowerCase().includes(term)
+      const matchesCode = examCampaign.campaignCode?.toLowerCase().includes(term)
       if (!matchesName && !matchesCode) return false
     }
 
     if (startDate) {
       const start = new Date(startDate)
       start.setHours(0, 0, 0, 0)
-      const examDate = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : (ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : null)
+      const examDate = examCampaign.endTime ? new Date(examCampaign.endTime) : (examCampaign.startTime ? new Date(examCampaign.startTime) : null)
       if (examDate && examDate < start) return false
     }
 
     if (endDate) {
       const end = new Date(endDate)
       end.setHours(23, 59, 59, 999)
-      const examDate = ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : (ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null)
+      const examDate = examCampaign.startTime ? new Date(examCampaign.startTime) : (examCampaign.endTime ? new Date(examCampaign.endTime) : null)
       if (examDate && examDate > end) return false
     }
 
@@ -281,37 +285,37 @@ function StudentDashboard() {
   })
 
   // Kỳ thi có thể thi: loại bỏ bài đã hết giờ. Cho phép hiển thị cả bài đã thi nếu còn hạn để thi lại.
-  const available = filteredKyThis.filter((ky) => {
-    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
+  const available = filteredExamCampaigns.filter((examCampaign) => {
+    const hasExams = examCampaign.examPaperCode || (examCampaign.totalExamPapers && examCampaign.totalExamPapers > 0) || (examCampaign.examPaperCodes && examCampaign.examPaperCodes.length > 0)
     if (!hasExams) return false
-    const start = ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : null
-    const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
+    const start = examCampaign.startTime ? new Date(examCampaign.startTime) : null
+    const end = examCampaign.endTime ? new Date(examCampaign.endTime) : null
     if (start && start > now) return false
     if (end && end < now) return false
     return true
   })
 
-  const upcoming = filteredKyThis.filter((ky) => {
-    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
+  const upcoming = filteredExamCampaigns.filter((examCampaign) => {
+    const hasExams = examCampaign.examPaperCode || (examCampaign.totalExamPapers && examCampaign.totalExamPapers > 0) || (examCampaign.examPaperCodes && examCampaign.examPaperCodes.length > 0)
     if (!hasExams) return false
-    if (hasTakenKyThi(ky)) return false
-    const start = ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : null
-    const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
+    if (hasTakenExamCampaign(examCampaign)) return false
+    const start = examCampaign.startTime ? new Date(examCampaign.startTime) : null
+    const end = examCampaign.endTime ? new Date(examCampaign.endTime) : null
     if (end && end < now) return false
     return start != null && start > now
   })
 
   // Bài đã thi xong (có điểm từ server)
-  const doneWithResults = filteredKyThis.filter(
-    (ky) => hasTakenKyThi(ky)
+  const doneWithResults = filteredExamCampaigns.filter(
+    (examCampaign) => hasTakenExamCampaign(examCampaign)
   )
 
   // Kỳ thi đã hết giờ mà chưa thi → coi như Không đạt, điểm 0
-  const missedExams = filteredKyThis.filter((ky) => {
-    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
+  const missedExams = filteredExamCampaigns.filter((examCampaign) => {
+    const hasExams = examCampaign.examPaperCode || (examCampaign.totalExamPapers && examCampaign.totalExamPapers > 0) || (examCampaign.examPaperCodes && examCampaign.examPaperCodes.length > 0)
     if (!hasExams) return false
-    if (hasTakenKyThi(ky)) return false // đã thi rồi
-    const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
+    if (hasTakenExamCampaign(examCampaign)) return false // đã thi rồi
+    const end = examCampaign.endTime ? new Date(examCampaign.endTime) : null
     return end != null && end < now
   })
 
@@ -322,23 +326,23 @@ function StudentDashboard() {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-primary/10 to-purple-50 rounded-xl p-6 border border-primary/20">
         <h2 className="text-xl font-bold text-gray-800 mb-1">
-          Xin chào, {user?.fullName || user?.fullName || user?.username || user?.username}! 👋
+          Hello, {user?.fullName || user?.fullName || user?.username || user?.username}! 👋
         </h2>
-        <p className="text-gray-600 text-sm">Chúc bạn thi tốt hôm nay.</p>
+        <p className="text-gray-600 text-sm">Good luck with your exams today.</p>
       </div>
 
       {/* Search and Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex flex-col md:flex-row md:items-end gap-4">
         <div className="flex-1 space-y-1.5">
           <label htmlFor="searchQuery" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Tìm kiếm kỳ thi
+            Search exam
           </label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               id="searchQuery"
               type="text"
-              placeholder="Nhập tên hoặc mã kỳ thi..."
+              placeholder="Enter name or exam code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
@@ -348,7 +352,7 @@ function StudentDashboard() {
 
         <div className="w-full md:w-44 space-y-1.5">
           <label htmlFor="startDate" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Từ ngày
+            From
           </label>
           <input
             id="startDate"
@@ -361,7 +365,7 @@ function StudentDashboard() {
 
         <div className="w-full md:w-44 space-y-1.5">
           <label htmlFor="endDate" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Đến ngày
+            To
           </label>
           <input
             id="endDate"
@@ -376,19 +380,19 @@ function StudentDashboard() {
           <button
             onClick={clearFilters}
             className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors shrink-0 h-[38px] cursor-pointer w-full md:w-auto"
-            title="Đặt lại bộ lọc"
+            title="Reset filters"
           >
             <RotateCcw className="h-4 w-4" />
-            Đặt lại
+            Reset
           </button>
         )}
       </div>
 
       {/* Quick stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={Clock} label="Sắp diễn ra" value={upcoming.length} bgColor="bg-blue-50" color="text-blue-600" />
-        <StatCard icon={Play} label="Có thể làm" value={available.length} bgColor="bg-green-50" color="text-green-600" />
-        <StatCard icon={CheckCircle} label="Đã hoàn thành" value={totalDone} bgColor="bg-purple-50" color="text-purple-600" />
+        <StatCard icon={Clock} label="Upcoming" value={upcoming.length} bgColor="bg-blue-50" color="text-blue-600" />
+        <StatCard icon={Play} label="Available" value={available.length} bgColor="bg-green-50" color="text-green-600" />
+        <StatCard icon={CheckCircle} label="Completed" value={totalDone} bgColor="bg-purple-50" color="text-purple-600" />
       </div>
 
       {/* Đề thi đang mở — chưa làm */}
@@ -396,37 +400,37 @@ function StudentDashboard() {
         <div className="bg-white rounded-lg border border-green-200 shadow-sm">
           <div className="p-4 border-b border-green-100 bg-green-50 rounded-t-lg">
             <h3 className="font-semibold text-green-800 flex items-center gap-2">
-              <Play className="h-4 w-4" /> Đề thi đang mở — Vào thi ngay!
+              <Play className="h-4 w-4" /> Exams open now — Take it now!
             </h3>
           </div>
           <div className="divide-y">
-            {available.map((ky) => (
-              <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
+            {available.map((examCampaign) => (
+              <div key={examCampaign.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-gray-800">{ky.campaignName}</p>
-                    {hasTakenKyThi(ky) && (
+                    <p className="font-medium text-gray-800">{examCampaign.campaignName}</p>
+                    {hasTakenExamCampaign(examCampaign) && (
                       <span className="inline-flex items-center text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">
-                        Đã thi (Cho phép thi lại)
+                        Taken (Retake allowed)
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{ky.campaignCode}</p>
-                  {ky.thoiGianKetThuc && (
-                    <p className="text-xs text-orange-500 mt-0.5">
-                      Đến: {formatDate(ky.thoiGianKetThuc)}
-                    </p>
+                  <p className="text-xs text-gray-500 mt-0.5">{examCampaign.campaignCode}</p>
+                  {examCampaign.endTime && (
+                    <span className="text-[10px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded border border-gray-100 flex items-center gap-1 shrink-0">
+                      End: {formatDate(examCampaign.endTime)}
+                    </span>
                   )}
                 </div>
                 <button
                   onClick={() => navigate('/exam-waiting')}
                   className={`text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors w-full sm:w-auto text-center shrink-0 ${
-                    hasTakenKyThi(ky)
+                    hasTakenExamCampaign(examCampaign)
                       ? 'bg-amber-600 hover:bg-amber-700'
                       : 'bg-green-600 hover:bg-green-700'
                   }`}
                 >
-                  {hasTakenKyThi(ky) ? 'Thi lại →' : 'Vào thi →'}
+                  {hasTakenExamCampaign(examCampaign) ? 'Thi lại →' : 'Vào thi →'}
                 </button>
               </div>
             ))}
@@ -444,23 +448,23 @@ function StudentDashboard() {
           </div>
           <div className="divide-y">
             {/* Bài đã nộp — có điểm thật */}
-            {doneWithResults.map((ky) => {
-              const r = getKyThiResult(ky)
-              const diem = r?.totalScore ?? 0
+            {doneWithResults.map((examCampaign) => {
+              const r = getExamCampaignResult(examCampaign)
+              const score = r?.totalScore ?? 0
               const isPublished = r?.isResultPublished ?? false
-              const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
+              const end = examCampaign.endTime ? new Date(examCampaign.endTime) : null
               const isExpired = end !== null && end <= now
               const isResultPublished = isExpired || isPublished
               const examSubmissionId = r?.id
               return (
-                <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
+                <div key={examCampaign.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 truncate">{ky.campaignName}</p>
-                    <p className="text-xs text-gray-500">{ky.campaignCode}</p>
+                    <p className="font-medium text-gray-800 truncate">{examCampaign.campaignName}</p>
+                    <p className="text-xs text-gray-500">{examCampaign.campaignCode}</p>
                     {isResultPublished ? (
                        <p className="text-xs text-gray-500 mt-0.5">
-                        Điểm: <b>{diem.toFixed(1)}</b>
-                        {r?.correctAnswers != null && ` · ${r.correctAnswers}/${r.tongSoCau} câu`}
+                        Điểm: <b>{score.toFixed(1)}</b>
+                        {r?.correctAnswers != null && ` · ${r.correctAnswers}/${r.totalQuestions} câu`}
                       </p>
                     ) : (
                       <p className="text-xs text-gray-400 mt-0.5 italic">Đã nộp bài — chờ công bố điểm</p>
@@ -469,8 +473,8 @@ function StudentDashboard() {
                   <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0 justify-start sm:justify-end">
                     {isResultPublished && examSubmissionId ? (
                       <>
-                        {ky.soCauDungToiThieu !== undefined && ky.soCauDungToiThieu !== null && r?.correctAnswers != null ? (
-                          r.correctAnswers >= ky.soCauDungToiThieu ? (
+                        {examCampaign.minPassQuestions !== undefined && examCampaign.minPassQuestions !== null && r?.correctAnswers != null ? (
+                          r.correctAnswers >= examCampaign.minPassQuestions ? (
                             <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
                               ✓ Đạt
                             </span>
@@ -519,11 +523,11 @@ function StudentDashboard() {
               )
             })}
             {/* Bài bị lỡ (hết giờ không vào thi) — điểm 0 */}
-            {missedExams.map((ky) => (
-              <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
+            {missedExams.map((examCampaign) => (
+              <div key={examCampaign.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                 <div>
-                  <p className="font-medium text-gray-800">{ky.campaignName}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{ky.campaignCode}</p>
+                  <p className="font-medium text-gray-800">{examCampaign.campaignName}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{examCampaign.campaignCode}</p>
                   <p className="text-xs text-gray-500 mt-0.5">Điểm: <b>0.0</b> · Không tham gia</p>
                 </div>
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500 w-full sm:w-auto text-center shrink-0 border">
@@ -544,13 +548,13 @@ function StudentDashboard() {
             </h3>
           </div>
           <div className="divide-y">
-            {upcoming.map((ky) => (
-              <div key={ky.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
+            {upcoming.map((examCampaign) => (
+              <div key={examCampaign.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
                 <div>
-                  <p className="font-medium text-gray-800">{ky.campaignName}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{ky.campaignCode}</p>
+                  <p className="font-medium text-gray-800">{examCampaign.campaignName}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{examCampaign.campaignCode}</p>
                   <p className="text-xs text-blue-600 mt-0.5">
-                    Bắt đầu: {ky.thoiGianBatDau ? formatDate(ky.thoiGianBatDau) : '—'}
+                    Bắt đầu: {examCampaign.startTime ? formatDate(examCampaign.startTime) : '—'}
                   </p>
                 </div>
                 <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium w-full sm:w-auto text-center shrink-0">Chờ thi</span>
@@ -561,7 +565,7 @@ function StudentDashboard() {
       )}
 
       {/* No search results fallback */}
-      {!isLoading && examCampaigns.length > 0 && filteredKyThis.length === 0 && (
+      {!isLoading && examCampaigns.length > 0 && filteredExamCampaigns.length === 0 && (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm text-center py-12 text-gray-400">
           <Search className="h-12 w-12 mx-auto mb-3 opacity-30 text-gray-400" />
           <p className="text-gray-500 font-medium">Không tìm thấy kỳ thi nào khớp với bộ lọc</p>
@@ -589,7 +593,11 @@ function StudentDashboard() {
 export function DashboardPage() {
   const { user } = useAppSelector((state) => state.auth)
   const role = user?.role || user?.roleName
-  const isStudent = role === ROLES.STUDENT
+  // BUG FIX: only matched ROLES.STUDENT, so a ThiSinhNgoai (external candidate) account landing
+  // here via the "Trang chủ" link in their own StudentLayout rendered <AdminDashboard/> instead -
+  // which calls AdminOnly statistics endpoints. Backend policy already blocks the actual data
+  // (confirmed: this was never an actual leak), but the page itself misidentified this role.
+  const isStudent = role === ROLES.STUDENT || role === ROLES.THI_SINH_NGOAI
 
   return (
     <div>

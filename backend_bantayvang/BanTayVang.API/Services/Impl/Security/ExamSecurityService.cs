@@ -2,6 +2,7 @@ using BanTayVang.API.DTOs.AntiCheat;
 using BanTayVang.API.DTOs.Common;
 using BanTayVang.API.Models;
 using BanTayVang.API.Repositories.Interfaces;
+using BanTayVang.API.Services.Interfaces;
 using BanTayVang.API.Services.Interfaces.Security;
 
 namespace BanTayVang.API.Services.Impl.Security
@@ -12,17 +13,20 @@ namespace BanTayVang.API.Services.Impl.Security
         private readonly IExamSubmissionRepository _examSubmissionRepository;
         private readonly ILogger<ExamSecurityService> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IAuditLogService _auditLogService;
 
         public ExamSecurityService(
-            ICheatWarningRepository canhbaoRepository,
+            ICheatWarningRepository cheatWarningRepository,
             IExamSubmissionRepository baithiRepository,
             ILogger<ExamSecurityService> logger,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IAuditLogService auditLogService)
         {
-            _cheatWarningRepository = canhbaoRepository;
+            _cheatWarningRepository = cheatWarningRepository;
             _examSubmissionRepository = baithiRepository;
             _logger = logger;
             _configuration = configuration;
+            _auditLogService = auditLogService;
         }
 
         public async Task<BaseResponseDto> LogSecurityEventAsync(string eventType, string description, int? userId = null, string severity = "Info", CancellationToken cancellationToken = default)
@@ -51,10 +55,20 @@ namespace BanTayVang.API.Services.Impl.Security
                             eventType, description, userId, severity, logData.CorrelationId);
                         break;
                     default:
-                        _logger.LogInformation("SECURITY_EVENT: {EventType} - {Description} - User: {UserId} - Severity: {Severity} - CorrelationId: {CorrelationId}", 
+                        _logger.LogInformation("SECURITY_EVENT: {EventType} - {Description} - User: {UserId} - Severity: {Severity} - CorrelationId: {CorrelationId}",
                             eventType, description, userId, severity, logData.CorrelationId);
                         break;
                 }
+
+                // BUG FIX: this only ever wrote to ILogger (console/log files), never to the
+                // AuditLogs table - so none of these security events (suspicious activity,
+                // cheating warnings, etc.) ever showed up in the admin-facing Audit Log screen,
+                // making it silently incomplete. Persist alongside the existing log call so it's
+                // actually queryable through AuditLogController.
+                await _auditLogService.LogActionAsync(
+                    actionType: $"SECURITY_{eventType}",
+                    description: $"[{severity}] {description}",
+                    userId: userId);
 
                 return BaseResponseDto.SuccessResult("Security event logged successfully");
             }
@@ -65,7 +79,7 @@ namespace BanTayVang.API.Services.Impl.Security
             }
         }
 
-        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, string warningType, string description, CancellationToken cancellationToken = default)
+        public async Task<BaseResponseDto> LogSuspiciousActivityAsync(int examSubmissionId, int userId, string warningType, string description, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -74,13 +88,17 @@ namespace BanTayVang.API.Services.Impl.Security
                 var examSubmission = await _examSubmissionRepository.GetByIdAsync(examSubmissionId);
                 if (examSubmission != null)
                 {
+                    if (examSubmission.UserId != userId)
+                    {
+                        return new BaseResponseDto { Success = false, Message = "Người dùng không hợp lệ" };
+                    }
                     if (warningType == "FULLSCREEN_EXIT")
                     {
-                        examSubmission.TongSoCanhBao = Math.Max(examSubmission.TongSoCanhBao ?? 0, 6);
+                        examSubmission.WarningCount = Math.Max(examSubmission.WarningCount ?? 0, 6);
                     }
                     else
                     {
-                        examSubmission.TongSoCanhBao = (examSubmission.TongSoCanhBao ?? 0) + 1;
+                        examSubmission.WarningCount = (examSubmission.WarningCount ?? 0) + 1;
                     }
                     await _examSubmissionRepository.UpdateAsync(examSubmission);
                 }
@@ -90,7 +108,7 @@ namespace BanTayVang.API.Services.Impl.Security
                     ExamSubmissionId = examSubmissionId,
                     WarningType = warningType,
                     Description = description,
-                    ActionTime = DateTime.Now,
+                    ActionTime = DateTime.UtcNow.AddHours(7),
                     SoLanViPham = 1,
                     MucDoNghiemTrong = "Medium",
                     CorrelationId = correlationId
@@ -114,7 +132,7 @@ namespace BanTayVang.API.Services.Impl.Security
         {
             try
             {
-                var count = await _cheatWarningRepository.GetCountByBaithiIdAsync(examSubmissionId);
+                var count = await _cheatWarningRepository.GetCountByExamSubmissionIdAsync(examSubmissionId);
                 return BaseResponseDto<int>.SuccessResult(count, "Warning count retrieved successfully");
             }
             catch (Exception ex)
@@ -146,7 +164,7 @@ namespace BanTayVang.API.Services.Impl.Security
         {
             try
             {
-                var warningCount = await _cheatWarningRepository.GetCountByBaithiIdAsync(examSubmissionId);
+                var warningCount = await _cheatWarningRepository.GetCountByExamSubmissionIdAsync(examSubmissionId);
                 var shouldTerminate = warningCount >= 5; // Terminate after 5 warnings
                 
                 return BaseResponseDto<bool>.SuccessResult(shouldTerminate, "Termination check completed");
@@ -162,7 +180,7 @@ namespace BanTayVang.API.Services.Impl.Security
         {
             try
             {
-                var warnings = await _cheatWarningRepository.GetByBaithiIdAsync(examSubmissionId);
+                var warnings = await _cheatWarningRepository.GetByExamSubmissionIdAsync(examSubmissionId);
                 
                 var summary = new ExamSecuritySummaryDto
                 {
@@ -183,3 +201,4 @@ namespace BanTayVang.API.Services.Impl.Security
         }
     }
 }
+

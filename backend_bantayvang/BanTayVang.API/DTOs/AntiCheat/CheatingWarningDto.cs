@@ -11,6 +11,6 @@ namespace BanTayVang.API.DTOs.AntiCheat
         public string WarningType { get; set; } = string.Empty; // "TAB_SWITCH", "COPY_PASTE", "RIGHT_CLICK", "FULLSCREEN_EXIT"
         
         public string? Description { get; set; }
-        public DateTime ActionTime { get; set; } = DateTime.Now;
+        public DateTime ActionTime { get; set; } = DateTime.UtcNow.AddHours(7);
     }
 }

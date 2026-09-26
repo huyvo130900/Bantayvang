@@ -1,4 +1,4 @@
-using BanTayVang.API.Models;
+﻿using BanTayVang.API.Models;
 using BanTayVang.API.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,13 +29,13 @@ namespace BanTayVang.API.Repositories.Impl
             return await CountWarningsByBaiThiAsync(examSubmissionId);
         }
 
-        public async Task<int> GetCountByBaithiIdAsync(int examSubmissionId)
+        public async Task<int> GetCountByExamSubmissionIdAsync(int examSubmissionId)
         {
             return await _dbSet
                 .CountAsync(c => c.ExamSubmissionId == examSubmissionId);
         }
 
-        public async Task<List<CheatWarning>> GetByBaithiIdAsync(int examSubmissionId)
+        public async Task<List<CheatWarning>> GetByExamSubmissionIdAsync(int examSubmissionId)
         {
             return await _dbSet
                 .Where(c => c.ExamSubmissionId == examSubmissionId)

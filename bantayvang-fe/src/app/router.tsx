@@ -4,6 +4,8 @@ import { AdminLayout } from '@/components/layout/admin-layout'
 import { StudentLayout } from '@/components/layout/student-layout'
 import { DeptManagerLayout } from '@/components/layout/dept-manager-layout'
 import { LoginPage } from '@/features/auth/pages/login-page'
+import { ForgotPasswordPage } from '@/features/auth/pages/forgot-password-page'
+import { ChangePasswordPage } from '@/features/auth/pages/change-password-page'
 import { UsersPage } from '@/features/users/pages/users-page'
 import { QuestionsPage } from '@/features/questions/pages/questions-page'
 import { QuestionTypesPage } from '@/features/questions/pages/question-types-page'
@@ -12,6 +14,7 @@ import { ExamTakingPage } from '@/features/exam-taking/pages/exam-taking-page'
 import { ExamResultPage } from '@/features/exam-taking/pages/exam-result-page'
 import { GradingPage } from '@/features/grading/pages/grading-page'
 import { KyThiPage } from '@/features/ky-thi/pages/ky-thi-page'
+import { ExamMonitorPage } from '@/features/ky-thi/pages/monitor/exam-monitor-page'
 import { NotificationsPage } from '@/features/notifications/pages/notifications-page'
 import { StatisticsPage } from '@/features/statistics/pages/statistics-page'
 import { AuditLogPage } from '@/features/audit-log/pages/audit-log-page'
@@ -26,6 +29,7 @@ import { AdminRegistrationPage } from '@/features/registration/pages/admin-regis
 import { ADMIN_ROLES, ROLES } from '@/lib/constants'
 import { useAuthListener } from '@/hooks/use-auth-listener'
 import { useRealtimeNotifications } from '@/hooks/use-realtime-notifications'
+import { BulkEssayGradingPage } from '@/features/grading/pages/bulk-essay-grading-page'
 
 function AppRoutes() {
   useAuthListener()
@@ -36,6 +40,7 @@ function AppRoutes() {
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/dang-ky" element={<PublicRegistrationPage />} />
+      <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
       {/* ========== ADMIN routes ========== */}
@@ -55,7 +60,9 @@ function AppRoutes() {
         <Route path="question-types" element={<QuestionTypesPage />} />
         <Route path="exams" element={<ExamsPage />} />
         <Route path="ky-thi" element={<KyThiPage />} />
+        <Route path="ky-thi/:id/monitor" element={<ExamMonitorPage />} />
         <Route path="grading" element={<GradingPage />} />
+        <Route path="grading/bulk" element={<BulkEssayGradingPage />} />
         <Route path="results" element={<ResultsByKyThiPage />} />
         <Route path="statistics" element={<StatisticsPage />} />
         <Route path="dang-ky-thi" element={<AdminRegistrationPage />} />
@@ -76,9 +83,11 @@ function AppRoutes() {
         <Route path="dashboard" element={<DeptManagerDashboard />} />
         <Route path="questions" element={<QuestionsPage />} />
         <Route path="ky-thi" element={<KyThiPage />} />
+        <Route path="ky-thi/:id/monitor" element={<ExamMonitorPage />} />
         <Route path="results" element={<ResultsByKyThiPage />} />
         <Route path="dang-ky-thi" element={<AdminRegistrationPage />} />
         <Route path="grading" element={<GradingPage />} />
+        <Route path="grading/bulk" element={<BulkEssayGradingPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>
 
@@ -86,7 +95,7 @@ function AppRoutes() {
       <Route
         path="/"
         element={
-          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT, ROLES.THI_SINH_NGOAI]}>
             <StudentLayout />
           </ProtectedRoute>
         }
@@ -94,13 +103,14 @@ function AppRoutes() {
         <Route index element={<Navigate to="/exam-waiting" replace />} />
         <Route path="exam-waiting" element={<ExamWaitingPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="doi-mat-khau" element={<ChangePasswordPage />} />
       </Route>
 
       {/* Exam taking (full screen, no layout) */}
       <Route
         path="/exam/:examSubmissionId"
         element={
-          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT, ROLES.THI_SINH_NGOAI]}>
             <ExamTakingPage />
           </ProtectedRoute>
         }

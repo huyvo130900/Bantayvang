@@ -10,11 +10,16 @@ export function useRealtimeNotifications() {
 
     const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5293'
     const connection = new HubConnectionBuilder()
-      .withUrl(`${baseUrl}/hubs/notifications?userId=${user.id}`)
+      // Backend now derives the user from the authenticated JWT (Hub is [Authorize]-guarded)
+      // instead of trusting a client-supplied ?userId= query param, which used to let anyone
+      // read anyone else's private notifications by just changing the URL.
+      .withUrl(`${baseUrl}/hubs/notifications`, {
+        accessTokenFactory: () => localStorage.getItem('accessToken') ?? '',
+      })
       .withAutomaticReconnect()
       .build()
 
-    const startConnection = async () => {
+    async function startConnection() {
       try {
         if (connection.state === HubConnectionState.Disconnected) {
           await connection.start()
@@ -26,7 +31,7 @@ export function useRealtimeNotifications() {
       }
     }
 
-    connection.on('ReceiveNotification', (notification: any) => {
+    connection.on('ReceiveNotification', (notification: Record<string, string>) => {
       console.log('Received real-time notification:', notification)
       
       // 1. Show beautiful dynamic floating toast notification in DOM
@@ -34,6 +39,12 @@ export function useRealtimeNotifications() {
 
       // 2. Dispatch custom global events for pages to reactively refresh their state
       window.dispatchEvent(new CustomEvent('notification:received', { detail: notification }))
+    })
+
+    // AI cham tu luan xong 1 cau -> phat custom event de trang cham hang loat cap nhat ngay,
+    // khong can cho polling. Backend ban su kien nay qua Clients.All trong AiGradingWorker.
+    connection.on('AiGradingDone', (payload: Record<string, unknown>) => {
+      window.dispatchEvent(new CustomEvent('ai-grading:done', { detail: payload }))
     })
 
     startConnection()

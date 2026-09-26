@@ -11,21 +11,24 @@ import {
   AlertTriangle, RefreshCw, Download, Eye, EyeOff, Search, CheckCircle2, XCircle,
   ChevronDown, ChevronRight
 } from 'lucide-react'
-import { getXepLoai } from '@/lib/constants'
+import { getClassification } from '@/lib/constants'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 
-const CustomDateInput = forwardRef<HTMLInputElement, any>(({ value: _dpValue, onChange: dpOnChange, onClick, rawDateValue, onRawChange, ...props }, ref) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const CustomDateInput = forwardRef<HTMLInputElement, Record<string, unknown>>(({ value, onChange: dpOnChange, onClick, rawDateValue, onRawChange, ...props }: any, ref) => {
   const [internalValue, setInternalValue] = useState(rawDateValue || 'dd/mm/yyyy');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (rawDateValue && rawDateValue !== internalValue) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInternalValue(rawDateValue);
     }
     if (!rawDateValue) {
       setInternalValue('dd/mm/yyyy');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawDateValue]);
 
   const setHighlight = (pos: number) => {
@@ -60,7 +63,7 @@ const CustomDateInput = forwardRef<HTMLInputElement, any>(({ value: _dpValue, on
       e.preventDefault();
       if (inputRef.current) {
         let pos = inputRef.current.selectionStart || 0;
-        let end = inputRef.current.selectionEnd || 0;
+        const end = inputRef.current.selectionEnd || 0;
         
         if (end - pos > 1) {
            setInternalValue('dd/mm/yyyy');
@@ -127,7 +130,7 @@ const CustomDateInput = forwardRef<HTMLInputElement, any>(({ value: _dpValue, on
     
     if (Math.abs(val.length - internalValue.length) > 1) {
        const numbers = val.replace(/[^0-9]/g, '');
-       let newStr = 'dd/mm/yyyy'.split('');
+       const newStr = 'dd/mm/yyyy'.split('');
        let numIdx = 0;
        for (let i = 0; i < 10 && numIdx < numbers.length; i++) {
          if (i === 2 || i === 5) continue;
@@ -186,14 +189,14 @@ CustomDateInput.displayName = 'CustomDateInput';
 
 interface KyThiItem {
   id: number; campaignName: string; campaignCode: string
-  thoiGianBatDau?: string; thoiGianKetThuc?: string
-  status: string; soCaThi?: number; donViToChuc?: string
-  soCauDungToiThieu?: number | null
+  startTime?: string; endTime?: string
+  status: string; soCaThi?: number; organizedBy?: string
+  minPassQuestions?: number | null
 }
 
 // Match actual backend ExamResultDetailDto camelCase fields
 interface ThiSinhResult {
-  baiThiId: number
+  examSubmissionId: number
   userId?: number
   username?: string
   fullName?: string
@@ -203,20 +206,20 @@ interface ThiSinhResult {
   examPaperId?: number
   examPaperCode?: string
   examPaperName?: string
-  thoiGianBatDau?: string
+  startTime?: string
   submitTime?: string
   totalScore?: number
   correctAnswers?: number
-  tongSoCau?: number
+  totalQuestions?: number
   status?: string
   pass?: boolean
-  soCauDungToiThieu?: number | null
-  soCanhBao?: number
-  soLanThi?: number
-  soLanGianLan?: number
-  soLanThiLai?: number
+  minPassQuestions?: number | null
+  warningCount?: number
+  attemptCount?: number
+  cheatingCount?: number
+  retakeCount?: number
   isResultPublished?: boolean
-  danhGiaKhoa?: string
+  departmentEvaluation?: string
 }
 
 export function ResultsByKyThiPage() {
@@ -295,51 +298,16 @@ export function ResultsByKyThiPage() {
   const [visibility, setVisibility] = useState<Record<number, boolean>>({})
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
-  const [selectedBaiThiIdByUser, setSelectedBaiThiIdByUser] = useState<Record<string, number>>({})
-  const [selectedDeThiId, setSelectedDeThiId] = useState<number | null>(null)
+  const [selectedexamSubmissionIdByUser, setSelectedexamSubmissionIdByUser] = useState<Record<string, number>>({})
+  const [selectedexamPaperId, setSelectedexamPaperId] = useState<number | null>(null)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [selectedExportDeThiId, setSelectedExportDeThiId] = useState<number | null>(null)
+  const [selectedExportexamPaperId, setSelectedExportexamPaperId] = useState<number | null>(null)
 
 
-  useEffect(() => {
-    loadKyThiList()
-  }, []) // eslint-disable-line
-
-  useEffect(() => {
-    if (selectedKyThi) {
-      const dept = selectedKyThi.donViToChuc || 'Tất cả các khoa'
-      setExpandedGroups(prev => ({
-        ...prev,
-        [dept]: true
-      }))
-    }
-  }, [selectedKyThi])
-
-  const loadKyThiList = async () => {
+  async function loadResults(examCampaignId: number) {
     setLoading(true)
     try {
-      const res = await apiClient.get('/ExamCampaign')
-      let list: KyThiItem[] = res.data?.data || []
-
-      // DeptManager chỉ thấy kỳ thi của khoa mình
-      if (isDeptManager && myKhoa) {
-        list = list.filter((k) => k.donViToChuc === myKhoa)
-      }
-
-      setKyThiList(list)
-      const preselect = searchParams.get('examCampaignId')
-      if (preselect) {
-        const found = list.find((k) => k.id === parseInt(preselect))
-        if (found) { setSelectedKyThi(found); loadResults(found.id) }
-      }
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
-  }
-
-  const loadResults = async (examCampaignId: number) => {
-    setLoading(true)
-    try {
-      const res = await apiClient.get(`/Grading/by-campaign/${examCampaignId}`)
+      const res = await apiClient.get(`/Grading/by-exam-campaign/${examCampaignId}`)
       const data: ThiSinhResult[] = res.data?.data || []
       setResults(data)
       // Build visibility map: examPaperId -> isResultPublished
@@ -352,31 +320,70 @@ export function ResultsByKyThiPage() {
     finally { setLoading(false) }
   }
 
+  async function loadKyThiList() {
+    setLoading(true)
+    try {
+      const res = await apiClient.get('/ExamCampaign')
+      let list: KyThiItem[] = res.data?.data || []
+
+      // DeptManager chỉ thấy kỳ thi của khoa mình
+      if (isDeptManager && myKhoa) {
+        list = list.filter((k) => k.organizedBy === myKhoa)
+      }
+
+      setKyThiList(list)
+      const preselect = searchParams.get('examCampaignId')
+      if (preselect) {
+        const found = list.find((k) => k.id === parseInt(preselect))
+        if (found) { setSelectedKyThi(found); loadResults(found.id) }
+      }
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadKyThiList()
+  }, []) // eslint-disable-line
+
+  useEffect(() => {
+    if (selectedKyThi) {
+      const dept = selectedKyThi.organizedBy || 'Tất cả các khoa'
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExpandedGroups(prev => ({
+        ...prev,
+        [dept]: true
+      }))
+    }
+  }, [selectedKyThi])
+
+
+
   const handleSelectKyThi = (kt: KyThiItem) => {
     setSelectedKyThi(kt)
     setSearch('')
     setFilterXepLoai('')
-    setSelectedBaiThiIdByUser({})
-    setSelectedDeThiId(null)
+    setSelectedexamSubmissionIdByUser({})
+    setSelectedexamPaperId(null)
     loadResults(kt.id)
   }
 
-  const handleToggleVisibility = async (deThiId: number, current: boolean) => {
-    setTogglingId(deThiId)
+  async function handleToggleVisibility(examPaperId: number, current: boolean) {
+    setTogglingId(examPaperId)
     try {
-      await departmentApi.toggleExamVisibility(deThiId, { isResultPublished: !current })
-      setVisibility(v => ({ ...v, [deThiId]: !current }))
+      await departmentApi.toggleExamVisibility(examPaperId, { isResultPublished: !current })
+      setVisibility(v => ({ ...v, [examPaperId]: !current }))
       setMsg(!current ? 'Đã bật công bố kết quả' : 'Đã tắt công bố kết quả')
       setTimeout(() => setMsg(null), 3000)
     } catch { setMsg('Không thể cập nhật') }
     finally { setTogglingId(null) }
   }
 
-  const handleExportResults = async (deThiId: number | null) => {
+  async function handleExportResults(examPaperId: number | null) {
     if (!selectedKyThi) return
     try {
-      const targetResults = deThiId
-        ? results.filter(r => r.examPaperId === deThiId)
+      const targetResults = examPaperId
+        ? results.filter(r => r.examPaperId === examPaperId)
         : results
 
       const map: Record<string, ThiSinhResult[]> = {}
@@ -389,8 +396,8 @@ export function ResultsByKyThiPage() {
       })
 
       const grouped = Object.entries(map).map(([key, attempts]) => {
-        const sortedAttempts = [...attempts].sort((a, b) => a.baiThiId - b.baiThiId)
-        let selectedAttempt = sortedAttempts.find((a) => a.baiThiId === selectedBaiThiIdByUser[key])
+        const sortedAttempts = [...attempts].sort((a, b) => a.examSubmissionId - b.examSubmissionId)
+        let selectedAttempt = sortedAttempts.find((a) => a.examSubmissionId === selectedexamSubmissionIdByUser[key])
         if (!selectedAttempt) {
           selectedAttempt = sortedAttempts[sortedAttempts.length - 1]
         }
@@ -401,8 +408,8 @@ export function ResultsByKyThiPage() {
       })
 
       const exportItems = grouped.map(c => ({
-        baiThiId: c.selectedAttempt.baiThiId,
-        lanThi: c.attempts.findIndex(a => a.baiThiId === c.selectedAttempt.baiThiId) + 1
+        examSubmissionId: c.selectedAttempt.examSubmissionId,
+        lanThi: c.attempts.findIndex(a => a.examSubmissionId === c.selectedAttempt.examSubmissionId) + 1
       }))
 
       if (exportItems.length === 0) {
@@ -418,8 +425,8 @@ export function ResultsByKyThiPage() {
       link.href = url
       
       let suffix = ""
-      if (deThiId) {
-        const deThiObj = uniqueDeThis.find(d => d.id === deThiId)
+      if (examPaperId) {
+        const deThiObj = uniqueDeThis.find(d => d.id === examPaperId)
         if (deThiObj) {
           suffix = "_" + (deThiObj.examPaperName || deThiObj.examPaperCode)
         }
@@ -441,7 +448,7 @@ export function ResultsByKyThiPage() {
 
   // Lấy tất cả các khoa từ danh sách kỳ thi để hiển thị trong bộ lọc
   const uniqueDeptsFilter = useMemo(() => {
-    const depts = new Set(kyThiList.map(k => k.donViToChuc).filter(Boolean) as string[])
+    const depts = new Set(kyThiList.map(k => k.organizedBy).filter(Boolean) as string[])
     return Array.from(depts).sort()
   }, [kyThiList])
 
@@ -454,8 +461,8 @@ export function ResultsByKyThiPage() {
 
       const matchKhoa = !filterKyThiKhoa || (
         filterKyThiKhoa === 'Tất cả các khoa'
-          ? !kt.donViToChuc
-          : kt.donViToChuc === filterKyThiKhoa
+          ? !kt.organizedBy
+          : kt.organizedBy === filterKyThiKhoa
       )
 
       // Lọc theo khoảng thời gian nếu người dùng nhập cả 2 mốc và mốc 2 >= mốc 1
@@ -464,11 +471,11 @@ export function ResultsByKyThiPage() {
         const startMs = parseDateToMs(filterKyThiStartDate)
         const endMs = parseDateToMs(filterKyThiEndDate, true)
         if (startMs !== null && endMs !== null && startMs <= endMs) {
-          if (!kt.thoiGianBatDau) {
+          if (!kt.startTime) {
             matchDate = false
           } else {
             try {
-              const examTime = new Date(kt.thoiGianBatDau).getTime()
+              const examTime = new Date(kt.startTime).getTime()
               matchDate = examTime >= startMs && examTime <= endMs
             } catch {
               matchDate = false
@@ -486,7 +493,7 @@ export function ResultsByKyThiPage() {
     const groups: Record<string, KyThiItem[]> = {}
 
     filteredKyThiList.forEach(kt => {
-      const deptName = kt.donViToChuc || 'Tất cả các khoa'
+      const deptName = kt.organizedBy || 'Tất cả các khoa'
       if (!groups[deptName]) {
         groups[deptName] = []
       }
@@ -498,8 +505,8 @@ export function ResultsByKyThiPage() {
     const sortedGroups: Record<string, KyThiItem[]> = {}
     Object.keys(groups).forEach(deptName => {
       const sortedList = [...groups[deptName]].sort((a, b) => {
-        const timeA = a.thoiGianBatDau ? new Date(a.thoiGianBatDau).getTime() : 0
-        const timeB = b.thoiGianBatDau ? new Date(b.thoiGianBatDau).getTime() : 0
+        const timeA = a.startTime ? new Date(a.startTime).getTime() : 0
+        const timeB = b.startTime ? new Date(b.startTime).getTime() : 0
         if (timeA !== timeB) {
           return timeB - timeA
         }
@@ -522,10 +529,10 @@ export function ResultsByKyThiPage() {
   }, [groupedExams])
 
 
-  const hasThreshold = selectedKyThi?.soCauDungToiThieu !== undefined && selectedKyThi?.soCauDungToiThieu !== null;
+  const hasThreshold = selectedKyThi?.minPassQuestions !== undefined && selectedKyThi?.minPassQuestions !== null;
 
   // Extract unique exams that have submissions in this campaign
-  const uniqueDeThis = useMemo(() => {
+  const uniqueDeThis = (() => {
     const map = new Map<number, { id: number; examPaperName: string; examPaperCode: string }>()
     results.forEach((r) => {
       if (r.examPaperId) {
@@ -537,16 +544,16 @@ export function ResultsByKyThiPage() {
       }
     })
     return Array.from(map.values())
-  }, [results])
+  })()
 
   // Filter raw results by selected exam (if any) before grouping and stats
-  const resultsFilteredByDeThi = useMemo(() => {
-    if (!selectedDeThiId) return results
-    return results.filter((r) => r.examPaperId === selectedDeThiId)
-  }, [results, selectedDeThiId])
+  const resultsFilteredByDeThi = (() => {
+    if (!selectedexamPaperId) return results
+    return results.filter((r) => r.examPaperId === selectedexamPaperId)
+  })()
 
   // Group attempts by candidate
-  const groupedCandidates = useMemo(() => {
+  const groupedCandidates = (() => {
     const map: Record<string, ThiSinhResult[]> = {}
     resultsFilteredByDeThi.forEach((r) => {
       const key = r.username || r.userId?.toString() || ''
@@ -557,18 +564,18 @@ export function ResultsByKyThiPage() {
     })
 
     return Object.entries(map).map(([key, attempts]) => {
-      const sortedAttempts = [...attempts].sort((a, b) => a.baiThiId - b.baiThiId)
+      const sortedAttempts = [...attempts].sort((a, b) => a.examSubmissionId - b.examSubmissionId)
       return {
         userKey: key,
         attempts: sortedAttempts,
       }
     })
-  }, [resultsFilteredByDeThi])
+  })()
 
   // Get currently selected attempt for each candidate
   const candidatesWithSelectedAttempt = useMemo(() => {
     return groupedCandidates.map((c) => {
-      let selectedAttempt = c.attempts.find((a) => a.baiThiId === selectedBaiThiIdByUser[c.userKey])
+      let selectedAttempt = c.attempts.find((a) => a.examSubmissionId === selectedexamSubmissionIdByUser[c.userKey])
       if (!selectedAttempt) {
         selectedAttempt = c.attempts[c.attempts.length - 1] // Default to latest attempt
       }
@@ -577,7 +584,7 @@ export function ResultsByKyThiPage() {
         selectedAttempt,
       }
     })
-  }, [groupedCandidates, selectedBaiThiIdByUser])
+  }, [groupedCandidates, selectedexamSubmissionIdByUser])
 
   // Filter and search based on selected attempt
   const filtered = useMemo(() => {
@@ -590,8 +597,8 @@ export function ResultsByKyThiPage() {
       const diem = r.totalScore
       const matchFilter = !filterXepLoai || (
         hasThreshold
-          ? (filterXepLoai === 'Đạt' ? (r.correctAnswers ?? 0) >= selectedKyThi!.soCauDungToiThieu! : (r.correctAnswers ?? 0) < selectedKyThi!.soCauDungToiThieu!)
-          : (diem !== undefined && getXepLoai(diem) === filterXepLoai)
+          ? (filterXepLoai === 'Đạt' ? (r.correctAnswers ?? 0) >= selectedKyThi!.minPassQuestions! : (r.correctAnswers ?? 0) < selectedKyThi!.minPassQuestions!)
+          : (diem !== undefined && getClassification(diem) === filterXepLoai)
       )
       return matchSearch && matchFilter
     })
@@ -618,13 +625,13 @@ export function ResultsByKyThiPage() {
 
   const validCandidates = candidatesWithSelectedAttempt.map(c => c.selectedAttempt).filter(r => r.status !== 'BiBHuyGianLan' && r.totalScore !== undefined)
   const avgScore = validCandidates.length ? (validCandidates.reduce((s, r) => s + (r.totalScore ?? 0), 0) / validCandidates.length) : 0
-  const cheatingCount = candidatesWithSelectedAttempt.filter(c => (c.selectedAttempt.soCanhBao ?? 0) > 0 || (c.selectedAttempt.soLanGianLan ?? 0) > 0).length
-  const retakeCount = candidatesWithSelectedAttempt.reduce((s, c) => s + (c.selectedAttempt.soLanThiLai ?? 0), 0)
+  const cheatingCount = candidatesWithSelectedAttempt.filter(c => (c.selectedAttempt.warningCount ?? 0) > 0 || (c.selectedAttempt.cheatingCount ?? 0) > 0).length
+  const retakeCount = candidatesWithSelectedAttempt.reduce((s, c) => s + (c.selectedAttempt.retakeCount ?? 0), 0)
   const passCount = hasThreshold
-    ? candidatesWithSelectedAttempt.map(c => c.selectedAttempt).filter(r => r.status !== 'BiBHuyGianLan' && (r.correctAnswers ?? 0) >= selectedKyThi!.soCauDungToiThieu!).length
-    : 0;
+    ? candidatesWithSelectedAttempt.map(c => c.selectedAttempt).filter(r => r.status !== 'BiBHuyGianLan' && (r.correctAnswers ?? 0) >= selectedKyThi!.minPassQuestions!).length
+    : candidatesWithSelectedAttempt.map(c => c.selectedAttempt).filter(r => r.pass).length
   const failCount = hasThreshold
-    ? candidatesWithSelectedAttempt.map(c => c.selectedAttempt).filter(r => r.status !== 'BiBHuyGianLan' && (r.correctAnswers ?? 0) < selectedKyThi!.soCauDungToiThieu!).length
+    ? candidatesWithSelectedAttempt.map(c => c.selectedAttempt).filter(r => r.status !== 'BiBHuyGianLan' && (r.correctAnswers ?? 0) < selectedKyThi!.minPassQuestions!).length
     : 0;
   const passRate = candidatesWithSelectedAttempt.length ? (passCount / candidatesWithSelectedAttempt.length) * 100 : 0;
 
@@ -803,10 +810,11 @@ export function ResultsByKyThiPage() {
                           }`}
                         >
                           <p className="font-medium text-sm text-gray-800 truncate">{kt.campaignName}</p>
-                          {kt.thoiGianBatDau && (
-                            <p className="text-[11px] text-gray-400 mt-0.5">
-                              Ngày thi: {new Date(kt.thoiGianBatDau).toLocaleDateString('vi-VN')}
-                            </p>
+                          {kt.startTime && (
+                            <div className="flex items-center gap-1.5 min-w-[120px] text-[11px] text-gray-400 mt-0.5">
+                              <CalendarDays className="w-3 h-3" />
+                              Ngày thi: {new Date(kt.startTime).toLocaleDateString('vi-VN')}
+                            </div>
                           )}
                           <div className="flex items-center gap-2 mt-1">
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${trangThaiColor(kt.status)}`}>
@@ -839,12 +847,12 @@ export function ResultsByKyThiPage() {
                   <h1 className="text-xl font-bold text-gray-900">{selectedKyThi.campaignName}</h1>
                   {hasThreshold && (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Yêu cầu đạt: ≥ {selectedKyThi.soCauDungToiThieu} câu đúng
+                      Yêu cầu đạt: ≥ {selectedKyThi.minPassQuestions} câu đúng
                     </span>
                   )}
                 </div>
-                {selectedKyThi.donViToChuc && (
-                  <p className="text-xs text-blue-600 mt-0.5">{selectedKyThi.donViToChuc}</p>
+                {selectedKyThi.organizedBy && (
+                  <p className="text-xs text-blue-600 mt-0.5">{selectedKyThi.organizedBy}</p>
                 )}
                 <p className="text-sm text-gray-500 mt-0.5">
                   {groupedCandidates.length} thí sinh ({resultsFilteredByDeThi.length} lượt thi)
@@ -854,7 +862,7 @@ export function ResultsByKyThiPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setSelectedExportDeThiId(null)
+                  setSelectedExportexamPaperId(null)
                   setIsExportModalOpen(true)
                 }}
               >
@@ -900,11 +908,11 @@ export function ResultsByKyThiPage() {
 
               {uniqueDeThis.length > 0 && (
                 <select
-                  value={selectedDeThiId || ''}
+                  value={selectedexamPaperId || ''}
                   onChange={(e) => {
                     const val = e.target.value ? Number(e.target.value) : null
-                    setSelectedDeThiId(val)
-                    setSelectedBaiThiIdByUser({})
+                    setSelectedexamPaperId(val)
+                    setSelectedexamSubmissionIdByUser({})
                   }}
                   className="border rounded-lg px-3 py-2 text-sm text-gray-600 bg-white"
                 >
@@ -920,8 +928,8 @@ export function ResultsByKyThiPage() {
                 <select value={filterXepLoai} onChange={e => setFilterXepLoai(e.target.value)}
                   className="border rounded-lg px-3 py-2 text-sm text-gray-600 bg-white">
                   <option value="">Tất cả kết quả</option>
-                  <option value="Đạt">Đạt (≥ {selectedKyThi.soCauDungToiThieu} câu)</option>
-                  <option value="Không đạt">Không đạt (&lt; {selectedKyThi.soCauDungToiThieu} câu)</option>
+                  <option value="Đạt">Đạt (≥ {selectedKyThi.minPassQuestions} câu)</option>
+                  <option value="Không đạt">Không đạt (&lt; {selectedKyThi.minPassQuestions} câu)</option>
                 </select>
               ) : (
                 <select value={filterXepLoai} onChange={e => setFilterXepLoai(e.target.value)}
@@ -958,7 +966,7 @@ export function ResultsByKyThiPage() {
                     {filtered.length === 0 ? (
                       <tr><td colSpan={7} className="text-center py-12 text-gray-400">Chưa có kết quả</td></tr>
                     ) : filtered.map(({ userKey, attempts, selectedAttempt: r }) => (
-                      <tr key={r.baiThiId} className="hover:bg-gray-50">
+                      <tr key={r.examSubmissionId} className="hover:bg-gray-50">
                         <td className="px-4 py-3">
                           <p className="font-medium text-gray-800">{r.fullName || r.username || '—'}</p>
                           {r.employeeCode && <p className="text-xs text-gray-400">{r.employeeCode}</p>}
@@ -971,14 +979,14 @@ export function ResultsByKyThiPage() {
                           <span className={`text-lg ${xepLoaiColor(r.totalScore)}`}>
                             {r.totalScore !== undefined ? r.totalScore.toFixed(1) : '—'}
                           </span>
-                          {r.correctAnswers !== undefined && r.tongSoCau && (
-                            <p className="text-xs text-gray-400">{r.correctAnswers}/{r.tongSoCau} câu</p>
+                          {r.correctAnswers !== undefined && r.totalQuestions && (
+                            <p className="text-xs text-gray-400">{r.correctAnswers}/{r.totalQuestions} câu</p>
                           )}
                         </td>
                         <td className="px-4 py-3 text-center font-medium">
                           {r.totalScore !== undefined ? (
                             hasThreshold ? (
-                              (r.correctAnswers ?? 0) >= selectedKyThi.soCauDungToiThieu! ? (
+                              (r.correctAnswers ?? 0) >= selectedKyThi.minPassQuestions! ? (
                                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                   ✓ Đạt
                                 </span>
@@ -994,18 +1002,18 @@ export function ResultsByKyThiPage() {
                                 r.totalScore >= 6.5 ? 'bg-indigo-100 text-indigo-700' :
                                 r.totalScore >= 5 ? 'bg-yellow-100 text-yellow-700' :
                                 'bg-red-100 text-red-700'
-                              }`}>{getXepLoai(r.totalScore)}</span>
+                              }`}>{getClassification(r.totalScore)}</span>
                             )
                           ) : <span className="text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {(r.soCanhBao ?? 0) > 0 || (r.soLanGianLan ?? 0) > 0 ? (
+                          {(r.warningCount ?? 0) > 0 || (r.cheatingCount ?? 0) > 0 ? (
                             <div>
-                              <span className={r.soCanhBao ? "text-red-600 font-semibold" : "text-gray-500 font-medium"}>
-                                {r.soCanhBao ?? 0} lần
+                              <span className={r.warningCount ? "text-red-600 font-semibold" : "text-gray-500 font-medium"}>
+                                {r.warningCount ?? 0} lần
                               </span>
-                              {(r.soLanGianLan ?? 0) > (r.soCanhBao ?? 0) && (
-                                <p className="text-xs text-gray-400">tổng: {r.soLanGianLan}</p>
+                              {(r.cheatingCount ?? 0) > (r.warningCount ?? 0) && (
+                                <p className="text-xs text-gray-400">tổng: {r.cheatingCount}</p>
                               )}
                             </div>
                           ) : <span className="text-gray-400">0 lần</span>}
@@ -1014,17 +1022,17 @@ export function ResultsByKyThiPage() {
                           {attempts.length > 1 ? (
                             <select
                               className="h-8 rounded-lg border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-blue-400 px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-sm transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                              value={r.baiThiId}
+                              value={r.examSubmissionId}
                               onChange={(e) => {
-                                const baiThiId = Number(e.target.value)
-                                setSelectedBaiThiIdByUser((prev) => ({
+                                const examSubmissionId = Number(e.target.value)
+                                setSelectedexamSubmissionIdByUser((prev) => ({
                                   ...prev,
-                                  [userKey]: baiThiId,
+                                  [userKey]: examSubmissionId,
                                 }))
                               }}
                             >
                               {attempts.map((attempt, index) => (
-                                <option key={attempt.baiThiId} value={attempt.baiThiId}>
+                                <option key={attempt.examSubmissionId} value={attempt.examSubmissionId}>
                                   Lần {index + 1}
                                 </option>
                               ))}
@@ -1087,10 +1095,10 @@ export function ResultsByKyThiPage() {
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Chọn đề thi</label>
                 <select
-                  value={selectedExportDeThiId || ''}
+                  value={selectedExportexamPaperId || ''}
                   onChange={(e) => {
                     const val = e.target.value ? Number(e.target.value) : null
-                    setSelectedExportDeThiId(val)
+                    setSelectedExportexamPaperId(val)
                   }}
                   className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition-all"
                 >
@@ -1113,7 +1121,7 @@ export function ResultsByKyThiPage() {
               </Button>
               <Button
                 onClick={() => {
-                  handleExportResults(selectedExportDeThiId)
+                  handleExportResults(selectedExportexamPaperId)
                   setIsExportModalOpen(false)
                 }}
                 className="bg-blue-600 text-white hover:bg-blue-700"

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -484,7 +484,7 @@ namespace BanTayVang.API.Migrations
                     NguoiCongBoRieng = table.Column<int>(type: "int", nullable: true),
                     ExamPaperCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     ExamCampaignId = table.Column<int>(type: "int", nullable: true),
-                    TongSoCanhBao = table.Column<int>(type: "int", nullable: true)
+                    TongWarningCount = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {

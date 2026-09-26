@@ -25,9 +25,9 @@ export interface ExamScheduleDto {
   examId: number
   examPaperCode: string | null
   examPaperName: string | null
-  thoiGianBatDau: string | null
+  startTime: string | null
   durationMinutes: number | null
-  thoiGianKetThuc: string | null
+  endTime: string | null
   status: string | null
   totalQuestions: number
   isAvailable: boolean

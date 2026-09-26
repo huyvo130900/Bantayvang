@@ -11,12 +11,9 @@ export function DeptManagerDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadDashboard()
-  }, []) // eslint-disable-line
 
-  const loadDashboard = async () => {
-    setLoading(true)
+  async function loadDashboard(isRefresh = false) {
+    if (isRefresh) setLoading(true)
     setError(null)
     try {
       // Gọi API backend — trả về dữ liệu thực của khoa mà người dùng đang quản lý
@@ -26,7 +23,7 @@ export function DeptManagerDashboard() {
       } else {
         setError(res.data?.message || 'Không thể tải dữ liệu tổng quan')
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       const e = err as { response?: { data?: { message?: string } } }
       const msg = e.response?.data?.message || 'Không thể tải dữ liệu tổng quan. Vui lòng thử lại.'
       setError(msg)
@@ -35,10 +32,16 @@ export function DeptManagerDashboard() {
     }
   }
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDashboard(false)
+  }, [])  
+
+
   const stats = [
     {
       label: 'Câu hỏi',
-      value: dashboard?.tongSoCauHoi ?? 0,
+      value: dashboard?.totalQuestions ?? 0,
       icon: FileQuestion,
       color: 'text-blue-500',
       bg: 'bg-blue-50',
@@ -46,7 +49,7 @@ export function DeptManagerDashboard() {
     },
     {
       label: 'Kỳ thi',
-      value: dashboard?.tongSoDeThi ?? 0,
+      value: dashboard?.totalExams ?? 0,
       icon: CalendarDays,
       color: 'text-purple-500',
       bg: 'bg-purple-50',
@@ -54,7 +57,7 @@ export function DeptManagerDashboard() {
     },
     {
       label: 'Thí sinh',
-      value: dashboard?.tongSoThiSinh ?? 0,
+      value: dashboard?.totalCandidates ?? 0,
       icon: Users,
       color: 'text-green-500',
       bg: 'bg-green-50',
@@ -62,8 +65,8 @@ export function DeptManagerDashboard() {
     },
     {
       label: 'Điểm TB',
-      value: (dashboard?.diemTrungBinh ?? 0) > 0
-        ? dashboard!.diemTrungBinh.toFixed(1)
+      value: (dashboard?.averageScore ?? 0) > 0 
+        ? dashboard!.averageScore.toFixed(1) 
         : '—',
       icon: BarChart3,
       color: 'text-orange-500',
@@ -84,7 +87,7 @@ export function DeptManagerDashboard() {
               : 'Dashboard Quản lý Khoa'}
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={loadDashboard} disabled={loading} className="w-full sm:w-auto justify-center">
+        <Button variant="ghost" size="sm" onClick={() => loadDashboard(true)} disabled={loading} className="w-full sm:w-auto justify-center">
           <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
           Làm mới
         </Button>
@@ -130,11 +133,11 @@ export function DeptManagerDashboard() {
               </Button>
             </div>
 
-            {!dashboard?.kyThiGanDay?.length ? (
+            {!dashboard?.recentCampaigns?.length ? (
               <div className="text-center py-12 text-gray-400">Chưa có kỳ thi nào</div>
             ) : (
               <div className="divide-y">
-                {dashboard.kyThiGanDay.map(kt => (
+                {dashboard.recentCampaigns.map(kt => (
                   <div
                     key={kt.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 hover:bg-gray-50 cursor-pointer gap-2"
@@ -143,7 +146,7 @@ export function DeptManagerDashboard() {
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-800 truncate">{kt.campaignName}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {kt.soDeThi} đề thi · {kt.soThiSinh} thí sinh
+                        {kt.examCount} đề thi • {kt.candidateCount} thí sinh
                       </p>
                     </div>
                     <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0 mt-1 sm:mt-0">

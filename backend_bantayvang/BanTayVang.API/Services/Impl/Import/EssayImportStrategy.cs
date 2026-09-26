@@ -9,9 +9,9 @@ namespace BanTayVang.API.Services.Impl.Import
     {
         private readonly IQuestionRepository _questionRepository;
 
-        public EssayImportStrategy(IQuestionRepository cauhoiRepository)
+        public EssayImportStrategy(IQuestionRepository questionRepository)
         {
-            _questionRepository = cauhoiRepository;
+            _questionRepository = questionRepository;
         }
 
         public string QuestionTypeName => "Tự luận";
@@ -49,10 +49,10 @@ namespace BanTayVang.API.Services.Impl.Import
                     }
 
                     // 3. Kiểm tra trùng lặp
-                    var noiDungChuan = content.ToLower();
+                    var standardizedContent = content.ToLower();
                     
                     // Kiểm tra trùng lặp trong cùng file
-                    if (!seenContents.Add(noiDungChuan))
+                    if (!seenContents.Add(standardizedContent))
                     {
                         errors.Add($"Dòng {rowNumber}: Câu hỏi trùng lặp trong cùng file Excel — \"{content}\" — bỏ qua.");
                         continue;
@@ -61,12 +61,20 @@ namespace BanTayVang.API.Services.Impl.Import
                     // Kiểm tra trùng lặp với CSDL (chỉ kiểm tra nếu không phải "Không thuộc ngân hàng")
                     if (department != "Không thuộc ngân hàng")
                     {
-                        var existingQuestion = await _questionRepository.FindDuplicateAsync(noiDungChuan, department);
+                        var existingQuestion = await _questionRepository.FindDuplicateAsync(standardizedContent, department);
                         if (existingQuestion != null)
                         {
                             errors.Add($"Dòng {rowNumber}: Câu hỏi tự luận đã tồn tại trong CSDL (Id: {existingQuestion.Id}) — \"{content}\"");
                             continue;
                         }
+                    }
+
+                    // 3. Đáp án mẫu (Cột 3 - Tùy chọn, để trống cũng được)
+                    string? suggestedAnswer = null;
+                    if (!isExamImport)
+                    {
+                        var sa = row.Cell(3).GetString().Trim();
+                        if (!string.IsNullOrWhiteSpace(sa)) suggestedAnswer = sa;
                     }
 
                     // 4. Tạo thực thể câu hỏi (Không có lựa chọn)
@@ -75,9 +83,10 @@ namespace BanTayVang.API.Services.Impl.Import
                         Content = content,
                         Difficulty = difficulty,
                         CreatedBy = createdBy,
-                        CreatedAt = DateTime.Now,
+                        CreatedAt = DateTime.UtcNow.AddHours(7),
                         IsDeleted = false,
                         Department = department,
+                        SuggestedAnswer = suggestedAnswer,
                         QuestionOptions = new List<QuestionOption>() // Không có lựa chọn cho tự luận
                     };
 
@@ -97,10 +106,10 @@ namespace BanTayVang.API.Services.Impl.Import
             // Thiết lập tiêu đề cột
             var headers = isExamImport
                 ? new[] { "Nội dung câu hỏi" }
-                : new[] { "Nội dung câu hỏi", "Độ khó" };
+                : new[] { "Nội dung câu hỏi", "Độ khó", "Đáp án mẫu (Tùy chọn)" };
             var widths = isExamImport
                 ? new[] { 80 }
-                : new[] { 65, 15 };
+                : new[] { 55, 15, 40 };
 
             for (int c = 0; c < headers.Length; c++)
             {
@@ -119,7 +128,7 @@ namespace BanTayVang.API.Services.Impl.Import
             // Dòng dữ liệu mẫu
             var sampleRow = isExamImport
                 ? new object[] { "Trình bày kỹ thuật rửa tay ngoại khoa theo hướng dẫn của Bộ Y tế?" }
-                : new object[] { "Trình bày kỹ thuật rửa tay ngoại khoa theo hướng dẫn của Bộ Y tế?", "2" };
+                : new object[] { "Trình bày kỹ thuật rửa tay ngoại khoa theo hướng dẫn của Bộ Y tế?", "2", "(Tùy chọn) Theo chuẩn WHO: 6 bước rửa tay..." };
 
             for (int c = 0; c < sampleRow.Length; c++)
             {
@@ -135,3 +144,4 @@ namespace BanTayVang.API.Services.Impl.Import
         }
     }
 }
+

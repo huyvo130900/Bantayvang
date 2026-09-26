@@ -2,32 +2,32 @@ import { useEffect, useState } from 'react'
 import { gradingApi } from '../api'
 import type { ExamResultDetailDto } from '../types'
 import { Button } from '@/components/ui/button'
-import { X, CheckCircle2, XCircle, AlertTriangle, ThumbsUp, ThumbsDown, Loader2, ListFilter, RotateCcw } from 'lucide-react'
+import { X, CheckCircle2, XCircle, AlertTriangle, Loader2, ListFilter, RotateCcw } from 'lucide-react'
 
 type QuestionFilter = 'all' | 'tracnghiem' | 'tuLuan'
 
 interface ResultDetailDialogProps {
   open: boolean
-  baiThiId: number | null
+  examSubmissionId: number | null
   onClose: () => void
   isAdmin?: boolean
 }
 
-export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }: ResultDetailDialogProps) {
+export function ResultDetailDialog({ open, examSubmissionId, onClose, isAdmin = false }: ResultDetailDialogProps) {
   const [detail, setDetail] = useState<ExamResultDetailDto | null>(null)
   const [loading, setLoading] = useState(false)
   const [gradingId, setGradingId] = useState<number | null>(null)
   const [filter, setFilter] = useState<QuestionFilter>('all')
 
   useEffect(() => {
-    if (open && baiThiId) {
-      loadDetail(baiThiId)
+    if (open && examSubmissionId) {
+      loadDetail(examSubmissionId)
       setFilter('all')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, baiThiId])
+     
+  }, [open, examSubmissionId])
 
-  const loadDetail = async (id: number) => {
+  async function loadDetail(id: number) {
     setLoading(true)
     try {
       const response = await gradingApi.getResultDetail(id)
@@ -41,14 +41,14 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
     }
   }
 
-  const handleManualGrade = async (chiTietLamBaiId: number, isCorrect: boolean | null) => {
-    if (!baiThiId) return
-    setGradingId(chiTietLamBaiId)
+  async function handleManualGrade(submissionDetailId: number, score: number | null, comment?: string) {
+    if (!examSubmissionId) return
+    setGradingId(submissionDetailId)
     try {
-      const response = await gradingApi.manualGrade({ chiTietLamBaiId, isCorrect })
+      const response = await gradingApi.manualGrade({ submissionDetailId, score, comment })
       if (response.data.success) {
         // Reload detail để cập nhật điểm mới
-        await loadDetail(baiThiId)
+        await loadDetail(examSubmissionId)
       }
     } catch {
       // silent
@@ -82,7 +82,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="p-3 bg-green-50 rounded-lg">
                 <p className="text-2xl font-bold text-green-700">
-                  {detail.correctAnswers ?? '—'}/{detail.tongSoCau ?? '—'}
+                  {detail.correctAnswers ?? '—'}/{detail.totalQuestions ?? '—'}
                 </p>
                 <p className="text-xs text-green-600">Số câu đúng / Tổng câu</p>
               </div>
@@ -92,7 +92,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
               </div>
             </div>
 
-            {detail.soCauDungToiThieu !== undefined && detail.soCauDungToiThieu !== null && (
+            {detail.minPassQuestions !== undefined && detail.minPassQuestions !== null && (
               <div className={`p-3 rounded-lg border text-center font-semibold text-sm flex items-center justify-center gap-2 ${
                 detail.pass
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
@@ -110,7 +110,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
                   </>
                 )}
                 <span className="text-xs font-normal opacity-85 ml-1">
-                  (Yêu cầu tối thiểu để đạt: {detail.soCauDungToiThieu} câu đúng)
+                  (Yêu cầu tối thiểu để đạt: {detail.minPassQuestions} câu đúng)
                 </span>
               </div>
             )}
@@ -125,17 +125,17 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
 
             {/* Metadata (Warnings / Attempt details) */}
             <div className="flex flex-wrap gap-4 text-sm justify-between px-1 bg-gray-50/50 p-2.5 rounded-lg border">
-              <div className="text-gray-500">
-                Lần thi: <span className="font-semibold text-gray-800">{detail.soLanThi ?? 1}</span>
-                {(detail.soLanThi ?? 1) > 1 && <span className="text-xs text-blue-500 ml-1">({detail.soLanThiLai ?? ((detail.soLanThi ?? 1) - 1)} lần thi lại)</span>}
+              <div className="text-sm">
+                Lần thi: <span className="font-semibold text-gray-800">{detail.attemptCount ?? 1}</span>
+                {(detail.attemptCount ?? 1) > 1 && <span className="text-xs text-blue-500 ml-1">({detail.retakeCount ?? ((detail.attemptCount ?? 1) - 1)} lần thi lại)</span>}
               </div>
-              {((detail.soCanhBao ?? 0) > 0 || (detail.soLanGianLan ?? 0) > 0) ? (
+              {((detail.warningCount ?? 0) > 0 || (detail.cheatingCount ?? 0) > 0) ? (
                 <div className="text-orange-600 flex items-center gap-1.5">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>
-                    Số lần vi phạm: <strong className="font-bold">{detail.soCanhBao ?? 0}</strong>
-                    {(detail.soLanGianLan ?? 0) > (detail.soCanhBao ?? 0) && (
-                      <> (Tổng tích lũy: <strong>{detail.soLanGianLan}</strong>)</>
+                    Số lần vi phạm: <strong className="font-bold">{detail.warningCount ?? 0}</strong>
+                    {(detail.cheatingCount ?? 0) > (detail.warningCount ?? 0) && (
+                      <> (Tổng tích lũy: <strong>{detail.cheatingCount}</strong>)</>
                     )}
                   </span>
                 </div>
@@ -222,7 +222,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
                       const isTuLuan = a.questionCategory === 'Tự luận' || a.questionCategory === 'TuLuan' || a.questionCategory === 'TL'
                       const isGraded = a.scoreObtained != null
                       const isEssayCorrect = isTuLuan && a.scoreObtained === 1
-                      const isGrading = gradingId === a.chiTietLamBaiId
+                      const isGrading = gradingId === a.submissionDetailId
                       const isUngradedEssay = isTuLuan && !isGraded
 
                       return (
@@ -254,7 +254,7 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
 
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-sm font-medium">Câu {origIdx + 1}: {a.noiDungCauHoi}</p>
+                                <p className="text-sm font-medium">Câu {origIdx + 1}: {a.questionContent}</p>
                                 {isTuLuan && (
                                   <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Tự luận</span>
                                 )}
@@ -264,30 +264,64 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
                               </div>
 
                               {/* Câu trả lời */}
-                              <p className="text-xs text-gray-500 mt-1">
-                                Trả lời:{' '}
-                                <span className={
-                                  isTuLuan
-                                    ? 'text-gray-700'
-                                    : a.isCorrect ? 'text-green-600' : 'text-red-600'
-                                }>
-                                  {a.noiDungDapAn || a.cauTraLoiTuLuan || '(Không trả lời)'}
-                                </span>
-                              </p>
+                              <div className="mt-1">
+                                <p className="text-xs text-gray-500 inline">
+                                  Trả lời:{' '}
+                                  <span className={
+                                    isTuLuan
+                                      ? 'text-gray-700'
+                                      : a.isCorrect ? 'text-green-600' : 'text-red-600'
+                                  }>
+                                    {a.answerContent || a.essayAnswer || '(No answer)'}
+                                  </span>
+                                </p>
+                                {isTuLuan && a.essayImageUrl && (
+                                  <div className="mt-2">
+                                    <p className="text-xs text-gray-500 mb-1">Ảnh đính kèm:</p>
+                                    <img src={a.essayImageUrl} alt="Bài làm" className="max-h-48 rounded-md border" />
+                                  </div>
+                                )}
+                              </div>
 
                               {/* Đáp án đúng cho trắc nghiệm */}
-                              {!isTuLuan && !a.isCorrect && a.noiDungDapAnDung && (
-                                <p className="text-xs text-green-600 mt-0.5">
-                                  Đáp án đúng: {a.noiDungDapAnDung}
+                              {!isTuLuan && !a.isCorrect && a.correctAnswerContent && (
+                                <p className="text-xs text-green-700 mt-0.5">
+                                  ✅ Đáp án đúng: <span className="font-semibold">{a.correctAnswerContent}</span>
                                 </p>
                               )}
 
                               {/* Đáp án chuẩn cho tự luận */}
-                              {isTuLuan && a.noiDungDapAnDung && (
-                                <div className="mt-2 bg-green-50/50 border border-green-100 p-2 rounded-lg text-xs">
-                                  <span className="font-semibold text-green-800">💡 Đáp án chuẩn / Hướng dẫn chấm:</span>
-                                  <p className="text-green-700 whitespace-pre-wrap mt-0.5">{a.noiDungDapAnDung}</p>
+                              {isTuLuan && a.suggestedAnswer && (
+                                <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                                  <p className="text-xs font-semibold text-emerald-700 mb-1">📋 Đáp án chuẩn / Hướng dẫn chấm:</p>
+                                  <p className="text-xs text-emerald-800 whitespace-pre-wrap">{a.suggestedAnswer}</p>
                                 </div>
+                              )}
+
+                              {/* AI Grading result */}
+                              {isTuLuan && a.aiGradingStatus === 'Done' && (a.aiScore != null || a.aiComment) && (
+                                <div className="mt-2 p-2.5 rounded-lg bg-violet-50 border border-violet-200">
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="text-xs font-semibold text-violet-700">🤖 Chấm bởi AI</span>
+                                    {a.aiScore != null && (
+                                      <span className="text-xs bg-violet-100 text-violet-800 px-1.5 py-0.5 rounded font-bold">
+                                        {a.aiScore} điểm
+                                      </span>
+                                    )}
+                                  </div>
+                                  {a.aiComment && (
+                                    <p className="text-xs text-violet-800 whitespace-pre-wrap leading-relaxed">{a.aiComment}</p>
+                                  )}
+                                </div>
+                              )}
+                              {isTuLuan && (a.aiGradingStatus === 'Pending' || a.aiGradingStatus === 'Processing') && (
+                                <div className="mt-2 flex items-center gap-1.5 text-xs text-violet-600">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  <span>AI đang chấm bài...</span>
+                                </div>
+                              )}
+                              {isTuLuan && a.aiGradingStatus === 'Error' && (
+                                <p className="mt-2 text-xs text-red-500">⚠️ AI chấm lỗi, vui lòng chấm thủ công.</p>
                               )}
 
                               {/* Chấm điểm tự luận - chỉ admin mới thấy nút */}
@@ -297,51 +331,66 @@ export function ResultDetailDialog({ open, baiThiId, onClose, isAdmin = false }:
                                     <span className="text-xs text-yellow-600 font-medium">Chưa chấm</span>
                                   )}
                                   {isGraded && (
-                                    <span className={`text-xs font-medium ${isEssayCorrect ? 'text-green-600' : 'text-red-500'}`}>
-                                      {isEssayCorrect ? '✓ Đúng' : '✗ Sai'}
+                                    <span className="text-xs font-medium text-blue-600">
+                                      Điểm: {a.scoreObtained}
                                     </span>
                                   )}
                                   <button
                                     disabled={isGrading}
-                                    onClick={() => a.chiTietLamBaiId != null && handleManualGrade(a.chiTietLamBaiId, true)}
+                                    onClick={() => a.submissionDetailId != null && handleManualGrade(a.submissionDetailId, 1)}
                                     className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                                      isEssayCorrect
-                                        ? 'bg-green-500 text-white border-green-500'
-                                        : 'bg-white text-green-600 border-green-300 hover:bg-green-50'
+                                      a.scoreObtained === 1
+                                        ? 'bg-blue-500 text-white border-blue-500'
+                                        : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
                                     }`}
                                   >
-                                    {isGrading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsUp className="h-3 w-3" />}
-                                    Đúng
+                                    {isGrading && gradingId === a.submissionDetailId ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                    1 Điểm
                                   </button>
                                   <button
                                     disabled={isGrading}
-                                    onClick={() => a.chiTietLamBaiId != null && handleManualGrade(a.chiTietLamBaiId, false)}
+                                    onClick={() => a.submissionDetailId != null && handleManualGrade(a.submissionDetailId, 0.5)}
                                     className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                                      isGraded && !isEssayCorrect
-                                        ? 'bg-red-500 text-white border-red-500'
-                                        : 'bg-white text-red-500 border-red-300 hover:bg-red-50'
+                                      a.scoreObtained === 0.5
+                                        ? 'bg-blue-500 text-white border-blue-500'
+                                        : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
                                     }`}
                                   >
-                                    {isGrading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsDown className="h-3 w-3" />}
-                                    Sai
+                                    0.5 Điểm
+                                  </button>
+                                  <button
+                                    disabled={isGrading}
+                                    onClick={() => a.submissionDetailId != null && handleManualGrade(a.submissionDetailId, 0)}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                                      a.scoreObtained === 0
+                                        ? 'bg-gray-500 text-white border-gray-500'
+                                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    0 Điểm
                                   </button>
                                   {isGraded && (
                                     <button
                                       disabled={isGrading}
-                                      onClick={() => a.chiTietLamBaiId != null && handleManualGrade(a.chiTietLamBaiId, null)}
+                                      onClick={() => a.submissionDetailId != null && handleManualGrade(a.submissionDetailId, null)}
                                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50 ml-2"
                                     >
-                                      {isGrading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                                      {isGrading && gradingId === a.submissionDetailId ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
                                       Chấm lại
                                     </button>
                                   )}
                                 </div>
                               )}
 
-                              {/* Trạng thái câu tự luận cho non-admin */}
                               {isTuLuan && !isAdmin && isGraded && (
-                                <p className={`text-xs mt-1 font-medium ${isEssayCorrect ? 'text-green-600' : 'text-red-500'}`}>
-                                  Kết quả: {isEssayCorrect ? '✓ Đúng' : '✗ Sai'}
+                                <p className="text-xs mt-1 font-medium text-blue-600">
+                                  Kết quả: {a.scoreObtained} điểm
+                                </p>
+                              )}
+
+                              {isTuLuan && a.teacherComment && !a.teacherComment.startsWith('[AI]') && (
+                                <p className="text-xs text-gray-600 mt-2 italic whitespace-pre-wrap border-l-2 border-gray-300 pl-2">
+                                  💬 Nhận xét GV: {a.teacherComment}
                                 </p>
                               )}
                             </div>

@@ -54,7 +54,11 @@ namespace BanTayVang.API.Services.Impl
                         (u.FullName ?? "").ToLower().Contains(keyword));
                 }
 
+                // BUG FIX: Skip/Take with no OrderBy has no guaranteed row order in SQL Server, so
+                // page 2+ could show duplicate or missing rows compared to page 1. Order by Id for
+                // a stable, deterministic sort.
                 var pagedUsers = query
+                    .OrderBy(u => u.Id)
                     .Skip((filter.PageNumber - 1) * filter.PageSize)
                     .Take(filter.PageSize)
                     .Include(u => u.ManagedDepartment)
@@ -119,6 +123,33 @@ namespace BanTayVang.API.Services.Impl
                         return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại trong hệ thống (bao gồm cả thùng rác)" };
                 }
 
+                // BUG FIX: CreateUserDto.Password had no length/strength constraint at all (unlike
+                // RegisterDto), and this method never called ValidatePasswordStrength - an
+                // admin/DeptManager could create a user with e.g. a 1-character password. Enforce
+                // the same rule used for self-registration and password resets. (Deliberately NOT
+                // applied to the bulk Excel/CSV import path, which keeps its own default-password
+                // behavior for empty rows - see ImportUsersFromExcelAsync.)
+                var passwordValidation = _passwordService.ValidatePasswordStrength(createDto.Password);
+                if (!passwordValidation.IsValid)
+                {
+                    return new BaseResponseDto<UserDto> { Success = false, Message = "Mật khẩu không đủ mạnh", Errors = passwordValidation.Errors };
+                }
+
+                // BUG FIX: this path (single-user creation) never required DeptManagerDeptId for
+                // RoleId=5, unlike the bulk Excel/CSV import path which explicitly rejects such rows
+                // (see ImportUsersFromExcelAsync below). Calling this API directly - or any future
+                // caller of it - could create a DeptManager account with no department, and every
+                // department-scoping check across the app (ExamRegistrationController.Approve/Reject,
+                // ExamService.GetActiveMonitorListAsync, ExamSubmissionService.ForceSubmitAsync, ...)
+                // reads managed_department_id from the JWT and treats an empty value as "no
+                // restriction" rather than "no department" - so such an account could act across
+                // every department instead of none. Reject at the source instead of only patching
+                // every consumer.
+                if (createDto.RoleId == 5 && !createDto.DeptManagerDeptId.HasValue)
+                {
+                    return new BaseResponseDto<UserDto> { Success = false, Message = "Vai trò Quản lý khoa bắt buộc phải chọn Khoa/Phòng quản lý." };
+                }
+
                 // Validate department manager assignment
                 if (createDto.RoleId == 5 && createDto.DeptManagerDeptId.HasValue)
                 {
@@ -139,7 +170,7 @@ namespace BanTayVang.API.Services.Impl
                     Department = createDto.Department,
                     RoleId = createDto.RoleId,
                     Status = createDto.Status,
-                    CreatedAt = DateTime.Now,
+                    CreatedAt = DateTime.UtcNow.AddHours(7),
                     DeptManagerDeptId = createDto.RoleId == 5 ? createDto.DeptManagerDeptId : null,
                     Email = createDto.Email,
                     PhoneNumber = createDto.PhoneNumber
@@ -161,7 +192,7 @@ namespace BanTayVang.API.Services.Impl
                     {
                         // Update DeptManagerId on the department
                         khoa.DeptManagerId = saved.Id;
-                        khoa.UpdatedAt = DateTime.Now;
+                        khoa.UpdatedAt = DateTime.UtcNow.AddHours(7);
                         // Sync Department string on user for JWT claim
                         saved.Department = khoa.DepartmentName;
                         await _context.SaveChangesAsync();
@@ -197,6 +228,13 @@ namespace BanTayVang.API.Services.Impl
                         return new BaseResponseDto<UserDto> { Success = false, Message = "Mã nhân viên đã tồn tại trong hệ thống (bao gồm cả thùng rác)" };
                 }
 
+                // BUG FIX: same gap as CreateUserAsync above - updating a user to RoleId=5 (or
+                // editing an existing DeptManager) without a DeptManagerDeptId was silently allowed.
+                if (updateDto.RoleId == 5 && !updateDto.DeptManagerDeptId.HasValue)
+                {
+                    return new BaseResponseDto<UserDto> { Success = false, Message = "Vai trò Quản lý khoa bắt buộc phải chọn Khoa/Phòng quản lý." };
+                }
+
                 // Validate new department manager assignment before proceeding
                 if (updateDto.RoleId == 5 && updateDto.DeptManagerDeptId.HasValue)
                 {
@@ -214,7 +252,7 @@ namespace BanTayVang.API.Services.Impl
                     if (oldKhoa != null && oldKhoa.DeptManagerId == user.Id)
                     {
                         oldKhoa.DeptManagerId = null;
-                        oldKhoa.UpdatedAt = DateTime.Now;
+                        oldKhoa.UpdatedAt = DateTime.UtcNow.AddHours(7);
                     }
                 }
 
@@ -236,7 +274,7 @@ namespace BanTayVang.API.Services.Impl
                 user.Department = updateDto.Department;
                 user.RoleId = updateDto.RoleId;
                 user.Status = updateDto.Status;
-                user.UpdatedAt = DateTime.Now;
+                user.UpdatedAt = DateTime.UtcNow.AddHours(7);
                 user.Email = updateDto.Email;
                 user.PhoneNumber = updateDto.PhoneNumber;
 
@@ -248,7 +286,7 @@ namespace BanTayVang.API.Services.Impl
                     if (khoa != null)
                     {
                         khoa.DeptManagerId = user.Id;
-                        khoa.UpdatedAt = DateTime.Now;
+                        khoa.UpdatedAt = DateTime.UtcNow.AddHours(7);
                         // Sync string description for JWT claim
                         user.Department = khoa.DepartmentName;
                     }
@@ -283,7 +321,7 @@ namespace BanTayVang.API.Services.Impl
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
 
                 user.Status = false;
-                user.UpdatedAt = DateTime.Now;
+                user.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
                 // Clear department manager mapping if they are being deactivated/deleted
                 if (user.RoleId == 5 && user.DeptManagerDeptId.HasValue)
@@ -292,7 +330,7 @@ namespace BanTayVang.API.Services.Impl
                     if (khoa != null && khoa.DeptManagerId == user.Id)
                     {
                         khoa.DeptManagerId = null;
-                        khoa.UpdatedAt = DateTime.Now;
+                        khoa.UpdatedAt = DateTime.UtcNow.AddHours(7);
                     }
                     user.DeptManagerDeptId = null;
                 }
@@ -317,7 +355,7 @@ namespace BanTayVang.API.Services.Impl
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
 
                 user.Status = true;
-                user.UpdatedAt = DateTime.Now;
+                user.UpdatedAt = DateTime.UtcNow.AddHours(7);
                 await _userRepository.UpdateAsync(user);
 
                 return new BaseResponseDto { Success = true, Message = "Đã kích hoạt tài khoản" };
@@ -333,15 +371,19 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
-                if (string.IsNullOrEmpty(newPassword) || newPassword.Length < 6)
-                    return new BaseResponseDto { Success = false, Message = "Mật khẩu phải từ 6 ký tự" };
+                // BUG FIX: only checked length >= 6, unlike every other password-setting path
+                // (self-registration, change-password, reset-via-OTP) which run the full
+                // ValidatePasswordStrength check.
+                var passwordValidation = _passwordService.ValidatePasswordStrength(newPassword);
+                if (!passwordValidation.IsValid)
+                    return new BaseResponseDto { Success = false, Message = "Mật khẩu không đủ mạnh", Errors = passwordValidation.Errors };
 
                 var user = await _userRepository.GetByIdAsync(id);
                 if (user == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy người dùng" };
 
                 user.Password = _passwordService.HashPassword(newPassword);
-                user.UpdatedAt = DateTime.Now;
+                user.UpdatedAt = DateTime.UtcNow.AddHours(7);
                 await _userRepository.UpdateAsync(user);
 
                 return new BaseResponseDto { Success = true, Message = "Đã đặt lại mật khẩu" };
@@ -382,7 +424,7 @@ namespace BanTayVang.API.Services.Impl
                     if (khoa != null && khoa.DeptManagerId == target.Id)
                     {
                         khoa.DeptManagerId = null;
-                        khoa.UpdatedAt = DateTime.Now;
+                        khoa.UpdatedAt = DateTime.UtcNow.AddHours(7);
                     }
                     target.DeptManagerDeptId = null;
                 }
@@ -468,31 +510,27 @@ namespace BanTayVang.API.Services.Impl
                         DELETE FROM CheatWarnings WHERE ExamSubmissionId IN (SELECT Id FROM ExamSubmissions WHERE UserId = {0});
                         DELETE FROM AuditLogs WHERE ExamSubmissionId IN (SELECT Id FROM ExamSubmissions WHERE UserId = {0});
 
-                        -- Xóa lịch sử thi (anti-cheat), có FK NOT NULL tới USER - nếu bảng tồn tại
-                        IF OBJECT_ID('dbo.LICHSU_THI', 'U') IS NOT NULL
-                            DELETE FROM LICHSU_THI WHERE IdThiSinh = {0};
-
                         -- Xóa chi tiết làm bài thi
                         DELETE FROM SubmissionDetails WHERE ExamSubmissionId IN (SELECT Id FROM ExamSubmissions WHERE UserId = {0});
                         -- Xóa bài thi
                         DELETE FROM ExamSubmissions WHERE UserId = {0};
-                        -- Gỡ trưởng khoa (chuyển NULL) để ExamRegistrations không mồ côi quản lý
-                        UPDATE ExamRegistrations SET DeptManagerId = NULL WHERE DeptManagerId = {0};
-                        -- Gỡ người duyệt trong DANG_KY_THI (NguoiDuyetId không có FK constraint nhưng cần set NULL để tránh orphan data)
-                        UPDATE DANG_KY_THI SET NguoiDuyetId = NULL WHERE NguoiDuyetId = {0};
+                        -- Gỡ trưởng khoa (chuyển NULL) để Departments không mồ côi quản lý
+                        UPDATE Departments SET DeptManagerId = NULL WHERE DeptManagerId = {0};
+                        -- Gỡ người duyệt trong ExamRegistrations (ApproverId không có FK constraint nhưng cần set NULL để tránh orphan data)
+                        UPDATE ExamRegistrations SET ApproverId = NULL WHERE ApproverId = {0};
                         -- Xóa phân công thi
-                        DELETE FROM PHANCONG_THI WHERE UserId = {0};
+                        DELETE FROM ExamAssignments WHERE UserId = {0};
                         -- Xóa tài khoản vai trò
-                        DELETE FROM TAIKHOAN_VAITRO WHERE UserId = {0};
+                        DELETE FROM UserRoles WHERE UserId = {0};
                         -- Xóa các bảng liên quan phiên đăng nhập, JWT, Thông báo
-                        DELETE FROM PHIENDANGNHAP WHERE UserId = {0};
-                        DELETE FROM PHIEN_NGUOIDUNG WHERE UserId = {0};
-                        DELETE FROM TOKEN_LAM_MOI WHERE UserId = {0};
-                        DELETE FROM THONGBAO WHERE UserId = {0};
+                        DELETE FROM LoginSessions WHERE UserId = {0};
+                        DELETE FROM UserSessions WHERE UserId = {0};
+                        DELETE FROM RefreshTokens WHERE UserId = {0};
+                        DELETE FROM Notifications WHERE UserId = {0};
                         DELETE FROM AuditLogs WHERE UserId = {0};
 
                         -- Xóa tài khoản chính
-                        DELETE FROM USER WHERE Id = {0};
+                        DELETE FROM Users WHERE Id = {0};
 
                         COMMIT TRANSACTION;
                     END TRY
@@ -514,7 +552,7 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto> BulkDeleteUsersAsync(List<int> ids)
+        public async Task<BaseResponseDto> BulkDeleteUsersAsync(List<int> ids, string? restrictToDepartment = null)
         {
             try
             {
@@ -530,14 +568,28 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 int count = 0;
+                int skippedOtherDept = 0;
                 foreach (var user in targetUsers)
                 {
                     // Skip admin
                     if (user.RoleId == 1) continue;
 
+                    // BUG FIX: DeptManager callers must only be able to affect users in their own
+                    // department - mirrors CanAccessDepartment used by every other per-user action.
+                    if (!string.IsNullOrEmpty(restrictToDepartment) && user.Department != restrictToDepartment)
+                    {
+                        skippedOtherDept++;
+                        continue;
+                    }
+
                     user.IsDeleted = true;
                     user.Status = false; // Cũng vô hiệu hóa luôn
                     count++;
+                }
+
+                if (count == 0 && skippedOtherDept > 0)
+                {
+                    return new BaseResponseDto { Success = false, Message = "Bạn chỉ được phép xóa người dùng thuộc khoa của mình" };
                 }
 
                 await _context.SaveChangesAsync();
@@ -548,6 +600,52 @@ namespace BanTayVang.API.Services.Impl
             {
                 _logger.LogError(ex, "Error bulk deleting users");
                 return new BaseResponseDto { Success = false, Message = "Lỗi khi xóa hàng loạt: " + ex.Message };
+            }
+        }
+
+        public async Task<BaseResponseDto> BulkHardDeleteUsersAsync(List<int> ids)
+        {
+            try
+            {
+                if (ids == null || ids.Count == 0)
+                {
+                    return new BaseResponseDto { Success = false, Message = "Không có người dùng nào được chọn" };
+                }
+
+                int count = 0;
+                var errors = new List<string>();
+
+                foreach (var id in ids)
+                {
+                    // Reuse HardDeleteUserAsync which has its own transaction and admin validation
+                    var res = await HardDeleteUserAsync(id);
+                    if (res.Success)
+                    {
+                        count++;
+                    }
+                    else
+                    {
+                        errors.Add($"ID {id}: {res.Message}");
+                    }
+                }
+
+                if (count == 0)
+                {
+                    return new BaseResponseDto { Success = false, Message = "Không thể xóa vĩnh viễn tài khoản nào. Chi tiết: " + string.Join(", ", errors) };
+                }
+
+                string msg = $"Đã xóa vĩnh viễn {count} tài khoản thành công.";
+                if (errors.Any())
+                {
+                    msg += $" Có {errors.Count} tài khoản không thể xóa.";
+                }
+
+                return new BaseResponseDto { Success = true, Message = msg };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error bulk hard deleting users");
+                return new BaseResponseDto { Success = false, Message = "Lỗi khi xóa vĩnh viễn hàng loạt: " + ex.Message };
             }
         }
 
@@ -695,7 +793,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 using var stream = file.OpenReadStream();
-                var rawRows = new List<(int Row, string EmployeeCode, string Password, string FullName, string JobTitle, string Department, string VaiTroStr, string PhoneNumber, string Email)>();
+                var rawRows = new List<(int Row, string EmployeeCode, string Password, string FullName, string JobTitle, string Department, string RoleStr, string PhoneNumber, string Email)>();
 
                 if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                 {
@@ -712,8 +810,8 @@ namespace BanTayVang.API.Services.Impl
                     csv.ReadHeader();
                     var headerRecord = csv.HeaderRecord;
 
-                    int colTaiKhoan = -1, colHoTen = -1, colEmail = -1, colSoDienThoai = -1, colKhoaPhong = -1;
-                    int colMatKhau = -1, colVaiTro = -1, colChucDanh = -1;
+                    int colEmployeeCode = -1, colFullName = -1, colEmail = -1, colPhoneNumber = -1, colDepartment = -1;
+                    int colPassword = -1, colRole = -1, colJobTitle = -1;
 
                     if (headerRecord != null)
                     {
@@ -725,33 +823,33 @@ namespace BanTayVang.API.Services.Impl
 
                             if (headerText.Contains("tai khoan") || headerText.Contains("username") || 
                                 headerText.Contains("ten dang nhap") || headerText.Contains("ma nhan vien"))
-                                colTaiKhoan = col;
+                                colEmployeeCode = col;
                             else if (headerText.Contains("ho ten") || headerText.Contains("fullname") || 
                                      headerText.Contains("ho va ten") || headerText == "ten")
-                                colHoTen = col;
+                                colFullName = col;
                             else if (headerText.Contains("email") || headerText.Contains("thu dien tu"))
                                 colEmail = col;
                             else if (headerText.Contains("so dien thoai") || headerText.Contains("sdt") || 
                                      headerText.Contains("dien thoai") || headerText.Contains("phone"))
-                                colSoDienThoai = col;
+                                colPhoneNumber = col;
                             else if (headerText.Contains("khoa/phong") || headerText.Contains("khoaphong") || 
                                      headerText.Contains("khoa phong") || headerText.Contains("khoa") || 
                                      headerText.Contains("phong") || headerText.Contains("department"))
-                                colKhoaPhong = col;
+                                colDepartment = col;
                             else if (headerText.Contains("mat khau") || headerText.Contains("password"))
-                                colMatKhau = col;
+                                colPassword = col;
                             else if (headerText.Contains("vai tro") || headerText.Contains("role"))
-                                colVaiTro = col;
+                                colRole = col;
                             else if (headerText.Contains("chuc danh") || headerText.Contains("title"))
-                                colChucDanh = col;
+                                colJobTitle = col;
                         }
                     }
 
-                    if (colTaiKhoan == -1) colTaiKhoan = 1;
-                    if (colHoTen == -1) colHoTen = 2;
+                    if (colEmployeeCode == -1) colEmployeeCode = 1;
+                    if (colFullName == -1) colFullName = 2;
                     if (colEmail == -1) colEmail = 3;
-                    if (colSoDienThoai == -1) colSoDienThoai = 4;
-                    if (colKhoaPhong == -1) colKhoaPhong = 5;
+                    if (colPhoneNumber == -1) colPhoneNumber = 4;
+                    if (colDepartment == -1) colDepartment = 5;
 
                     int row = 1;
                     while (csv.Read())
@@ -759,13 +857,13 @@ namespace BanTayVang.API.Services.Impl
                         row++;
                         rawRows.Add((
                             Row: row,
-                            EmployeeCode: colTaiKhoan >= 0 && colTaiKhoan < csv.Parser.Count ? csv.GetField(colTaiKhoan)?.Trim() ?? string.Empty : string.Empty,
-                            Password: colMatKhau >= 0 && colMatKhau < csv.Parser.Count ? csv.GetField(colMatKhau)?.Trim() ?? string.Empty : string.Empty,
-                            FullName: colHoTen >= 0 && colHoTen < csv.Parser.Count ? csv.GetField(colHoTen)?.Trim() ?? string.Empty : string.Empty,
-                            JobTitle: colChucDanh >= 0 && colChucDanh < csv.Parser.Count ? csv.GetField(colChucDanh)?.Trim() ?? string.Empty : string.Empty,
-                            Department: colKhoaPhong >= 0 && colKhoaPhong < csv.Parser.Count ? csv.GetField(colKhoaPhong)?.Trim() ?? string.Empty : string.Empty,
-                            VaiTroStr: colVaiTro >= 0 && colVaiTro < csv.Parser.Count ? csv.GetField(colVaiTro)?.Trim() ?? string.Empty : string.Empty,
-                            PhoneNumber: colSoDienThoai >= 0 && colSoDienThoai < csv.Parser.Count ? csv.GetField(colSoDienThoai)?.Trim() ?? string.Empty : string.Empty,
+                            EmployeeCode: colEmployeeCode >= 0 && colEmployeeCode < csv.Parser.Count ? csv.GetField(colEmployeeCode)?.Trim() ?? string.Empty : string.Empty,
+                            Password: colPassword >= 0 && colPassword < csv.Parser.Count ? csv.GetField(colPassword)?.Trim() ?? string.Empty : string.Empty,
+                            FullName: colFullName >= 0 && colFullName < csv.Parser.Count ? csv.GetField(colFullName)?.Trim() ?? string.Empty : string.Empty,
+                            JobTitle: colJobTitle >= 0 && colJobTitle < csv.Parser.Count ? csv.GetField(colJobTitle)?.Trim() ?? string.Empty : string.Empty,
+                            Department: colDepartment >= 0 && colDepartment < csv.Parser.Count ? csv.GetField(colDepartment)?.Trim() ?? string.Empty : string.Empty,
+                            RoleStr: colRole >= 0 && colRole < csv.Parser.Count ? csv.GetField(colRole)?.Trim() ?? string.Empty : string.Empty,
+                            PhoneNumber: colPhoneNumber >= 0 && colPhoneNumber < csv.Parser.Count ? csv.GetField(colPhoneNumber)?.Trim() ?? string.Empty : string.Empty,
                             Email: colEmail >= 0 && colEmail < csv.Parser.Count ? csv.GetField(colEmail)?.Trim() ?? string.Empty : string.Empty
                         ));
                     }
@@ -779,8 +877,8 @@ namespace BanTayVang.API.Services.Impl
 
                     int lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
 
-                    int colTaiKhoan = -1, colHoTen = -1, colEmail = -1, colSoDienThoai = -1, colKhoaPhong = -1;
-                    int colMatKhau = -1, colVaiTro = -1, colChucDanh = -1;
+                    int colEmployeeCode = -1, colFullName = -1, colEmail = -1, colPhoneNumber = -1, colDepartment = -1;
+                    int colPassword = -1, colRole = -1, colJobTitle = -1;
 
                     var firstRow = ws.Row(1);
                     int lastCell = firstRow.LastCellUsed()?.Address.ColumnNumber ?? 8;
@@ -797,25 +895,25 @@ namespace BanTayVang.API.Services.Impl
 
                             if (headerText.Contains("tai khoan") || headerText.Contains("username") || 
                                 headerText.Contains("ten dang nhap") || headerText.Contains("ma nhan vien"))
-                                colTaiKhoan = col + 1;
+                                colEmployeeCode = col + 1;
                             else if (headerText.Contains("ho ten") || headerText.Contains("fullname") || 
                                      headerText.Contains("ho va ten") || headerText == "ten")
-                                colHoTen = col + 1;
+                                colFullName = col + 1;
                             else if (headerText.Contains("email") || headerText.Contains("thu dien tu"))
                                 colEmail = col + 1;
                             else if (headerText.Contains("so dien thoai") || headerText.Contains("sdt") || 
                                      headerText.Contains("dien thoai") || headerText.Contains("phone"))
-                                colSoDienThoai = col + 1;
+                                colPhoneNumber = col + 1;
                             else if (headerText.Contains("khoa/phong") || headerText.Contains("khoaphong") || 
                                      headerText.Contains("khoa phong") || headerText.Contains("khoa") || 
                                      headerText.Contains("phong") || headerText.Contains("department"))
-                                colKhoaPhong = col + 1;
+                                colDepartment = col + 1;
                             else if (headerText.Contains("mat khau") || headerText.Contains("password"))
-                                colMatKhau = col + 1;
+                                colPassword = col + 1;
                             else if (headerText.Contains("vai tro") || headerText.Contains("role"))
-                                colVaiTro = col + 1;
+                                colRole = col + 1;
                             else if (headerText.Contains("chuc danh") || headerText.Contains("title"))
-                                colChucDanh = col + 1;
+                                colJobTitle = col + 1;
                         }
                     }
                     else
@@ -828,33 +926,33 @@ namespace BanTayVang.API.Services.Impl
 
                             if (headerText.Contains("tai khoan") || headerText.Contains("username") || 
                                 headerText.Contains("ten dang nhap") || headerText.Contains("ma nhan vien"))
-                                colTaiKhoan = col;
+                                colEmployeeCode = col;
                             else if (headerText.Contains("ho ten") || headerText.Contains("fullname") || 
                                      headerText.Contains("ho va ten") || headerText == "ten")
-                                colHoTen = col;
+                                colFullName = col;
                             else if (headerText.Contains("email") || headerText.Contains("thu dien tu"))
                                 colEmail = col;
                             else if (headerText.Contains("so dien thoai") || headerText.Contains("sdt") || 
                                      headerText.Contains("dien thoai") || headerText.Contains("phone"))
-                                colSoDienThoai = col;
+                                colPhoneNumber = col;
                             else if (headerText.Contains("khoa/phong") || headerText.Contains("khoaphong") || 
                                      headerText.Contains("khoa phong") || headerText.Contains("khoa") || 
                                      headerText.Contains("phong") || headerText.Contains("department"))
-                                colKhoaPhong = col;
+                                colDepartment = col;
                             else if (headerText.Contains("mat khau") || headerText.Contains("password"))
-                                colMatKhau = col;
+                                colPassword = col;
                             else if (headerText.Contains("vai tro") || headerText.Contains("role"))
-                                colVaiTro = col;
+                                colRole = col;
                             else if (headerText.Contains("chuc danh") || headerText.Contains("title"))
-                                colChucDanh = col;
+                                colJobTitle = col;
                         }
                     }
 
-                    if (colTaiKhoan == -1) colTaiKhoan = 2;
-                    if (colHoTen == -1) colHoTen = 3;
+                    if (colEmployeeCode == -1) colEmployeeCode = 2;
+                    if (colFullName == -1) colFullName = 3;
                     if (colEmail == -1) colEmail = 4;
-                    if (colSoDienThoai == -1) colSoDienThoai = 5;
-                    if (colKhoaPhong == -1) colKhoaPhong = 6;
+                    if (colPhoneNumber == -1) colPhoneNumber = 5;
+                    if (colDepartment == -1) colDepartment = 6;
 
                     for (int row = 2; row <= lastRow; row++)
                     {
@@ -863,13 +961,13 @@ namespace BanTayVang.API.Services.Impl
                             var parts = ws.Cell(row, 1).GetString().Split(',');
                             rawRows.Add((
                                 Row: row,
-                                EmployeeCode: colTaiKhoan > 0 && colTaiKhoan <= parts.Length ? parts[colTaiKhoan - 1].Trim() : string.Empty,
-                                Password: colMatKhau > 0 && colMatKhau <= parts.Length ? parts[colMatKhau - 1].Trim() : string.Empty,
-                                FullName: colHoTen > 0 && colHoTen <= parts.Length ? parts[colHoTen - 1].Trim() : string.Empty,
-                                JobTitle: colChucDanh > 0 && colChucDanh <= parts.Length ? parts[colChucDanh - 1].Trim() : string.Empty,
-                                Department: colKhoaPhong > 0 && colKhoaPhong <= parts.Length ? parts[colKhoaPhong - 1].Trim() : string.Empty,
-                                VaiTroStr: colVaiTro > 0 && colVaiTro <= parts.Length ? parts[colVaiTro - 1].Trim() : string.Empty,
-                                PhoneNumber: colSoDienThoai > 0 && colSoDienThoai <= parts.Length ? parts[colSoDienThoai - 1].Trim() : string.Empty,
+                                EmployeeCode: colEmployeeCode > 0 && colEmployeeCode <= parts.Length ? parts[colEmployeeCode - 1].Trim() : string.Empty,
+                                Password: colPassword > 0 && colPassword <= parts.Length ? parts[colPassword - 1].Trim() : string.Empty,
+                                FullName: colFullName > 0 && colFullName <= parts.Length ? parts[colFullName - 1].Trim() : string.Empty,
+                                JobTitle: colJobTitle > 0 && colJobTitle <= parts.Length ? parts[colJobTitle - 1].Trim() : string.Empty,
+                                Department: colDepartment > 0 && colDepartment <= parts.Length ? parts[colDepartment - 1].Trim() : string.Empty,
+                                RoleStr: colRole > 0 && colRole <= parts.Length ? parts[colRole - 1].Trim() : string.Empty,
+                                PhoneNumber: colPhoneNumber > 0 && colPhoneNumber <= parts.Length ? parts[colPhoneNumber - 1].Trim() : string.Empty,
                                 Email: colEmail > 0 && colEmail <= parts.Length ? parts[colEmail - 1].Trim() : string.Empty
                             ));
                         }
@@ -877,13 +975,13 @@ namespace BanTayVang.API.Services.Impl
                         {
                             rawRows.Add((
                                 Row: row,
-                                EmployeeCode: colTaiKhoan > 0 ? ws.Cell(row, colTaiKhoan).GetString().Trim() : string.Empty,
-                                Password: colMatKhau > 0 ? ws.Cell(row, colMatKhau).GetString().Trim() : string.Empty,
-                                FullName: colHoTen > 0 ? ws.Cell(row, colHoTen).GetString().Trim() : string.Empty,
-                                JobTitle: colChucDanh > 0 ? ws.Cell(row, colChucDanh).GetString().Trim() : string.Empty,
-                                Department: colKhoaPhong > 0 ? ws.Cell(row, colKhoaPhong).GetString().Trim() : string.Empty,
-                                VaiTroStr: colVaiTro > 0 ? ws.Cell(row, colVaiTro).GetString().Trim() : string.Empty,
-                                PhoneNumber: colSoDienThoai > 0 ? ws.Cell(row, colSoDienThoai).GetString().Trim() : string.Empty,
+                                EmployeeCode: colEmployeeCode > 0 ? ws.Cell(row, colEmployeeCode).GetString().Trim() : string.Empty,
+                                Password: colPassword > 0 ? ws.Cell(row, colPassword).GetString().Trim() : string.Empty,
+                                FullName: colFullName > 0 ? ws.Cell(row, colFullName).GetString().Trim() : string.Empty,
+                                JobTitle: colJobTitle > 0 ? ws.Cell(row, colJobTitle).GetString().Trim() : string.Empty,
+                                Department: colDepartment > 0 ? ws.Cell(row, colDepartment).GetString().Trim() : string.Empty,
+                                RoleStr: colRole > 0 ? ws.Cell(row, colRole).GetString().Trim() : string.Empty,
+                                PhoneNumber: colPhoneNumber > 0 ? ws.Cell(row, colPhoneNumber).GetString().Trim() : string.Empty,
                                 Email: colEmail > 0 ? ws.Cell(row, colEmail).GetString().Trim() : string.Empty
                             ));
                         }
@@ -900,7 +998,7 @@ namespace BanTayVang.API.Services.Impl
                     var fullName = r.FullName;
                     var jobTitle = r.JobTitle;
                     var department = r.Department;
-                    var vaiTroStr = r.VaiTroStr;
+                    var roleStr = r.RoleStr;
                     var phoneNumber = r.PhoneNumber;
                     var email = r.Email;
 
@@ -910,7 +1008,7 @@ namespace BanTayVang.API.Services.Impl
                         string.IsNullOrWhiteSpace(fullName) &&
                         string.IsNullOrWhiteSpace(jobTitle) &&
                         string.IsNullOrWhiteSpace(department) &&
-                        string.IsNullOrWhiteSpace(vaiTroStr) &&
+                        string.IsNullOrWhiteSpace(roleStr) &&
                         string.IsNullOrWhiteSpace(phoneNumber) &&
                         string.IsNullOrWhiteSpace(email))
                     {
@@ -969,9 +1067,9 @@ namespace BanTayVang.API.Services.Impl
 
                     // Determine role ID
                     int roleId = 3; // Default is Student (Thí sinh)
-                    if (!string.IsNullOrWhiteSpace(vaiTroStr))
+                    if (!string.IsNullOrWhiteSpace(roleStr))
                     {
-                        var normalizedRole = RemoveSign4Vietnamese(vaiTroStr).ToLowerInvariant();
+                        var normalizedRole = RemoveSign4Vietnamese(roleStr).ToLowerInvariant();
                         if (normalizedRole == "1" || normalizedRole.Contains("quan tri") || normalizedRole.Contains("admin"))
                         {
                             roleId = 1; // Admin
@@ -982,7 +1080,8 @@ namespace BanTayVang.API.Services.Impl
                         }
                         else if (normalizedRole == "3" || normalizedRole.Contains("thi sinh") || normalizedRole.Contains("student") || normalizedRole.Contains("hoc vien") || normalizedRole.Contains("sinh vien"))
                         {
-                            roleId = 3; // Student
+                            if (normalizedRole.Contains("ngoai")) roleId = 6;
+                            else roleId = 3; // Student
                         }
                         else
                         {
@@ -994,6 +1093,22 @@ namespace BanTayVang.API.Services.Impl
                     // Set jobTitle to null/empty if left empty
                     string? finalChucDanh = string.IsNullOrWhiteSpace(jobTitle) ? null : jobTitle;
                     string? finalKhoaPhong = string.IsNullOrWhiteSpace(department) ? null : department;
+
+                    // BUG FIX: the single-user create/edit dialog requires deptManagerDeptId
+                    // whenever roleId is DeptManager (see schemas.ts), but this bulk-import path
+                    // never enforced the equivalent - a row with role "Quản lý" and an empty
+                    // "Khoa/Phòng" column silently created a DeptManager with Department=null and
+                    // DeptManagerDeptId=null. Every DeptManager-scoped check across the app reads
+                    // that claim from the JWT and treats an empty value as "no restriction" rather
+                    // than "no department" (see AuditLogController fix) - so such an account could
+                    // see/act on data across every department instead of none. Reject the row
+                    // instead of silently creating a broken/over-privileged account.
+                    if (roleId == 5 && string.IsNullOrEmpty(finalKhoaPhong))
+                    {
+                        resultDto.Failed++;
+                        resultDto.Errors.Add($"Dòng {row}: Mã nhân viên '{employeeCode}' có vai trò Quản lý khoa nhưng thiếu cột Khoa/Phòng - bắt buộc phải có khoa quản lý");
+                        continue;
+                    }
 
                     // Auto-assign DeptManager to Department
                     int? deptManagerDeptId = null;
@@ -1017,7 +1132,7 @@ namespace BanTayVang.API.Services.Impl
                         RoleId = roleId,
                         DeptManagerDeptId = deptManagerDeptId,
                         Status = true,
-                        CreatedAt = DateTime.Now,
+                        CreatedAt = DateTime.UtcNow.AddHours(7),
                         PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber,
                         Email = string.IsNullOrWhiteSpace(email) ? null : email
                     };
@@ -1033,6 +1148,17 @@ namespace BanTayVang.API.Services.Impl
                     resultDto.Success++;
                 }
 
+                if (resultDto.Failed > 0)
+                {
+                    return new BaseResponseDto<ExcelImportResultDto>
+                    {
+                        Success = false,
+                        Message = $"File Excel có {resultDto.Failed} dòng lỗi. Không có tài khoản nào được thêm mới. Vui lòng sửa lỗi và import lại từ đầu.",
+                        Data = resultDto,
+                        Errors = resultDto.Errors
+                    };
+                }
+
                 if (resultDto.Success > 0)
                 {
                     await _context.SaveChangesAsync();
@@ -1041,7 +1167,7 @@ namespace BanTayVang.API.Services.Impl
                 return new BaseResponseDto<ExcelImportResultDto>
                 {
                     Success = true,
-                    Message = $"Import hoàn tất. Thành công: {resultDto.Success}, Thất bại: {resultDto.Failed}",
+                    Message = $"Import hoàn tất. Đã thêm thành công {resultDto.Success} tài khoản.",
                     Data = resultDto
                 };
             }

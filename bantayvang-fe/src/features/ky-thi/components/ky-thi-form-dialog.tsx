@@ -30,6 +30,16 @@ const toLocalInputString = (dateStr: string | null | undefined): string => {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
+// Chế độ luyện tập tồn tại vĩnh viễn - không cần người dùng chọn ngày giờ, tự gán một khoảng
+// thời gian rất dài (bắt đầu ngay bây giờ, kết thúc sau 10 năm) để hài lòng validation sẵn có
+// (StartTime/EndTime bắt buộc) mà không thực sự giới hạn thời gian luyện tập.
+const practiceModeStartTime = () => toLocalInputString(new Date().toISOString())
+const practiceModeEndTime = () => {
+  const d = new Date()
+  d.setFullYear(d.getFullYear() + 10)
+  return toLocalInputString(d.toISOString())
+}
+
 const generateKyThiCode = () => {
   const now = new Date()
   const year = now.getFullYear()
@@ -53,13 +63,13 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const form = useForm<CreateKyThiFormData>({
-    resolver: zodResolver(getKyThiSchema(isEdit, examCampaign?.thoiGianBatDau, examCampaign?.thoiGianKetThuc)) as any,
-    defaultValues: { campaignCode: '', campaignName: '', description: '', departmentId: '' as any, thoiGianBatDau: '', thoiGianKetThuc: '', donViToChuc: '', soCauDungToiThieu: '' as any, tongSoCauHoi: '' as any, durationMinutes: '' as any },
+    resolver: zodResolver(getKyThiSchema(isEdit, examCampaign?.startTime, examCampaign?.endTime)) as any,
+    defaultValues: { campaignCode: '', campaignName: '', description: '', departmentIds: [], accessMode: 'Department', isPracticeMode: false, startTime: '', endTime: '', organizedBy: '', minPassQuestions: '' as any, totalQuestions: '' as any, durationMinutes: '' as any },
   })
 
   // Programmatically register custom fields
   useEffect(() => {
-    form.register('departmentId')
+    form.register('departmentIds')
   }, [form])
 
   // Load departments
@@ -67,7 +77,7 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
     if (open) {
       departmentApi.getAll({ status: true, pageSize: 100 })
         .then((res) => setDepartments(res.data?.data || []))
-        .catch(() => {})
+        .catch(() => setDepartments([]))
     }
   }, [open])
 
@@ -76,14 +86,12 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false)
-        const currentId = form.getValues('departmentId')
-        const currentDept = departments.find(d => d.id === currentId)
-        setSearchTerm(!currentId ? 'Tất cả các khoa' : (currentDept ? currentDept.departmentName : ''))
+        setSearchTerm('')
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [departments, form])
+  }, [])
 
   useEffect(() => {
     if (examCampaign) {
@@ -91,61 +99,88 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
         campaignCode: examCampaign.campaignCode || '',
         campaignName: examCampaign.campaignName || '',
         description: examCampaign.description || '',
-        departmentId: examCampaign.departmentId || '' as any,
-        thoiGianBatDau: toLocalInputString(examCampaign.thoiGianBatDau),
-        thoiGianKetThuc: toLocalInputString(examCampaign.thoiGianKetThuc),
-        donViToChuc: examCampaign.donViToChuc || '',
-        soCauDungToiThieu: examCampaign.soCauDungToiThieu ?? '' as any,
-        tongSoCauHoi: examCampaign.tongSoCauHoi ?? '' as any,
+        departmentIds: examCampaign.departmentIds || [],
+        accessMode: examCampaign.accessMode || 'Department',
+        isPracticeMode: examCampaign.isPracticeMode || false,
+        startTime: toLocalInputString(examCampaign.startTime),
+        endTime: toLocalInputString(examCampaign.endTime),
+        organizedBy: examCampaign.organizedBy || '',
+        minPassQuestions: examCampaign.minPassQuestions ?? '' as any,
+        totalQuestions: examCampaign.totalQuestions ?? '' as any,
         durationMinutes: examCampaign.durationMinutes ?? '' as any,
       })
-      setSearchTerm(examCampaign.departmentName || 'Tất cả các khoa')
     } else {
       if (isDeptManager) {
         form.reset({
           campaignCode: generateKyThiCode(),
           campaignName: '',
           description: '',
-          departmentId: currentUser?.deptManagerDeptId || '' as any,
-          thoiGianBatDau: '',
-          thoiGianKetThuc: '',
-          donViToChuc: currentUser?.deptManagerDeptName || currentUser?.department || '',
-          soCauDungToiThieu: '' as any,
-          tongSoCauHoi: '' as any,
+          departmentIds: currentUser?.deptManagerDeptId ? [currentUser.deptManagerDeptId] : [],
+          accessMode: 'Department',
+          isPracticeMode: false,
+          startTime: '',
+          endTime: '',
+          organizedBy: currentUser?.deptManagerDeptName || currentUser?.department || '',
+          minPassQuestions: '' as any,
+          totalQuestions: '' as any,
           durationMinutes: '' as any
         })
-        setSearchTerm(currentUser?.deptManagerDeptName || currentUser?.department || '')
       } else {
         form.reset({
           campaignCode: generateKyThiCode(),
           campaignName: '',
           description: '',
-          departmentId: '' as any,
-          thoiGianBatDau: '',
-          thoiGianKetThuc: '',
-          donViToChuc: '',
-          soCauDungToiThieu: '' as any,
-          tongSoCauHoi: '' as any,
+          departmentIds: [],
+          accessMode: 'Department',
+          isPracticeMode: false,
+          startTime: '',
+          endTime: '',
+          organizedBy: '',
+          minPassQuestions: '' as any,
+          totalQuestions: '' as any,
           durationMinutes: '' as any,
         })
-        setSearchTerm('Tất cả các khoa')
       }
     }
+    setSearchTerm('')
   }, [open, examCampaign, form, isDeptManager, currentUser])
 
   if (!open) return null
 
-  const selectedDeptId = form.watch('departmentId')
-  const selectedDept = departments.find(d => d.id === selectedDeptId)
-  const selectedDeptName = !selectedDeptId ? 'Tất cả các khoa' : (selectedDept ? selectedDept.departmentName : '')
+  const selectedDeptIds: number[] = form.watch('departmentIds') || []
+  const selectedDepts = departments.filter(d => selectedDeptIds.includes(d.id))
 
-  const filteredDepts = departments.filter(d => {
-    if (searchTerm === selectedDeptName) return true
-    return d.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-           d.deptCode.toLowerCase().includes(searchTerm.toLowerCase())
-  })
+  const toggleDept = (deptId: number) => {
+    const current: number[] = form.getValues('departmentIds') || []
+    const next = current.includes(deptId) ? current.filter(id => id !== deptId) : [...current, deptId]
+    form.setValue('departmentIds', next, { shouldDirty: true })
+  }
 
-  const showAllDeptsOption = searchTerm === '' || searchTerm === selectedDeptName || 'tất cả các khoa'.includes(searchTerm.toLowerCase())
+  const filteredDepts = departments.filter(d =>
+    d.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    d.deptCode.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const accessMode = form.watch('accessMode')
+  const isPracticeMode = form.watch('isPracticeMode')
+
+  const setAccessMode = (value: 'Department' | 'AssignedList') => {
+    form.setValue('accessMode', value, { shouldDirty: true })
+    // Danh sách chỉ định không dùng khoa - xóa lựa chọn cũ để tránh gửi dữ liệu khoa còn sót lại
+    // từ lúc trước đó đang ở chế độ "Theo khoa".
+    if (value === 'AssignedList' && !isDeptManager) {
+      form.setValue('departmentIds', [])
+    }
+  }
+
+  const togglePracticeMode = (value: boolean) => {
+    form.setValue('isPracticeMode', value, { shouldDirty: true })
+    if (value) {
+      // Luyện tập tồn tại vĩnh viễn - tự gán 1 khoảng thời gian rất dài thay vì bắt người dùng chọn.
+      form.setValue('startTime', practiceModeStartTime())
+      form.setValue('endTime', practiceModeEndTime())
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -156,18 +191,60 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
         </div>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="p-4 space-y-4">
+          <label className="flex items-start gap-2 rounded-md border border-input p-3 cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={isPracticeMode}
+              onChange={(e) => togglePracticeMode(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300"
+            />
+            <span>
+              <span className="text-sm font-medium text-gray-700 block">Chế độ luyện tập</span>
+              <span className="text-xs text-gray-400">
+                Tồn tại vĩnh viễn để học viên tự luyện bất cứ lúc nào - không giới hạn thời gian, không giới hạn số lần làm lại, không tính vào thống kê đạt/không đạt chính thức.
+              </span>
+            </span>
+          </label>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Mã kỳ thi *</label>
               <Input {...form.register('campaignCode')} placeholder="KT_Q2_2026" readOnly className="bg-gray-100 cursor-not-allowed" />
               {form.formState.errors.campaignCode && <p className="text-xs text-red-500">{form.formState.errors.campaignCode.message}</p>}
             </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">Chế độ xác định người được thi</label>
+              <div className="flex rounded-md border border-input overflow-hidden h-10 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setAccessMode('Department')}
+                  className={`flex-1 transition-colors ${accessMode === 'Department' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Theo khoa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccessMode('AssignedList')}
+                  className={`flex-1 transition-colors border-l ${accessMode === 'AssignedList' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Danh sách chỉ định
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {accessMode === 'AssignedList' ? (
+            <p className="text-[11px] text-gray-400 -mt-2">
+              Chỉ những người có trong danh sách được úp lên mới được thi. Lưu kỳ thi trước, sau đó dùng nút "Ai được thi" ở trang chi tiết kỳ thi để úp danh sách Excel/CSV.
+            </p>
+          ) : (
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1 relative" ref={dropdownRef}>
               <label className="text-sm font-medium text-gray-700">Khoa / Phòng ban</label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Tìm và chọn khoa..."
+                  placeholder={selectedDepts.length > 0 ? `Đã chọn ${selectedDepts.length} khoa...` : 'Để trống = tất cả các khoa'}
                   value={searchTerm}
                   onFocus={() => !isDeptManager && setIsDropdownOpen(true)}
                   onChange={(e) => {
@@ -189,52 +266,58 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
                   </button>
                 )}
               </div>
-              {form.formState.errors.departmentId && (
-                <p className="text-xs text-red-500">{form.formState.errors.departmentId.message}</p>
+
+              {!isDeptManager && selectedDepts.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {selectedDepts.map((d) => (
+                    <span key={d.id} className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-900 text-xs px-2 py-0.5">
+                      {d.departmentName}
+                      <button type="button" onClick={() => toggleDept(d.id)} className="hover:text-red-600">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
               )}
+
+              <p className="text-[11px] text-gray-400">Chọn 1-n khoa được thấy/thi kỳ thi này. Để trống = tất cả các khoa.</p>
 
               {isDropdownOpen && (
                 <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-md border bg-white shadow-lg">
-                  {showAllDeptsOption && (
-                    <div
-                      className={`flex items-center justify-between px-3 py-2 cursor-pointer text-sm hover:bg-gray-100 transition-colors ${
-                        !selectedDeptId ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-gray-900'
-                      }`}
-                      onClick={() => {
-                        form.setValue('departmentId', '' as any)
-                        setSearchTerm('Tất cả các khoa')
-                        setIsDropdownOpen(false)
-                      }}
-                    >
-                      <span>Tất cả các khoa</span>
-                      {!selectedDeptId && <Check className="h-4 w-4 text-blue-600" />}
-                    </div>
-                  )}
-
-                  {filteredDepts.length === 0 && !showAllDeptsOption ? (
+                  {filteredDepts.length === 0 ? (
                     <div className="p-3 text-sm text-gray-500 text-center">Không tìm thấy khoa nào</div>
                   ) : (
-                    filteredDepts.map((d) => (
-                      <div
-                        key={d.id}
-                        className={`flex items-center justify-between px-3 py-2 cursor-pointer text-sm hover:bg-gray-100 transition-colors ${
-                          selectedDeptId === d.id ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-gray-900'
-                        }`}
-                        onClick={() => {
-                          form.setValue('departmentId', d.id)
-                          setSearchTerm(d.departmentName)
-                          setIsDropdownOpen(false)
-                        }}
-                      >
-                        <span>{d.departmentName} ({d.deptCode})</span>
-                        {selectedDeptId === d.id && <Check className="h-4 w-4 text-blue-600" />}
-                      </div>
-                    ))
+                    filteredDepts.map((d) => {
+                      const isSelected = selectedDeptIds.includes(d.id)
+                      return (
+                        <div
+                          key={d.id}
+                          className={`flex items-center justify-between px-3 py-2 cursor-pointer text-sm hover:bg-gray-100 transition-colors ${
+                            isSelected ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-gray-900'
+                          }`}
+                          onClick={() => toggleDept(d.id)}
+                        >
+                          <span>{d.departmentName} ({d.deptCode})</span>
+                          {isSelected && <Check className="h-4 w-4 text-blue-600" />}
+                        </div>
+                      )
+                    })
                   )}
                 </div>
               )}
             </div>
           </div>
+          )}
+
+          {!isDeptManager && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">Đơn vị tổ chức</label>
+              <Input {...form.register('organizedBy')} placeholder="Ví dụ: Phòng KHTH" />
+              {form.formState.errors.organizedBy && (
+                <p className="text-xs text-red-500">{form.formState.errors.organizedBy.message}</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Tên kỳ thi *</label>
@@ -247,33 +330,38 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
             <textarea {...form.register('description')} rows={2} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Mô tả kỳ thi..." />
           </div>
 
+          {isPracticeMode ? (
+            <p className="text-[11px] text-gray-400">
+              Chế độ luyện tập không cần chọn thời gian - hệ thống tự gán khoảng thời gian rất dài để luôn sẵn sàng.
+            </p>
+          ) : (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Bắt đầu *</label>
-              <Input {...form.register('thoiGianBatDau')} type="datetime-local" />
-              {form.formState.errors.thoiGianBatDau && (
-                <p className="text-xs text-red-500">{form.formState.errors.thoiGianBatDau.message}</p>
+              <Input {...form.register('startTime')} type="datetime-local" />
+              {form.formState.errors.startTime && (
+                <p className="text-xs text-red-500">{form.formState.errors.startTime.message}</p>
               )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Kết thúc *</label>
-              <Input {...form.register('thoiGianKetThuc')} type="datetime-local" />
-              {form.formState.errors.thoiGianKetThuc && (
-                <p className="text-xs text-red-500">{form.formState.errors.thoiGianKetThuc.message}</p>
+              <Input {...form.register('endTime')} type="datetime-local" />
+              {form.formState.errors.endTime && (
+                <p className="text-xs text-red-500">{form.formState.errors.endTime.message}</p>
               )}
             </div>
           </div>
+          )}
 
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Tổng số câu hỏi mỗi đề *</label>
             <Input
+              {...form.register('totalQuestions')}
               type="number"
-              min={1}
-              {...form.register('tongSoCauHoi')}
               placeholder="VD: 50"
             />
-            {form.formState.errors.tongSoCauHoi && (
-              <p className="text-xs text-red-500">{form.formState.errors.tongSoCauHoi.message}</p>
+            {form.formState.errors.totalQuestions && (
+              <p className="text-xs text-red-500">{form.formState.errors.totalQuestions.message}</p>
             )}
             <p className="text-[11px] text-gray-400">
               Số câu hỏi bắt buộc khi tạo đề thi cho kỳ thi này.
@@ -299,13 +387,12 @@ export function KyThiFormDialog({ open, examCampaign, onClose, onSubmit, isLoadi
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Số câu đúng tối thiểu để ĐẠT</label>
             <Input
+              {...form.register('minPassQuestions')}
               type="number"
-              min={0}
-              {...form.register('soCauDungToiThieu')}
               placeholder="Để trống nếu không xét đạt/không đạt"
             />
-            {form.formState.errors.soCauDungToiThieu && (
-              <p className="text-xs text-red-500">{form.formState.errors.soCauDungToiThieu.message}</p>
+            {form.formState.errors.minPassQuestions && (
+              <p className="text-xs text-red-500">{form.formState.errors.minPassQuestions.message}</p>
             )}
             <p className="text-[11px] text-gray-400">
               Áp dụng một lần duy nhất cho toàn bộ đề thi thuộc kỳ thi này.

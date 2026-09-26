@@ -32,7 +32,7 @@ export const fetchQuestions = createAsyncThunk(
       const response = await questionsApi.list(filter)
       if (!response.data.success) return rejectWithValue(response.data.message)
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi tải câu hỏi')
     }
@@ -48,7 +48,7 @@ export const fetchQuestionTypes = createAsyncThunk(
       const response = await questionsApi.getQuestionTypes()
       if (!response.data.success) return rejectWithValue(response.data.message)
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi tải loại câu hỏi')
     }

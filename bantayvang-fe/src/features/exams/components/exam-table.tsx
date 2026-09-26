@@ -87,7 +87,7 @@ export function ExamTable({
               )}
               <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{exam.durationMinutes} phút</td>
               <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
-                {formatDate(exam.thoiGianBatDau)}
+                {formatDate(exam.startTime)}
               </td>
               <td className="px-4 py-3 text-center text-gray-600">{exam.totalQuestions}</td>
 

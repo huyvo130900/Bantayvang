@@ -3,31 +3,36 @@ export interface ExamCampaignDto {
   campaignCode: string | null
   campaignName: string | null
   description: string | null
-  departmentId: number | null
-  departmentName: string | null
+  departmentIds: number[]
+  departmentNames: string[]
+  accessMode: 'Department' | 'AssignedList'
+  isPracticeMode: boolean
   status: string | null
-  thoiGianBatDau: string | null
-  thoiGianKetThuc: string | null
-  donViToChuc: string | null
+  startTime: string | null
+  endTime: string | null
+  organizedBy: string | null
   createdAt: string
-  soLuongDeThi: number
-  tongThiSinh: number
-  danhSachMaDeThi: string[]
+  totalExamPapers: number
+  totalCandidates: number
+  examPaperCodes: string[]
   examPaperCode: string | null
-  soCauDungToiThieu?: number | null
-  tongSoCauHoi?: number | null
+  minPassQuestions?: number | null
+  totalQuestions?: number | null
   durationMinutes?: number | null
 }
 
 export interface ExamGenerationConfig {
-  soLuongDe: number
-  tongSoCau: number
-  soCauMC: number
-  soCauEssay: number
-  soCauEasy: number
-  soCauMedium: number
-  soCauHard: number
+  numberOfExams: number
+  totalQuestions: number
+  multipleChoiceQuestions: number
+  essayQuestions: number
+  easyQuestions: number
+  mediumQuestions: number
+  hardQuestions: number
   department?: string
+  // Kỳ thi giờ có thể gán 1-n khoa - dùng field này để lọc ngân hàng câu hỏi theo TẤT CẢ khoa
+  // của kỳ thi thay vì chỉ 1 chuỗi đơn (department, giữ lại cho luồng Quản lý khoa 1 khoa).
+  departmentNames?: string[]
 }
 
 export interface ExamCheckResult {
@@ -39,15 +44,34 @@ export interface CreateKyThiDto {
   campaignCode: string
   campaignName: string
   description?: string
-  departmentId?: number | null
-  thoiGianBatDau?: string | null
-  thoiGianKetThuc?: string | null
-  donViToChuc?: string
-  soCauDungToiThieu?: number | null
-  tongSoCauHoi?: number | null
+  departmentIds?: number[] | null
+  accessMode?: 'Department' | 'AssignedList'
+  isPracticeMode?: boolean
+  startTime?: string | null
+  endTime?: string | null
+  organizedBy?: string
+  minPassQuestions?: number | null
+  totalQuestions?: number | null
   durationMinutes?: number | null
 }
 
 export interface UpdateKyThiDto extends CreateKyThiDto {
   status: string
+}
+
+export interface AssignFromExcelResultDto {
+  totalRows: number
+  matchedUserCount: number
+  notFoundCodes: string[]
+}
+
+export interface ExamCampaignEligibilityDto {
+  userId: number
+  fullName: string | null
+  employeeCode: string | null
+  department: string | null
+  hasSubmitted: boolean
+  submissionStatus: string | null
+  totalScore: number | null
+  submitTime: string | null
 }

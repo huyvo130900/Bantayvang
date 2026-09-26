@@ -58,7 +58,7 @@ namespace BanTayVang.API.Controllers
                         Description = k.Description,
                         Status = k.Status,
                         DeptManagerId = k.DeptManagerId,
-                        TenQuanLy = k.DeptManager != null ? k.DeptManager.FullName : null,
+                        ManagerName = k.DeptManager != null ? k.DeptManager.FullName : null,
                         CreatedAt = k.CreatedAt,
                         UpdatedAt = k.UpdatedAt
                     })
@@ -101,7 +101,7 @@ namespace BanTayVang.API.Controllers
                     Id = khoa.Id, DeptCode = khoa.DeptCode, DepartmentName = khoa.DepartmentName,
                     Description = khoa.Description, Status = khoa.Status,
                     DeptManagerId = khoa.DeptManagerId,
-                    TenQuanLy = khoa.DeptManager?.FullName,
+                    ManagerName = khoa.DeptManager?.FullName,
                     CreatedAt = khoa.CreatedAt, UpdatedAt = khoa.UpdatedAt
                 }
             });
@@ -117,8 +117,8 @@ namespace BanTayVang.API.Controllers
             try
             {
                 // Lấy thông tin khoa từ JWT claims
-                var khoaId = DepartmentAuthHelper.GetDeptManagerKhoaId(User);
-                var khoaName = DepartmentAuthHelper.GetKhoaPhong(User);
+                var khoaId = DepartmentAuthHelper.GetDeptManagerDepartmentId(User);
+                var khoaName = DepartmentAuthHelper.GetDepartmentClaim(User);
 
                 // Admin có thể xem, nhưng cần id khoa cụ thể
                 if (khoaId == null && !DepartmentAuthHelper.IsAdmin(User))
@@ -141,104 +141,52 @@ namespace BanTayVang.API.Controllers
                 var departmentName = khoa.DepartmentName;
 
                 // 1. Đếm câu hỏi của khoa (theo Department string, không bị xóa)
-                var tongSoCauHoi = await _context.Questions
+                var totalQuestions = await _context.Questions
                     .CountAsync(c => c.Department == departmentName && c.IsDeleted != true);
 
-                // 2. Lấy danh sách kỳ thi của khoa
-                var kyThiList = await _context.ExamCampaigns
-                    .Where(k => k.DepartmentId == khoa.Id)
+                // 2. Lấy danh sách kỳ thi của khoa (kỳ thi giờ có thể gán cho 1-n khoa qua
+                // ExamCampaignDepartments thay vì đúng 1 khoa)
+                var examCampaignList = await _context.ExamCampaigns
+                    .Where(k => k.ExamCampaignDepartments.Any(kd => kd.DepartmentId == khoa.Id))
                     .OrderByDescending(k => k.CreatedAt)
                     .ToListAsync();
 
-                var tongSoDeThi = kyThiList.Count;
-
-                // 3. Đếm số đề thi của từng kỳ thi và thí sinh
-                var kyThiIds = kyThiList.Select(k => k.Id).ToList();
-
-                // Lấy tất cả đề thi thuộc các kỳ thi của khoa
-                var dethiList = await _context.ExamPapers
-                    .Where(d => d.ExamCampaignId != null && kyThiIds.Contains(d.ExamCampaignId!.Value))
+                // 6. Nhóm đề thi theo kỳ thi để lấy số liệu
+                var examStats = await _context.ExamCampaigns
+                    .Where(k => k.ExamCampaignDepartments.Any(kd => kd.DepartmentId == khoa.Id))
+                    .Select(k => new
+                    {
+                        Campaign = k,
+                        ExamCount = _context.ExamPapers.Count(p => p.ExamCampaignId == k.Id),
+                        CandidateCount = _context.ExamSubmissions.Where(s => s.ExamPaper != null && s.ExamPaper.ExamCampaignId == k.Id && s.Status == "Completed").Select(s => s.UserId).Distinct().Count()
+                    })
                     .ToListAsync();
 
-                var dethiIds = dethiList.Select(d => d.Id).ToList();
-
-                // 4. Đếm thí sinh duy nhất đã thi trong các đề của khoa
-                var tongSoThiSinh = await _context.ExamSubmissions
-                    .Where(b => b.ExamPaperId != null && dethiIds.Contains(b.ExamPaperId!.Value)
-                                && b.Status == "Completed")
-                    .Select(b => b.UserId)
-                    .Distinct()
+                var totalSubmissions = await _context.ExamSubmissions
+                    .Where(s => s.ExamPaper != null && s.ExamPaper.ExamCampaign != null && s.ExamPaper.ExamCampaign.ExamCampaignDepartments.Any(kd => kd.DepartmentId == khoa.Id) && s.Status == "Completed")
                     .CountAsync();
 
-                // 5. Tính điểm trung bình
-                var diemTrungBinh = 0.0;
-                var scores = await _context.ExamSubmissions
-                    .Where(b => b.ExamPaperId != null && dethiIds.Contains(b.ExamPaperId!.Value)
-                                && b.Status == "Completed"
-                                && b.TotalScore != null)
-                    .Select(b => b.TotalScore!.Value)
-                    .ToListAsync();
-                if (scores.Any())
-                    diemTrungBinh = scores.Average();
-
-                // 6. Nhóm đề thi theo kỳ thi để lấy số liệu
-                var dethiByKyThi = dethiList
-                    .Where(d => d.ExamCampaignId.HasValue)
-                    .GroupBy(d => d.ExamCampaignId!.Value)
-                    .ToDictionary(g => g.Key, g => g.ToList());
-
-                // Đếm thí sinh cho từng kỳ thi
-                var baithiByDeThi = await _context.ExamSubmissions
-                    .Where(b => b.ExamPaperId != null && dethiIds.Contains(b.ExamPaperId!.Value)
-                                && b.Status == "Completed")
-                    .GroupBy(b => b.ExamPaperId)
-                    .Select(g => new { DeThiId = g.Key, SoThiSinh = g.Select(b => b.UserId).Distinct().Count() })
-                    .ToListAsync();
-
-                // 7. Build kỳ thi gần đây (5 kỳ mới nhất)
-                static string ComputeStatus(ExamCampaign k)
-                {
-                    if (k.Status == "DaKetThuc" || k.Status == "TamDung") return k.Status;
-                    var nowUtc = DateTime.UtcNow;
-                    var endUtc = k.EndTime.HasValue
-                        ? DateTime.SpecifyKind(k.EndTime.Value, DateTimeKind.Utc)
-                        : (DateTime?)null;
-                    var startUtc = k.StartTime.HasValue
-                        ? DateTime.SpecifyKind(k.StartTime.Value, DateTimeKind.Utc)
-                        : (DateTime?)null;
-                    if (endUtc.HasValue && nowUtc > endUtc.Value) return "DaKetThuc";
-                    if (k.Status == "DangDienRa") return "DangDienRa";
-                    if (startUtc.HasValue && nowUtc >= startUtc.Value) return "DangDienRa";
-                    return "DangChuanBi";
-                }
-
-                var kyThiGanDay = kyThiList.Take(5).Select(kt =>
-                {
-                    var linkedDethis = dethiByKyThi.TryGetValue(kt.Id, out var ds) ? ds : new();
-                    var soThiSinhKyThi = linkedDethis
-                        .SelectMany(d => baithiByDeThi.Where(b => b.DeThiId == d.Id).Select(b => b.SoThiSinh))
-                        .Sum();
-                    return new KyThiSummaryDto
-                    {
-                        Id = kt.Id,
-                        CampaignName = kt.CampaignName ?? "—",
-                        StartTime = kt.StartTime,
-                        EndTime = kt.EndTime,
-                        Status = ComputeStatus(kt),
-                        SoDeThi = linkedDethis.Count,
-                        SoThiSinh = soThiSinhKyThi,
-                    };
-                }).ToList();
+                var totalScore = await _context.ExamSubmissions
+                    .Where(s => s.ExamPaper != null && s.ExamPaper.ExamCampaign != null && s.ExamPaper.ExamCampaign.ExamCampaignDepartments.Any(kd => kd.DepartmentId == khoa.Id) && s.Status == "Completed" && s.TotalScore != null)
+                    .SumAsync(s => s.TotalScore!.Value);
 
                 var result = new DepartmentDashboardDto
                 {
                     DeptId = khoa.Id,
                     DepartmentName = departmentName,
-                    TotalQuestions = tongSoCauHoi,
-                    TongSoDeThi = tongSoDeThi,
-                    TongSoThiSinh = tongSoThiSinh,
-                    DiemTrungBinh = Math.Round(diemTrungBinh, 1),
-                    KyThiGanDay = kyThiGanDay,
+                    TotalQuestions = totalQuestions,
+                    TotalExams = examStats.Sum(x => x.ExamCount),
+                    TotalCandidates = examStats.Sum(x => x.CandidateCount),
+                    AverageScore = totalSubmissions > 0 ? totalScore / totalSubmissions : 0,
+                    RecentCampaigns = examStats.Take(5).Select(x => new ExamCampaignSummaryDto { 
+                        Id = x.Campaign.Id, 
+                        CampaignName = x.Campaign.CampaignName ?? "—",
+                        StartTime = x.Campaign.StartTime,
+                        EndTime = x.Campaign.EndTime,
+                        Status = x.Campaign.Status,
+                        ExamCount = x.ExamCount,
+                        CandidateCount = x.CandidateCount
+                    }).ToList(),
                 };
 
                 return Ok(new BaseResponseDto<DepartmentDashboardDto>
@@ -255,8 +203,9 @@ namespace BanTayVang.API.Controllers
             }
         }
 
-        /// <summary>POST /api/Department - Tạo khoa mới (Admin only)</summary>
+        /// <summary>POST /api/Department - Tạo khoa mới (Chỉ Admin)</summary>
         [HttpPost]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<BaseResponseDto<DepartmentDto>>> CreateDepartment([FromBody] CreateDepartmentDto dto)
         {
             try
@@ -271,7 +220,7 @@ namespace BanTayVang.API.Controllers
                     DepartmentName = dto.DepartmentName,
                     Description = dto.Description,
                     Status = dto.Status,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
                 };
 
                 _context.Departments.Add(khoa);
@@ -291,8 +240,9 @@ namespace BanTayVang.API.Controllers
             }
         }
 
-        /// <summary>PUT /api/Department/{id} - Cập nhật khoa (Admin only)</summary>
+        /// <summary>PUT /api/Department/{id} - Cập nhật thông tin khoa (Chỉ Admin)</summary>
         [HttpPut("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<BaseResponseDto<DepartmentDto>>> UpdateDepartment(int id, [FromBody] UpdateDepartmentDto dto)
         {
             var khoa = await _context.Departments.FindAsync(id);
@@ -302,14 +252,15 @@ namespace BanTayVang.API.Controllers
             khoa.DepartmentName = dto.DepartmentName;
             khoa.Description = dto.Description;
             khoa.Status = dto.Status;
-            khoa.UpdatedAt = DateTime.Now;
+            khoa.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             await _context.SaveChangesAsync();
             return Ok(new BaseResponseDto<DepartmentDto> { Success = true, Message = "Cập nhật khoa thành công" });
         }
 
-        /// <summary>DELETE /api/Department/{id} - Xóa khoa (Admin only)</summary>
+        /// <summary>DELETE /api/Department/{id} - Xóa khoa (Chỉ Admin)</summary>
         [HttpDelete("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<BaseResponseDto>> DeleteDepartment(int id)
         {
             var khoa = await _context.Departments.FindAsync(id);
@@ -318,14 +269,15 @@ namespace BanTayVang.API.Controllers
 
             // Soft delete - đánh dấu inactive thay vì xóa
             khoa.Status = false;
-            khoa.UpdatedAt = DateTime.Now;
+            khoa.UpdatedAt = DateTime.UtcNow.AddHours(7);
             await _context.SaveChangesAsync();
 
             return Ok(new BaseResponseDto { Success = true, Message = "Đã vô hiệu hóa khoa" });
         }
 
-        /// <summary>POST /api/Department/{id}/assign-manager - Gán quản lý khoa (Admin only)</summary>
+        /// <summary>POST /api/Department/{id}/assign-manager - Phân công DeptManager (Chỉ Admin)</summary>
         [HttpPost("{id}/assign-manager")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<BaseResponseDto>> AssignManager(int id, [FromBody] AssignManagerDto dto)
         {
             try
@@ -345,11 +297,11 @@ namespace BanTayVang.API.Controllers
                         {
                             oldManager.DeptManagerDeptId = null;
                             oldManager.Department = null;
-                            oldManager.UpdatedAt = DateTime.Now;
+                            oldManager.UpdatedAt = DateTime.UtcNow.AddHours(7);
                         }
                     }
                     khoa.DeptManagerId = null;
-                    khoa.UpdatedAt = DateTime.Now;
+                    khoa.UpdatedAt = DateTime.UtcNow.AddHours(7);
                     await _context.SaveChangesAsync();
                     return Ok(new BaseResponseDto { Success = true, Message = $"Đã xóa quản lý khỏi {khoa.DepartmentName}" });
                 }
@@ -369,19 +321,19 @@ namespace BanTayVang.API.Controllers
                     {
                         oldManager.DeptManagerDeptId = null;
                         oldManager.Department = null;
-                        oldManager.UpdatedAt = DateTime.Now;
+                        oldManager.UpdatedAt = DateTime.UtcNow.AddHours(7);
                     }
                 }
 
                 // Assign manager to department
                 khoa.DeptManagerId = dto.DeptManagerId;
-                khoa.UpdatedAt = DateTime.Now;
+                khoa.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
                 // Also update DeptManagerDeptId and Department string on the user
-                // Department string is used in JWT claim "khoa_phong" for filtering
+                // Department string is used in JWT claim "department_claim" for filtering
                 manager.DeptManagerDeptId = id;
                 manager.Department = khoa.DepartmentName;  // sync string for JWT
-                manager.UpdatedAt = DateTime.Now;
+                manager.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
                 await _context.SaveChangesAsync();
 
@@ -394,31 +346,32 @@ namespace BanTayVang.API.Controllers
             }
         }
 
-        /// <summary>POST /api/Department/exam/{deThiId}/toggle-visibility - Bật/tắt công bố điểm theo đề thi</summary>
-        [HttpPost("exam/{deThiId}/toggle-visibility")]
-        public async Task<ActionResult<BaseResponseDto>> ToggleExamVisibility(int deThiId, [FromBody] ExamVisibilityDto dto)
+        /// <summary>POST /api/Department/exam/{ExamPaperId}/toggle-visibility</summary>
+        [HttpPost("exam/{ExamPaperId}/toggle-visibility")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<BaseResponseDto>> ToggleExamVisibility(int ExamPaperId, [FromBody] ExamVisibilityDto dto)
         {
             try
             {
-                var examPaper = await _context.ExamPapers.FindAsync(deThiId);
+                var examPaper = await _context.ExamPapers.FindAsync(ExamPaperId);
                 if (examPaper == null)
                     return NotFound(BaseResponseDto.FailureResult("Không tìm thấy đề thi"));
 
                 if (DepartmentAuthHelper.IsDeptManager(User))
                 {
-                    var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                    if (examPaper.Department != myKhoa)
+                    var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
+                    if (examPaper.Department != myDepartment)
                         return Forbid();
                 }
                 if (dto.IsResultPublished)
                 {
                     var hasUngraded = await _context.SubmissionDetails
                         .AnyAsync(c => c.ExamSubmission != null 
-                                    && c.ExamSubmission.ExamPaperId == deThiId 
+                                    && c.ExamSubmission.ExamPaperId == ExamPaperId 
                                     && c.ExamSubmission.Status == "Completed"
                                     && c.Question != null
                                     && c.Question.QuestionCategory != null
-                                    && (c.Question.QuestionCategory.CategoryName == "Tự luận" || c.Question.QuestionCategory.CategoryName == "TuLuan")
+                                    && EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName)
                                     && c.ScoreObtained == null);
                     if (hasUngraded)
                     {
@@ -427,7 +380,7 @@ namespace BanTayVang.API.Controllers
                 }
 
                 examPaper.IsResultPublished = dto.IsResultPublished;
-                examPaper.PublishedAt = dto.IsResultPublished ? DateTime.Now : null;
+                examPaper.PublishedAt = dto.IsResultPublished ? DateTime.UtcNow.AddHours(7) : null;
 
                 await _context.SaveChangesAsync();
 
@@ -474,7 +427,7 @@ namespace BanTayVang.API.Controllers
             wsGuide.Column(1).Width = 30;
             wsGuide.Column(2).Width = 60;
 
-            var ws = workbook.Worksheets.Add("IMPORT_KHOA_PHONG");
+            var ws = workbook.Worksheets.Add("IMPORT_DEPARTMENT");
             var headers = new[] { "Mã Khoa (*)", "Tên Khoa (*)", "Trạng thái (HoatDong/TamDung)", "Mô tả" };
             var widths = new[] { 22, 40, 35, 50 };
 
@@ -517,7 +470,7 @@ namespace BanTayVang.API.Controllers
 
             return File(stream.ToArray(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "template_import_khoaphong.xlsx");
+                "Template_Import_Departments.xlsx");
         }
 
         /// <summary>
@@ -538,6 +491,7 @@ namespace BanTayVang.API.Controllers
         /// Import danh sách Khoa/Phòng từ file Excel/CSV (Admin only)
         /// </summary>
         [HttpPost("import")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> ImportDepartments(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -566,7 +520,7 @@ namespace BanTayVang.API.Controllers
                     csv.ReadHeader();
                     var headerRecord = csv.HeaderRecord;
 
-                    int colTenKhoa = -1, colMaKhoa = -1, colTrangThai = -1, colMoTa = -1;
+                    int colDepartmentName = -1, colDepartmentCode = -1, colStatus = -1, colDescription = -1;
                     if (headerRecord != null)
                     {
                         for (int col = 0; col < headerRecord.Length; col++)
@@ -577,33 +531,33 @@ namespace BanTayVang.API.Controllers
                             if (headerText.Contains("Mã Khoa", StringComparison.OrdinalIgnoreCase) || 
                                 headerText.Contains("Ma Khoa", StringComparison.OrdinalIgnoreCase))
                             {
-                                colMaKhoa = col;
+                                colDepartmentCode = col;
                             }
                             else if (headerText.Contains("Trạng thái", StringComparison.OrdinalIgnoreCase) || 
                                      headerText.Contains("Trang thai", StringComparison.OrdinalIgnoreCase))
                             {
-                                colTrangThai = col;
+                                colStatus = col;
                             }
                             else if (headerText.Contains("Mô tả", StringComparison.OrdinalIgnoreCase) || 
                                      headerText.Contains("Mo ta", StringComparison.OrdinalIgnoreCase))
                             {
-                                colMoTa = col;
+                                colDescription = col;
                             }
                             else if (headerText.Contains("khoa", StringComparison.OrdinalIgnoreCase) || 
                                      headerText.Contains("phòng", StringComparison.OrdinalIgnoreCase) || 
                                      headerText.Contains("phong", StringComparison.OrdinalIgnoreCase) ||
                                      headerText.Contains("department", StringComparison.OrdinalIgnoreCase))
                             {
-                                if (colTenKhoa == -1) colTenKhoa = col;
+                                if (colDepartmentName == -1) colDepartmentName = col;
                             }
                         }
                     }
 
-                    if (colTenKhoa == -1 && headerRecord != null)
+                    if (colDepartmentName == -1 && headerRecord != null)
                     {
                         if (headerRecord.Length == 1)
                         {
-                            colTenKhoa = 0;
+                            colDepartmentName = 0;
                         }
                         else if (headerRecord.Length == 2)
                         {
@@ -611,21 +565,21 @@ namespace BanTayVang.API.Controllers
                             var h2 = headerRecord[1]?.Trim() ?? string.Empty;
                             if (h1.Equals("STT", StringComparison.OrdinalIgnoreCase) || double.TryParse(h1, out _))
                             {
-                                colTenKhoa = 1;
+                                colDepartmentName = 1;
                             }
                             else if (h2.Equals("STT", StringComparison.OrdinalIgnoreCase) || double.TryParse(h2, out _))
                             {
-                                colTenKhoa = 0;
+                                colDepartmentName = 0;
                             }
                             else
                             {
-                                colTenKhoa = 1;
-                                colMaKhoa = 0;
+                                colDepartmentName = 1;
+                                colDepartmentCode = 0;
                             }
                         }
                     }
 
-                    if (colTenKhoa == -1)
+                    if (colDepartmentName == -1)
                     {
                         return BadRequest(new { success = false, message = "Không tìm thấy cột chứa tên Khoa/Phòng trong file CSV (cột cần có tiêu đề chứa chữ 'Khoa' hoặc 'Phòng')" });
                     }
@@ -634,12 +588,12 @@ namespace BanTayVang.API.Controllers
                     while (csv.Read())
                     {
                         csvRowNumber++;
-                        string ten = colTenKhoa >= 0 && colTenKhoa < csv.Parser.Count ? csv.GetField(colTenKhoa)?.Trim() ?? string.Empty : string.Empty;
+                        string ten = colDepartmentName >= 0 && colDepartmentName < csv.Parser.Count ? csv.GetField(colDepartmentName)?.Trim() ?? string.Empty : string.Empty;
                         if (string.IsNullOrWhiteSpace(ten)) continue;
 
-                        string ma = colMaKhoa >= 0 && colMaKhoa < csv.Parser.Count ? csv.GetField(colMaKhoa)?.Trim() ?? string.Empty : string.Empty;
-                        string tt = colTrangThai >= 0 && colTrangThai < csv.Parser.Count ? csv.GetField(colTrangThai)?.Trim() ?? string.Empty : string.Empty;
-                        string mt = colMoTa >= 0 && colMoTa < csv.Parser.Count ? csv.GetField(colMoTa)?.Trim() ?? string.Empty : string.Empty;
+                        string ma = colDepartmentCode >= 0 && colDepartmentCode < csv.Parser.Count ? csv.GetField(colDepartmentCode)?.Trim() ?? string.Empty : string.Empty;
+                        string tt = colStatus >= 0 && colStatus < csv.Parser.Count ? csv.GetField(colStatus)?.Trim() ?? string.Empty : string.Empty;
+                        string mt = colDescription >= 0 && colDescription < csv.Parser.Count ? csv.GetField(colDescription)?.Trim() ?? string.Empty : string.Empty;
 
                         records.Add(new DepartmentImportRecord
                         {
@@ -671,7 +625,7 @@ namespace BanTayVang.API.Controllers
                     if (table == null || table.Rows.Count == 0)
                         return BadRequest(new { success = false, message = "File Excel không có dữ liệu" });
 
-                    int colTenKhoa = -1, colMaKhoa = -1, colTrangThai = -1, colMoTa = -1;
+                    int colDepartmentName = -1, colDepartmentCode = -1, colStatus = -1, colDescription = -1;
                     for (int col = 0; col < table.Columns.Count; col++)
                     {
                         var headerText = table.Columns[col].ColumnName.Trim();
@@ -680,47 +634,47 @@ namespace BanTayVang.API.Controllers
                         if (headerText.Contains("Mã Khoa", StringComparison.OrdinalIgnoreCase) || 
                             headerText.Contains("Ma Khoa", StringComparison.OrdinalIgnoreCase))
                         {
-                            colMaKhoa = col;
+                            colDepartmentCode = col;
                         }
                         else if (headerText.Contains("Trạng thái", StringComparison.OrdinalIgnoreCase) || 
                                  headerText.Contains("Trang thai", StringComparison.OrdinalIgnoreCase))
                         {
-                            colTrangThai = col;
+                            colStatus = col;
                         }
                         else if (headerText.Contains("Mô tả", StringComparison.OrdinalIgnoreCase) || 
                                  headerText.Contains("Mo ta", StringComparison.OrdinalIgnoreCase))
                         {
-                            colMoTa = col;
+                            colDescription = col;
                         }
                         else if (headerText.Contains("khoa", StringComparison.OrdinalIgnoreCase) || 
                                  headerText.Contains("phòng", StringComparison.OrdinalIgnoreCase) || 
                                  headerText.Contains("phong", StringComparison.OrdinalIgnoreCase) ||
                                  headerText.Contains("department", StringComparison.OrdinalIgnoreCase))
                         {
-                            if (colTenKhoa == -1)
+                            if (colDepartmentName == -1)
                             {
-                                colTenKhoa = col;
+                                colDepartmentName = col;
                             }
                             else
                             {
-                                var prevText = table.Columns[colTenKhoa].ColumnName.Trim();
+                                var prevText = table.Columns[colDepartmentName].ColumnName.Trim();
                                 bool prevHasBoth = prevText.Contains("khoa", StringComparison.OrdinalIgnoreCase) && 
                                                    (prevText.Contains("phòng", StringComparison.OrdinalIgnoreCase) || prevText.Contains("phong", StringComparison.OrdinalIgnoreCase));
                                 bool currHasBoth = headerText.Contains("khoa", StringComparison.OrdinalIgnoreCase) && 
                                                    (headerText.Contains("phòng", StringComparison.OrdinalIgnoreCase) || headerText.Contains("phong", StringComparison.OrdinalIgnoreCase));
                                 if (currHasBoth && !prevHasBoth)
                                 {
-                                    colTenKhoa = col;
+                                    colDepartmentName = col;
                                 }
                             }
                         }
                     }
 
-                    if (colTenKhoa == -1)
+                    if (colDepartmentName == -1)
                     {
                         if (table.Columns.Count == 1)
                         {
-                            colTenKhoa = 0;
+                            colDepartmentName = 0;
                         }
                         else if (table.Columns.Count == 2)
                         {
@@ -728,21 +682,21 @@ namespace BanTayVang.API.Controllers
                             var h2 = table.Columns[1].ColumnName.Trim();
                             if (h1.Equals("STT", StringComparison.OrdinalIgnoreCase) || double.TryParse(h1, out _))
                             {
-                                colTenKhoa = 1;
+                                colDepartmentName = 1;
                             }
                             else if (h2.Equals("STT", StringComparison.OrdinalIgnoreCase) || double.TryParse(h2, out _))
                             {
-                                colTenKhoa = 0;
+                                colDepartmentName = 0;
                             }
                             else
                             {
-                                colTenKhoa = 1;
-                                colMaKhoa = 0;
+                                colDepartmentName = 1;
+                                colDepartmentCode = 0;
                             }
                         }
                     }
 
-                    if (colTenKhoa == -1)
+                    if (colDepartmentName == -1)
                     {
                         return BadRequest(new { success = false, message = "Không tìm thấy cột chứa tên Khoa/Phòng trong file Excel (cột cần có tiêu đề chứa chữ 'Khoa' hoặc 'Phòng')" });
                     }
@@ -750,12 +704,12 @@ namespace BanTayVang.API.Controllers
                     for (int i = 0; i < table.Rows.Count; i++)
                     {
                         var rowData = table.Rows[i];
-                        string ten = rowData[colTenKhoa]?.ToString()?.Trim() ?? string.Empty;
+                        string ten = rowData[colDepartmentName]?.ToString()?.Trim() ?? string.Empty;
                         if (string.IsNullOrWhiteSpace(ten)) continue;
 
-                        string ma = colMaKhoa != -1 ? rowData[colMaKhoa]?.ToString()?.Trim() ?? string.Empty : string.Empty;
-                        string tt = colTrangThai != -1 ? rowData[colTrangThai]?.ToString()?.Trim() ?? string.Empty : string.Empty;
-                        string mt = colMoTa != -1 ? rowData[colMoTa]?.ToString()?.Trim() ?? string.Empty : string.Empty;
+                        string ma = colDepartmentCode != -1 ? rowData[colDepartmentCode]?.ToString()?.Trim() ?? string.Empty : string.Empty;
+                        string tt = colStatus != -1 ? rowData[colStatus]?.ToString()?.Trim() ?? string.Empty : string.Empty;
+                        string mt = colDescription != -1 ? rowData[colDescription]?.ToString()?.Trim() ?? string.Empty : string.Empty;
 
                         records.Add(new DepartmentImportRecord
                         {
@@ -770,35 +724,35 @@ namespace BanTayVang.API.Controllers
 
                 // Load existing departments into memory to avoid duplicate checking
                 var existingDepartments = await _context.Departments.ToListAsync();
-                var existingMaKhoas = new HashSet<string>(existingDepartments.Select(k => k.DeptCode), StringComparer.OrdinalIgnoreCase);
-                var existingTenKhoas = new HashSet<string>(existingDepartments.Select(k => k.DepartmentName), StringComparer.OrdinalIgnoreCase);
+                var existingDeptCodes = new HashSet<string>(existingDepartments.Select(k => k.DeptCode), StringComparer.OrdinalIgnoreCase);
+                var existingDeptNames = new HashSet<string>(existingDepartments.Select(k => k.DepartmentName), StringComparer.OrdinalIgnoreCase);
 
                 foreach (var rec in records)
                 {
                     string departmentName = rec.DepartmentName;
                     string deptCode = rec.DeptCode.ToUpper();
                     string description = rec.Description;
-                    string trangThaiStr = rec.Status;
+                    string statusStr = rec.Status;
 
-                    bool status = string.IsNullOrWhiteSpace(trangThaiStr) || 
-                                     trangThaiStr.Equals("HoatDong", StringComparison.OrdinalIgnoreCase) ||
-                                     trangThaiStr.Equals("Hoạt động", StringComparison.OrdinalIgnoreCase) ||
-                                     trangThaiStr.Equals("Hoat Dong", StringComparison.OrdinalIgnoreCase) ||
-                                     trangThaiStr.Equals("1") ||
-                                     trangThaiStr.Equals("true", StringComparison.OrdinalIgnoreCase);
+                    bool status = string.IsNullOrWhiteSpace(statusStr) || 
+                                     statusStr.Equals("HoatDong", StringComparison.OrdinalIgnoreCase) ||
+                                     statusStr.Equals("Hoạt động", StringComparison.OrdinalIgnoreCase) ||
+                                     statusStr.Equals("Hoat Dong", StringComparison.OrdinalIgnoreCase) ||
+                                     statusStr.Equals("1") ||
+                                     statusStr.Equals("true", StringComparison.OrdinalIgnoreCase);
 
                     // Check duplicate by DepartmentName
-                    if (existingTenKhoas.Contains(departmentName))
+                    if (existingDeptNames.Contains(departmentName))
                     {
                         skipped++;
                         errors.Add($"Dòng {rec.Row}: Khoa/phòng '{departmentName}' đã tồn tại — bỏ qua");
                         continue;
                     }
 
-                    bool isAutoGenerateMaKhoa = string.IsNullOrEmpty(deptCode);
-                    if (isAutoGenerateMaKhoa)
+                    bool isAutoGenerateDeptCode = string.IsNullOrEmpty(deptCode);
+                    if (isAutoGenerateDeptCode)
                     {
-                        deptCode = GenerateMaKhoa(departmentName);
+                        deptCode = GenerateDeptCode(departmentName);
                         if (string.IsNullOrEmpty(deptCode))
                         {
                             skipped++;
@@ -808,24 +762,24 @@ namespace BanTayVang.API.Controllers
 
                         // Ensure DeptCode is unique
                         int suffix = 1;
-                        string baseMaKhoa = deptCode;
-                        while (existingMaKhoas.Contains(deptCode))
+                        string baseDeptCode = deptCode;
+                        while (existingDeptCodes.Contains(deptCode))
                         {
                             string suffixStr = $"_{suffix}";
-                            if (baseMaKhoa.Length + suffixStr.Length > 50)
+                            if (baseDeptCode.Length + suffixStr.Length > 50)
                             {
-                                deptCode = baseMaKhoa.Substring(0, 50 - suffixStr.Length) + suffixStr;
+                                deptCode = baseDeptCode.Substring(0, 50 - suffixStr.Length) + suffixStr;
                             }
                             else
                             {
-                                deptCode = baseMaKhoa + suffixStr;
+                                deptCode = baseDeptCode + suffixStr;
                             }
                             suffix++;
                         }
                     }
                     else
                     {
-                        if (existingMaKhoas.Contains(deptCode))
+                        if (existingDeptCodes.Contains(deptCode))
                         {
                             skipped++;
                             errors.Add($"Dòng {rec.Row}: Mã khoa '{deptCode}' đã tồn tại — bỏ qua");
@@ -839,20 +793,30 @@ namespace BanTayVang.API.Controllers
                         DepartmentName = departmentName,
                         Status = status,
                         Description = string.IsNullOrWhiteSpace(description) ? null : description,
-                        CreatedAt = DateTime.Now,
+                        CreatedAt = DateTime.UtcNow.AddHours(7),
                     });
 
-                    existingMaKhoas.Add(deptCode);
-                    existingTenKhoas.Add(departmentName);
+                    existingDeptCodes.Add(deptCode);
+                    existingDeptNames.Add(departmentName);
                     created++;
                 }
 
+                // BUG FIX: `errors` here is only ever populated with per-row SKIP notices (duplicate
+                // name, duplicate code, unusable name for auto-generating a code) - each one already
+                // does `skipped++; continue;`, i.e. it is designed to be a soft, per-row skip, not a
+                // fatal parse failure (a truly fatal problem, like "no matching column found", already
+                // returns BadRequest earlier and never reaches this point). But this block treated ANY
+                // skip notice as a reason to reject the ENTIRE file with created=0 - so importing a list
+                // where even one department already existed discarded every other genuinely new
+                // department in the same file too, forcing the admin to manually strip out every
+                // duplicate row before re-uploading from scratch. Skips are now just reported
+                // informationally alongside the departments that were actually created.
                 await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
                     success = true,
-                    message = $"Import thành công {created} khoa/phòng. Bỏ qua: {skipped}.",
+                    message = $"Import thành công {created} khoa/phòng.",
                     created,
                     skipped,
                     errors
@@ -893,7 +857,7 @@ namespace BanTayVang.API.Controllers
             return finalBuilder.ToString();
         }
 
-        private static string GenerateMaKhoa(string departmentName)
+        private static string GenerateDeptCode(string departmentName)
         {
             if (string.IsNullOrWhiteSpace(departmentName))
                 return string.Empty;

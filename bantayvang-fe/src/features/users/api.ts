@@ -47,6 +47,7 @@ export const usersApi = {
   hardDelete: (id: number) => apiClient.delete<ApiResponse>(`/user/${id}/hard`),
 
   bulkDelete: (ids: number[]) => apiClient.post<ApiResponse>('/user/bulk-delete', ids),
+  bulkHardDelete: (ids: number[]) => apiClient.post<ApiResponse>('/user/bulk-hard-delete', ids),
 }
 
 // Extended user API methods
@@ -54,7 +55,10 @@ export const usersApiExtended = {
   importExcel: (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
-    return apiClient.post<ApiResponse<unknown>>('/user/import', formData, {
+    return apiClient.post<ApiResponse<any>>('/user/import', formData, {
+      // BUG FIX: literal 'multipart/form-data' (no boundary) makes the browser send that exact
+      // Content-Type instead of auto-generating one with a boundary - `undefined` deletes
+      // apiClient's default 'application/json' header so the browser computes it correctly.
       headers: { 'Content-Type': undefined },
     })
   },

@@ -1,4 +1,4 @@
-using BanTayVang.API.Models;
+﻿using BanTayVang.API.Models;
 
 namespace BanTayVang.API.Repositories.Interfaces
 {
@@ -7,7 +7,7 @@ namespace BanTayVang.API.Repositories.Interfaces
         Task<List<CheatWarning>> GetByBaiThiAsync(int examSubmissionId);
         Task<int> CountWarningsByBaiThiAsync(int examSubmissionId);
         Task<int> GetTotalWarningsAsync(int examSubmissionId);
-        Task<int> GetCountByBaithiIdAsync(int examSubmissionId);
-        Task<List<CheatWarning>> GetByBaithiIdAsync(int examSubmissionId);
+        Task<int> GetCountByExamSubmissionIdAsync(int examSubmissionId);
+        Task<List<CheatWarning>> GetByExamSubmissionIdAsync(int examSubmissionId);
     }
 }

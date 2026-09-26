@@ -55,11 +55,17 @@ public partial class BanTayVangDbContext : DbContext
     // Ky Thi
     public virtual DbSet<ExamCampaign> ExamCampaigns { get; set; }
 
+    // Kỳ thi - Khoa (1 kỳ thi có thể gán cho 1-n khoa)
+    public virtual DbSet<ExamCampaignDepartment> ExamCampaignDepartments { get; set; }
+
     // Đăng Ký Thi
     public virtual DbSet<ExamRegistration> ExamRegistrations { get; set; }
 
     // Department Management (v2.0)
     public virtual DbSet<Department> Departments { get; set; }
+
+    // Xác thực email bằng mã OTP (đăng ký thí sinh ngoại / quên mật khẩu)
+    public virtual DbSet<EmailVerificationCode> EmailVerificationCodes { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -192,14 +198,13 @@ public partial class BanTayVangDbContext : DbContext
 
             
 
-            entity.Property(e => e.DiaChiIp)
-                .HasMaxLength(50)
-                .HasColumnName("DiaChi_IP");
-            entity.Property(e => e.LoaiThaoTac).HasMaxLength(100);
+            entity.Property(e => e.IpAddress)
+                .HasMaxLength(50);
+            entity.Property(e => e.ActionType).HasMaxLength(100);
             entity.Property(e => e.ActionTime).HasColumnType("datetime");
             entity.Property(e => e.Username).HasMaxLength(100);
-            entity.Property(e => e.PhuongThuc).HasMaxLength(10);
-            entity.Property(e => e.DuongDan).HasMaxLength(500);
+            entity.Property(e => e.HttpMethod).HasMaxLength(10);
+            entity.Property(e => e.ApiPath).HasMaxLength(500);
             entity.Property(e => e.Department).HasMaxLength(100);
             entity.Property(e => e.UserAgent).HasMaxLength(500);
 
@@ -305,7 +310,7 @@ public partial class BanTayVangDbContext : DbContext
 
             
 
-            entity.Property(e => e.MaVaiTro).HasMaxLength(50);
+            entity.Property(e => e.RoleCode).HasMaxLength(50);
             entity.Property(e => e.Description).HasMaxLength(255);
             entity.Property(e => e.RoleName).HasMaxLength(100);
         });
@@ -415,6 +420,51 @@ public partial class BanTayVangDbContext : DbContext
                 .OnDelete(DeleteBehavior.NoAction);
             entity.HasIndex(e => new { e.ExamId, e.UserId }).IsUnique();
             entity.HasIndex(e => e.UserId);
+        });
+
+        // ExamCampaignDepartment configuration (1 kỳ thi - n khoa)
+        modelBuilder.Entity<ExamCampaignDepartment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(d => d.ExamCampaign)
+                .WithMany(p => p.ExamCampaignDepartments)
+                .HasForeignKey(d => d.ExamCampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.Department)
+                .WithMany()
+                .HasForeignKey(d => d.DepartmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.ExamCampaignId, e.DepartmentId }).IsUnique();
+        });
+
+        // EmailVerificationCode configuration (OTP cho đăng ký / quên mật khẩu)
+        modelBuilder.Entity<EmailVerificationCode>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Email)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            entity.Property(e => e.CodeHash)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            entity.Property(e => e.Purpose)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.ExpiresAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.IpAddress)
+                .HasMaxLength(45);
+
+            entity.HasIndex(e => new { e.Email, e.Purpose });
         });
 
         OnModelCreatingPartial(modelBuilder);

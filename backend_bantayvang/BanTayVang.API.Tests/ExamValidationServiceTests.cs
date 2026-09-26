@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -44,7 +44,7 @@ namespace BanTayVang.API.Tests
                 ExamPaperCode = "examPaper-001", // Lowercase and hyphen
                 ExamPaperName = "Test Exam",
                 DurationMinutes = 60,
-                DanhSachIdCauHoi = new List<int>()
+                QuestionIds = new List<int>()
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -67,7 +67,7 @@ namespace BanTayVang.API.Tests
                 ExamPaperCode = "DETHI_002", // Uppercase and underscore
                 ExamPaperName = "Test Exam",
                 DurationMinutes = 60,
-                DanhSachIdCauHoi = new List<int>()
+                QuestionIds = new List<int>()
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -90,7 +90,7 @@ namespace BanTayVang.API.Tests
                 ExamPaperCode = "examPaper 003", // Invalid because of space
                 ExamPaperName = "Test Exam",
                 DurationMinutes = 60,
-                DanhSachIdCauHoi = new List<int>()
+                QuestionIds = new List<int>()
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -113,7 +113,7 @@ namespace BanTayVang.API.Tests
                 ExamPaperCode = "DETHI_004",
                 ExamPaperName = "Test Exam",
                 DurationMinutes = 60,
-                DanhSachIdCauHoi = new List<int>()
+                QuestionIds = new List<int>()
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -136,7 +136,7 @@ namespace BanTayVang.API.Tests
                 ExamPaperCode = "DETHI_005",
                 ExamPaperName = "Test Exam",
                 DurationMinutes = 60,
-                DanhSachIdCauHoi = new List<int> { 1, 2, 3 } // Needs 1, 2, 3
+                QuestionIds = new List<int> { 1, 2, 3 } // Needs 1, 2, 3
             };
 
             _mockDethiRepository.Setup(r => r.GetByMaDeThiAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -155,3 +155,5 @@ namespace BanTayVang.API.Tests
         }
     }
 }
+
+

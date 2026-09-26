@@ -28,7 +28,8 @@ namespace BanTayVang.API.Controllers
         public async Task<ActionResult<BaseResponseDto<List<NotificationDto>>>> GetMyNotifications([FromQuery] bool? unreadOnly = null)
         {
             var userId = GetUserId();
-            var result = await _notificationService.GetUserNotificationsAsync(userId, unreadOnly);
+            if (userId == null) return Unauthorized(new BaseResponseDto { Success = false, Message = "Không xác định được người dùng" });
+            var result = await _notificationService.GetUserNotificationsAsync(userId.Value, unreadOnly);
             return Ok(result);
         }
 
@@ -39,7 +40,8 @@ namespace BanTayVang.API.Controllers
         public async Task<ActionResult<BaseResponseDto<int>>> GetUnreadCount()
         {
             var userId = GetUserId();
-            var result = await _notificationService.GetUnreadCountAsync(userId);
+            if (userId == null) return Unauthorized(new BaseResponseDto { Success = false, Message = "Không xác định được người dùng" });
+            var result = await _notificationService.GetUnreadCountAsync(userId.Value);
             return Ok(result);
         }
 
@@ -47,10 +49,12 @@ namespace BanTayVang.API.Controllers
         /// Tạo thông báo cho user
         /// </summary>
         [HttpPost]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto<NotificationDto>>> Create([FromBody] CreateNotificationDto dto)
         {
             var senderId = GetUserId();
-            var result = await _notificationService.CreateNotificationAsync(dto, senderId);
+            if (senderId == null) return Unauthorized(new BaseResponseDto { Success = false, Message = "Không xác định được người dùng" });
+            var result = await _notificationService.CreateNotificationAsync(dto, senderId.Value);
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }
@@ -62,7 +66,8 @@ namespace BanTayVang.API.Controllers
         public async Task<ActionResult<BaseResponseDto>> MarkAsRead(int id)
         {
             var userId = GetUserId();
-            var result = await _notificationService.MarkAsReadAsync(id, userId);
+            if (userId == null) return Unauthorized(new BaseResponseDto { Success = false, Message = "Không xác định được người dùng" });
+            var result = await _notificationService.MarkAsReadAsync(id, userId.Value);
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }
@@ -74,7 +79,8 @@ namespace BanTayVang.API.Controllers
         public async Task<ActionResult<BaseResponseDto>> MarkAllAsRead()
         {
             var userId = GetUserId();
-            var result = await _notificationService.MarkAllAsReadAsync(userId);
+            if (userId == null) return Unauthorized(new BaseResponseDto { Success = false, Message = "Không xác định được người dùng" });
+            var result = await _notificationService.MarkAllAsReadAsync(userId.Value);
             return Ok(result);
         }
 
@@ -85,7 +91,8 @@ namespace BanTayVang.API.Controllers
         public async Task<ActionResult<BaseResponseDto>> Delete(int id)
         {
             var userId = GetUserId();
-            var result = await _notificationService.DeleteNotificationAsync(id, userId);
+            if (userId == null) return Unauthorized(new BaseResponseDto { Success = false, Message = "Không xác định được người dùng" });
+            var result = await _notificationService.DeleteNotificationAsync(id, userId.Value);
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }
@@ -94,12 +101,14 @@ namespace BanTayVang.API.Controllers
         /// Broadcast thông báo cho tất cả users
         /// </summary>
         [HttpPost("broadcast")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto>> Broadcast([FromBody] CreateNotificationDto dto)
         {
             var senderId = GetUserId();
+            if (senderId == null) return Unauthorized(new BaseResponseDto { Success = false, Message = "Không xác định được người dùng" });
             dto.UserId = null;
             dto.Department = null;
-            var result = await _notificationService.CreateNotificationAsync(dto, senderId);
+            var result = await _notificationService.CreateNotificationAsync(dto, senderId.Value);
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }
@@ -124,6 +133,6 @@ namespace BanTayVang.API.Controllers
             return Ok(result);
         }
 
-        private int GetUserId() => HttpContext.Items["UserId"] as int? ?? 1;
+        private int? GetUserId() => HttpContext.Items["UserId"] as int?;
     }
 }

@@ -1,6 +1,7 @@
 using AutoMapper;
 using BanTayVang.API.DTOs.Common;
 using BanTayVang.API.DTOs.Question;
+using BanTayVang.API.Helpers;
 using BanTayVang.API.Models;
 using BanTayVang.API.Repositories.Interfaces;
 using BanTayVang.API.Services.Interfaces;
@@ -8,6 +9,7 @@ using BanTayVang.API.Services.Interfaces.Security;
 using BanTayVang.API.Services.Interfaces.Validation;
 using BanTayVang.API.Services.Interfaces.Import;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace BanTayVang.API.Services.Impl
 {
@@ -23,23 +25,26 @@ namespace BanTayVang.API.Services.Impl
         private readonly ILogger<QuestionService> _logger;
         private readonly IQuestionImportStrategyFactory _strategyFactory;
         private readonly IQuestionCategoryRepository _categoryRepository;
+        private readonly IWordQuestionImportService _wordImportService;
 
         public QuestionService(
-            IQuestionRepository cauhoiRepository,
-            IQuestionOptionRepository luachonRepository,
+            IQuestionRepository questionRepository,
+            IQuestionOptionRepository questionOptionRepository,
             IExamSecurityService securityService,
             IMapper mapper,
             ILogger<QuestionService> logger,
             IQuestionImportStrategyFactory strategyFactory,
-            IQuestionCategoryRepository loaiRepository)
+            IQuestionCategoryRepository loaiRepository,
+            IWordQuestionImportService wordImportService)
         {
-            _questionRepository = cauhoiRepository ?? throw new ArgumentNullException(nameof(cauhoiRepository));
-            _questionOptionRepository = luachonRepository ?? throw new ArgumentNullException(nameof(luachonRepository));
+            _questionRepository = questionRepository ?? throw new ArgumentNullException(nameof(questionRepository));
+            _questionOptionRepository = questionOptionRepository ?? throw new ArgumentNullException(nameof(questionOptionRepository));
             _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _strategyFactory = strategyFactory ?? throw new ArgumentNullException(nameof(strategyFactory));
             _categoryRepository = loaiRepository ?? throw new ArgumentNullException(nameof(loaiRepository));
+            _wordImportService = wordImportService ?? throw new ArgumentNullException(nameof(wordImportService));
         }
 
         public async Task<BaseResponseDto<PagedResultDto<QuestionDto>>> GetFilteredQuestionsAsync(QuestionFilterDto filter)
@@ -173,13 +178,14 @@ namespace BanTayVang.API.Services.Impl
                 if (loaiId > 0)
                 {
                     var loai = await _categoryRepository.GetByIdAsync(loaiId);
-                    if (loai != null)
+                    // BUG FIX: previously only matched CategoryName containing "tự luận"/"tu luan",
+                    // which missed the common abbreviated code "TL" used in seed/real data.
+                    // Use the centralized EssayQuestionHelper (same list the frontend already
+                    // relies on for MC/essay detection) so "TL" and other recognised essay
+                    // codes correctly skip the "at least 2 choices" requirement.
+                    if (loai != null && EssayQuestionHelper.IsEssayCategory(loai.CategoryName))
                     {
-                        var loaiName = loai.CategoryName?.ToLower() ?? "";
-                        if (loaiName.Contains("tự luận") || loaiName.Contains("tu luan"))
-                        {
-                            requiresChoices = false;
-                        }
+                        requiresChoices = false;
                     }
                 }
 
@@ -193,8 +199,8 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 // Kiểm tra câu hỏi trùng nội dung (so sánh không phân biệt hoa thường, bỏ khoảng trắng thừa)
-                var noiDungChuan = createDto.Content.Trim().ToLower();
-                var duplicate = await _questionRepository.FindDuplicateAsync(noiDungChuan, createDto.Department);
+                var standardizedContent = createDto.Content.Trim().ToLower();
+                var duplicate = await _questionRepository.FindDuplicateAsync(standardizedContent, createDto.Department);
                 if (duplicate != null)
                 {
                     return new BaseResponseDto<QuestionDto>
@@ -215,15 +221,36 @@ namespace BanTayVang.API.Services.Impl
                         Difficulty = MapDifficultyToDb(createDto.Difficulty ?? createDto.Level),
                         ImageUrl = createDto.ImageUrl,
                         CreatedBy = createdBy,
-                        CreatedAt = DateTime.Now,
+                        CreatedAt = DateTime.UtcNow.AddHours(7),
                         IsDeleted = false,
-                        Department = createDto.Department
+                        Department = createDto.Department,
+                        // BUG FIX: the question-bank UI stores the Tự luận "Đáp án chuẩn" text as
+                        // Options[0].Content (see question-form-dialog.tsx), but the grading screens
+                        // (bulk-essay-grading-page.tsx, result-detail-dialog.tsx) only ever read
+                        // Question.SuggestedAnswer to display the model answer to the grader.
+                        // Excel/Word import already sets SuggestedAnswer directly, but this
+                        // create path never mirrored it, so a Tự luận question created from the
+                        // question bank silently had NO visible "Đáp án chuẩn" during grading,
+                        // even though the save itself succeeded.
+                        SuggestedAnswer = !requiresChoices
+                            ? (createDto.Options?.FirstOrDefault()?.Content ?? createDto.SuggestedAnswer)
+                            : createDto.SuggestedAnswer
                     };
 
                     var savedQuestion = await _questionRepository.AddAsync(question);
 
-                    // Add choices
-                    if (createDto.Options != null)
+                    // BUG FIX (confirmed live, corrupted 2 real questions in production data):
+                    // the question-bank UI always submits Options[0].Content as the carrier for a
+                    // Tự luận question's "Đáp án chuẩn" (see the SuggestedAnswer assignment above
+                    // and question-form-dialog.tsx, which binds that textarea directly to
+                    // `options.0.content`) - react-hook-form materializes that path into a real
+                    // array entry the moment the field is touched, even when left blank. This loop
+                    // used to persist THAT entry as a genuine QuestionOption (IsCorrect=true) for
+                    // every essay question created through the UI, silently turning a 0-option
+                    // essay question into a fake 1-option "multiple choice" answer key the instant
+                    // anyone typed a reference answer. Only persist real choices when the question
+                    // actually requires them (i.e. is not essay).
+                    if (requiresChoices && createDto.Options != null)
                     {
                         foreach (var choiceDto in createDto.Options)
                         {
@@ -307,8 +334,8 @@ namespace BanTayVang.API.Services.Impl
                 }
 
                 // Kiểm tra câu hỏi trùng nội dung cho update (tránh trùng với câu hỏi khác)
-                var noiDungChuan = updateDto.Content.Trim().ToLower();
-                var duplicate = await _questionRepository.FindDuplicateAsync(noiDungChuan, updateDto.Department);
+                var standardizedContent = updateDto.Content.Trim().ToLower();
+                var duplicate = await _questionRepository.FindDuplicateAsync(standardizedContent, updateDto.Department);
                 if (duplicate != null && duplicate.Id != updateDto.Id)
                 {
                     return new BaseResponseDto<QuestionDto>
@@ -318,23 +345,87 @@ namespace BanTayVang.API.Services.Impl
                     };
                 }
 
+                var newCategoryId = updateDto.QuestionCategoryId ?? existingQuestion.QuestionCategoryId ?? 1;
+                // BUG FIX: look up the (possibly changed) category so we know whether this
+                // is a Tự luận question - needed below to mirror the "Đáp án chuẩn" text
+                // into SuggestedAnswer, the same way CreateQuestionAsync now does.
+                bool isEssayCategory = false;
+                if (newCategoryId > 0)
+                {
+                    var loai = await _categoryRepository.GetByIdAsync(newCategoryId);
+                    isEssayCategory = loai != null && EssayQuestionHelper.IsEssayCategory(loai.CategoryName);
+                }
+
+                // BUG FIX: CreateQuestionAsync has always required >=2 options for a non-essay
+                // category, but this method never had the equivalent check - changing an existing
+                // question's category away from essay without also submitting a fresh Options list
+                // (e.g. a direct API call, bypassing the question-bank UI form which auto-fills 4
+                // blank options whenever it detects the category flip) would silently leave a
+                // "Trắc nghiệm"-categorized question with 0 options. Every scoring code path
+                // (EssayQuestionHelper.IsEssay) treats a 0-option question as an essay regardless
+                // of its category, so such a question would never appear in the essay-grading queue
+                // (which matches by category name only) and would score 0 forever with no way to fix it.
+                if (!isEssayCategory)
+                {
+                    var resultingOptionCount = (updateDto.Options != null && updateDto.Options.Any())
+                        ? updateDto.Options.Count
+                        : existingQuestion.QuestionOptions?.Count ?? 0;
+                    if (resultingOptionCount < 2)
+                    {
+                        return new BaseResponseDto<QuestionDto>
+                        {
+                            Success = false,
+                            Message = "Câu hỏi trắc nghiệm phải có ít nhất 2 lựa chọn"
+                        };
+                    }
+                }
+
                 // OWASP A04: Insecure Design - Transaction integrity
                 using var transaction = await _questionRepository.BeginTransactionAsync();
                 try
                 {
                     // Update question
                     existingQuestion.Content = SanitizeHtmlContent(updateDto.Content);
-                    existingQuestion.QuestionCategoryId = updateDto.QuestionCategoryId ?? existingQuestion.QuestionCategoryId ?? 1;
+                    existingQuestion.QuestionCategoryId = newCategoryId;
                     existingQuestion.Difficulty = MapDifficultyToDb(updateDto.Difficulty ?? updateDto.Level);
                     existingQuestion.ImageUrl = updateDto.ImageUrl;
                     existingQuestion.Department = updateDto.Department;
                     existingQuestion.UpdatedBy = updatedBy;
-                    existingQuestion.UpdatedAt = DateTime.Now;
+                    existingQuestion.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                    // BUG FIX: see matching comment in CreateQuestionAsync - the question-bank UI
+                    // saves the Tự luận "Đáp án chuẩn" into Options[0].Content, but grading only
+                    // reads SuggestedAnswer, which this method never updated. This is the concrete
+                    // bug behind "sửa câu hỏi tự luận xong nhưng không thấy đáp án khi chấm bài":
+                    // the PUT succeeded every time, but the answer never reached the field grading
+                    // actually reads.
+                    // Guard against blanking out a good SuggestedAnswer (e.g. one set by Excel/Word
+                    // import, where Options is empty) when the UI form round-trips an empty
+                    // Options[0].Content - only overwrite when a non-empty value is actually supplied.
+                    var essayAnswerFromOptions = updateDto.Options?.FirstOrDefault()?.Content;
+                    var newSuggestedAnswer = !string.IsNullOrWhiteSpace(essayAnswerFromOptions)
+                        ? essayAnswerFromOptions
+                        : updateDto.SuggestedAnswer;
+                    existingQuestion.SuggestedAnswer = !string.IsNullOrWhiteSpace(newSuggestedAnswer)
+                        ? newSuggestedAnswer
+                        : (isEssayCategory ? existingQuestion.SuggestedAnswer : newSuggestedAnswer);
 
                     await _questionRepository.UpdateAsync(existingQuestion);
 
-                    // Update choices if provided
-                    if (updateDto.Options != null && updateDto.Options.Any())
+                    // BUG FIX (confirmed live, corrupted 2 real questions in production data -
+                    // #83 and #85): same root cause as CreateQuestionAsync above - the UI always
+                    // submits Options[0].Content as the carrier for a Tự luận question's "Đáp án
+                    // chuẩn", and this used to persist THAT as a real QuestionOption whenever the
+                    // list was non-empty (which it always is for essay, even with blank content -
+                    // react-hook-form materializes `options.0.content` into a real array entry the
+                    // moment that field exists on the form). Result: opening any essay question's
+                    // edit dialog and saving silently created a fake 1-option "trắc nghiệm" answer
+                    // key for it. Essay questions must never have real options - always clear
+                    // (never insert) instead of following the submitted list.
+                    if (isEssayCategory)
+                    {
+                        await _questionOptionRepository.DeleteByQuestionIdAsync(updateDto.Id);
+                    }
+                    else if (updateDto.Options != null && updateDto.Options.Any())
                     {
                         // Remove existing choices
                         await _questionOptionRepository.DeleteByQuestionIdAsync(updateDto.Id);
@@ -414,7 +505,7 @@ namespace BanTayVang.API.Services.Impl
                 // Soft delete - mark as deleted instead of hard delete
                 question.IsDeleted = true;
                 question.UpdatedBy = updatedBy;
-                question.UpdatedAt = DateTime.Now;
+                question.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
                 await _questionRepository.UpdateAsync(question);
 
@@ -442,6 +533,72 @@ namespace BanTayVang.API.Services.Impl
                     Message = "Có lỗi xảy ra khi xóa câu hỏi",
                     Errors = new List<string> { "Lỗi hệ thống" }
                 };
+            }
+        }
+
+        public async Task<BaseResponseDto<List<QuestionDto>>> PreviewQuestionsFromExcelAsync(IFormFile file, int createdBy, string department, int questionCategoryId)
+        {
+            try
+            {
+                if (file == null || file.Length == 0) return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = "File không hợp lệ" };
+                var allowedExtensions = new[] { ".xlsx", ".xls" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension)) return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = "Chỉ hỗ trợ file Excel (.xlsx, .xls)" };
+
+                var questionCategory = await _categoryRepository.GetByIdAsync(questionCategoryId);
+                if (questionCategory == null) return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = "Loại câu hỏi không tồn tại." };
+
+                IQuestionImportStrategy strategy;
+                try
+                {
+                    strategy = _strategyFactory.GetStrategy(questionCategory.CategoryName ?? "");
+                }
+                catch (Exception ex)
+                {
+                    return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = ex.Message };
+                }
+
+                var errors = new List<string>();
+                var parsedEntities = new List<Question>();
+
+                using (var stream = file.OpenReadStream())
+                using (var workbook = new ClosedXML.Excel.XLWorkbook(stream))
+                {
+                    var worksheet = workbook.Worksheets.FirstOrDefault(ws =>
+                                        ws.Name.Equals("IMPORT_CAU_HOI", StringComparison.OrdinalIgnoreCase))
+                                    ?? workbook.Worksheets.First(ws =>
+                                        !ws.Name.Equals("HUONG_DAN", StringComparison.OrdinalIgnoreCase));
+
+                    parsedEntities = await strategy.ParseAndValidateAsync(worksheet, createdBy, department, errors, false);
+                }
+
+                var dtos = parsedEntities.Select(q => new QuestionDto
+                {
+                    Id = 0,
+                    Content = q.Content,
+                    Difficulty = q.Difficulty == "3" ? "Khó" : q.Difficulty == "2" ? "Trung bình" : "Dễ",
+                    Department = q.Department,
+                    ImageUrl = q.ImageUrl,
+                    SuggestedAnswer = q.SuggestedAnswer,
+                    QuestionCategoryId = q.QuestionCategoryId,
+                    Options = q.QuestionOptions?.Select(o => new QuestionOptionDto
+                    {
+                        Id = 0, Content = o.Content, IsCorrect = o.IsCorrect ?? false, OrderIndex = o.OrderIndex ?? 0
+                    }).ToList() ?? new()
+                }).ToList();
+
+                return new BaseResponseDto<List<QuestionDto>>
+                {
+                    Success = true,
+                    Message = errors.Count > 0 ? $"Xem trước xong ({errors.Count} lỗi)" : "Xem trước thành công",
+                    Data = dtos,
+                    Errors = errors
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi preview câu hỏi từ Excel");
+                return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = "Có lỗi xảy ra khi đọc file." };
             }
         }
 
@@ -540,13 +697,13 @@ namespace BanTayVang.API.Services.Impl
                         };
                     }
 
-                    // Nếu isExamImport = true và có bất kỳ lỗi nào, CHẶN lưu (strict mode)
-                    if (isExamImport && errors.Any())
+                    // Nếu có bất kỳ lỗi nào, CHẶN lưu (strict mode) để tránh Partial Import
+                    if (errors.Any())
                     {
                         return new BaseResponseDto<List<QuestionDto>>
                         {
                             Success = false,
-                            Message = "File Excel có chứa dòng lỗi, không thể thêm vào đề thi. Vui lòng sửa lại file.",
+                            Message = $"File Excel có {errors.Count} dòng lỗi, không thể thêm vào ngân hàng. Vui lòng sửa lại file.",
                             Data = null,
                             Errors = errors
                         };
@@ -588,6 +745,11 @@ namespace BanTayVang.API.Services.Impl
                         {
                             await transaction.RollbackAsync();
                             errors.Add($"Lỗi lưu cơ sở dữ liệu: {dbEx.Message}");
+                            // BUG FIX: the transaction was rolled back, so NONE of the rows added to
+                            // importedQuestions during the loop above actually exist in the DB anymore.
+                            // Without this, the code below would see a non-empty importedQuestions list
+                            // and report a false "Import thành công" even though 0 rows were saved.
+                            importedQuestions.Clear();
                         }
                     }
                 }
@@ -713,11 +875,11 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto<List<QuestionDto>>> GetRandomQuestionsAsync(int count)
+        public async Task<BaseResponseDto<List<QuestionDto>>> GetRandomQuestionsAsync(int count, int? categoryId = null)
         {
             try
             {
-                _logger.LogInformation("Getting {Count} random questions", count);
+                _logger.LogInformation("Getting {Count} random questions (categoryId={CategoryId})", count, categoryId);
 
                 // OWASP A04: Insecure Design - Limit random question count
                 if (count > 100)
@@ -734,7 +896,7 @@ namespace BanTayVang.API.Services.Impl
                     };
                 }
 
-                var questions = await _questionRepository.GetRandomQuestionsAsync(count);
+                var questions = await _questionRepository.GetRandomQuestionsAsync(count, categoryId);
                 var result = _mapper.Map<List<QuestionDto>>(questions);
 
                 return new BaseResponseDto<List<QuestionDto>>
@@ -764,8 +926,8 @@ namespace BanTayVang.API.Services.Impl
         public async Task<bool> CheckDuplicateAsync(string content, string? department = null, int? excludeId = null)
         {
             if (string.IsNullOrWhiteSpace(content)) return false;
-            var noiDungChuan = content.Trim().ToLower();
-            var duplicate = await _questionRepository.FindDuplicateAsync(noiDungChuan, department);
+            var standardizedContent = content.Trim().ToLower();
+            var duplicate = await _questionRepository.FindDuplicateAsync(standardizedContent, department);
             if (duplicate == null) return false;
             if (excludeId.HasValue && duplicate.Id == excludeId.Value) return false;
             return true;
@@ -776,21 +938,29 @@ namespace BanTayVang.API.Services.Impl
         /// <summary>
         /// OWASP A03: Injection - Sanitize HTML content to prevent XSS
         /// </summary>
+        // BUG FIX: the previous version used plain, CASE-SENSITIVE string.Replace() calls
+        // (e.g. "<script", "onerror=") which <SCRIPT, OnError=, JavaScript: etc. all bypassed
+        // completely. This is still not a full HTML sanitizer (a real allowlist-based library
+        // like HtmlSanitizer/Ganss.Xss should replace this long-term - see original comment),
+        // but it closes the trivial case-bypass and blocks more of the common XSS vectors
+        // (iframe/object/embed tags, event-handler attributes, javascript:/vbscript:/data: URIs).
+        private static readonly Regex DangerousTagPattern = new(
+            @"<\s*(script|iframe|object|embed|svg|link|meta|style)\b[^>]*>",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static readonly Regex DangerousAttrOrProtocolPattern = new(
+            @"(on\w+\s*=)|(javascript\s*:)|(vbscript\s*:)|(data\s*:\s*text/html)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
         private string? SanitizeHtmlContent(string? content)
         {
             if (string.IsNullOrEmpty(content))
                 return content;
 
             // Basic HTML sanitization - in production, use a proper HTML sanitizer like HtmlSanitizer
-            return content
-                .Replace("<script", "&lt;script")
-                .Replace("</script>", "&lt;/script&gt;")
-                .Replace("javascript:", "")
-                .Replace("vbscript:", "")
-                .Replace("onload=", "")
-                .Replace("onerror=", "")
-                .Replace("onclick=", "")
-                .Trim();
+            var sanitized = DangerousTagPattern.Replace(content, m => System.Net.WebUtility.HtmlEncode(m.Value));
+            sanitized = DangerousAttrOrProtocolPattern.Replace(sanitized, "blocked:");
+            return sanitized.Trim();
         }
 
         private string? MapDifficultyToDb(string? difficulty)
@@ -800,6 +970,99 @@ namespace BanTayVang.API.Services.Impl
             if (d == "3" || d == "k" || d.Contains("khó") || d.Contains("kho")) return "3";
             if (d == "2" || d == "tb" || d.Contains("trung bình") || d.Contains("trung binh") || d.Contains("trungbinh")) return "2";
             return "1";
+        }
+
+        #endregion
+
+        #region Word Import
+
+        public async Task<BaseResponseDto<List<QuestionDto>>> ImportQuestionsFromWordAsync(
+            IFormFile file,
+            int createdBy,
+            string department,
+            int questionCategoryId)
+        {
+            try
+            {
+                _logger.LogInformation("Importing questions from Word for user {UserId}, khoa: {Khoa}", createdBy, department);
+
+                if (file == null || file.Length == 0)
+                    return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = "File không hợp lệ" };
+
+                var ext = Path.GetExtension(file.FileName).ToLower();
+                if (ext != ".docx")
+                    return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = "Chỉ hỗ trợ file .docx" };
+
+                var errors = new List<string>();
+                var questions = await _wordImportService.ParseAndValidateAsync(file, createdBy, department, questionCategoryId, errors);
+
+                if (errors.Count > 0)
+                    return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = $"File Word có {errors.Count} lỗi. Không thể thêm câu hỏi vào ngân hàng. Vui lòng sửa lại file.\nChi tiết: {string.Join("; ", errors)}" };
+
+                // Lưu câu hỏi hợp lệ vào DB với transaction
+                var saved = new List<Question>();
+                using var transaction = await _questionRepository.BeginTransactionAsync();
+                try
+                {
+                    foreach (var q in questions)
+                    {
+                        // BUG FIX: the Excel import path (and CreateQuestionAsync/UpdateQuestionAsync)
+                        // all sanitize Content/QuestionOptions[].Content through SanitizeHtmlContent
+                        // before saving; this Word import path saved the parsed .docx text as-is.
+                        // No current frontend renders question content as raw HTML (React escapes
+                        // it), so this isn't exploitable through today's UI, but it was a real drift
+                        // from the sanitization every other question-creation path already has -
+                        // closing it here so Word-imported content gets the same treatment.
+                        q.Content = SanitizeHtmlContent(q.Content);
+                        if (q.QuestionOptions != null)
+                        {
+                            foreach (var opt in q.QuestionOptions)
+                            {
+                                opt.Content = SanitizeHtmlContent(opt.Content);
+                            }
+                        }
+
+                        var created = await _questionRepository.AddAsync(q);
+                        saved.Add(created);
+                    }
+                    await transaction.CommitAsync();
+                }
+                catch (Exception dbEx)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(dbEx, "Lỗi khi lưu câu hỏi Word vào DB");
+                    string errorMsg = dbEx.InnerException != null ? dbEx.InnerException.Message : dbEx.Message;
+                    return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = $"Lỗi lưu CSDL: {errorMsg}" };
+                }
+
+                var dtos = saved.Select(q => _mapper.Map<QuestionDto>(q)).ToList();
+                var message = $"Import thành công {saved.Count}/{questions.Count} câu hỏi từ Word.";
+                if (errors.Count > 0) message += $" Có {errors.Count} lỗi: {string.Join("; ", errors)}";
+
+                return new BaseResponseDto<List<QuestionDto>> { Success = true, Message = message, Data = dtos };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi import câu hỏi từ Word");
+                return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = $"Lỗi: {ex.Message}" };
+            }
+        }
+
+        public Task<BaseResponseDto<byte[]>> DownloadWordTemplateAsync()
+        {
+            try
+            {
+                var bytes = _wordImportService.GenerateTemplateDocx();
+                if (bytes.Length == 0)
+                    return Task.FromResult(new BaseResponseDto<byte[]> { Success = false, Message = "Không tìm thấy file mẫu Word." });
+
+                return Task.FromResult(new BaseResponseDto<byte[]> { Success = true, Data = bytes });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo template Word");
+                return Task.FromResult(new BaseResponseDto<byte[]> { Success = false, Message = ex.Message });
+            }
         }
 
         #endregion

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace BanTayVang.API.Models;
@@ -17,7 +17,7 @@ public partial class LoginSession
 
     public string? Ip { get; set; }
 
-    public string? ThietBiUserAgent { get; set; }
+    public string? UserAgent { get; set; }
 
     public virtual User? User { get; set; }
 }

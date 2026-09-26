@@ -33,7 +33,7 @@ export function QuestionTypesPage() {
     }
   }, [success, error])
 
-  const load = async () => {
+  async function load() {
     setLoading(true)
     try {
       const res = await questionsApi.getQuestionTypes()
@@ -49,7 +49,7 @@ export function QuestionTypesPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.categoryName.trim()) {
       setError('Vui lòng nhập tên loại câu hỏi')
@@ -84,7 +84,7 @@ export function QuestionTypesPage() {
           setError(res.data.message || 'Tạo mới thất bại')
         }
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(msg || 'Có lỗi xảy ra trong quá trình xử lý')
     }
@@ -96,7 +96,7 @@ export function QuestionTypesPage() {
     setShowForm(true)
   }
 
-  const handleDelete = async (t: LoaicauhoiDto) => {
+  async function handleDelete(t: LoaicauhoiDto) {
     if (t.totalQuestions && t.totalQuestions > 0) {
       setError(`Không thể xóa loại câu hỏi "${t.categoryName}" đang có ${t.totalQuestions} câu hỏi`)
       return
@@ -112,7 +112,7 @@ export function QuestionTypesPage() {
       } else {
         setError(res.data.message || 'Xóa loại câu hỏi thất bại')
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(msg || 'Không thể xóa loại câu hỏi này')
     }

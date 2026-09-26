@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
 import { fetchActiveExams } from '@/features/exams/slice'
 import { gradingApi } from '../api'
@@ -9,12 +10,13 @@ import type { ExamResultDetailDto, PendingEssayDto } from '../types'
 import { Button } from '@/components/ui/button'
 import { Download, RefreshCw, Eye, EyeOff, Building2, CalendarDays, PenLine } from 'lucide-react'
 import { departmentApi } from '@/features/departments/api'
-import { kyThiApi } from '@/features/ky-thi/api'
+import { examCampaignApi } from '@/features/ky-thi/api'
 import type { ExamCampaignDto } from '@/features/ky-thi/types'
 import { ROLES } from '@/lib/constants'
 
 export function GradingPage({ preselectedExamId }: { preselectedExamId?: number }) {
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const { exams } = useAppSelector((state) => state.exams)
   const currentUser = useAppSelector((state) => state.auth.user)
   const isDeptManager = currentUser?.role === ROLES.DEPT_MANAGER || currentUser?.roleName === 'DeptManager'
@@ -22,11 +24,11 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
 
   const [selectedKhoa, setSelectedKhoa] = useState<string | null>(isDeptManager && myKhoa ? myKhoa : null)
   const [kyThiList, setKyThiList] = useState<ExamCampaignDto[]>([])
-  const [selectedKyThiId, setSelectedKyThiId] = useState<number | null>(null)
+  const [selectedExamCampaignId, setSelectedKyThiId] = useState<number | null>(null)
   
   const [results, setResults] = useState<ExamResultDetailDto[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [detailBaiThiId, setDetailBaiThiId] = useState<number | null>(null)
+  const [detailexamSubmissionId, setDetailexamSubmissionId] = useState<number | null>(null)
 
   const [togglingVisibility, setTogglingVisibility] = useState(false)
   
@@ -41,7 +43,7 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   const [pendingEssays, setPendingEssays] = useState<PendingEssayDto[]>([])
   const [pendingLoading, setPendingLoading] = useState(false)
 
-  const loadPendingEssay = async (isGraded: boolean = pendingEssayFilter === 'graded') => {
+  async function loadPendingEssay(isGraded: boolean = pendingEssayFilter === 'graded') {
     setPendingLoading(true)
     try {
       const res = await gradingApi.getPendingEssay(isGraded)
@@ -54,9 +56,9 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   }
 
   // Load ExamCampaign list
-  const loadKyThiList = async () => {
+  async function loadKyThiList() {
     try {
-      const response = await kyThiApi.getAll()
+      const response = await examCampaignApi.getAll()
       if (response.data.success && response.data.data) {
         setKyThiList(response.data.data)
       }
@@ -69,7 +71,7 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
     loadPendingEssay()
   }, [dispatch])
 
-  // Sync selectedKyThiId from preselectedExamId if provided
+  // Sync selectedExamCampaignId from preselectedExamId if provided
   useEffect(() => {
     if (preselectedExamId && exams.length > 0) {
       const exam = exams.find(e => e.id === preselectedExamId)
@@ -79,16 +81,16 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
     }
   }, [preselectedExamId, exams])
 
-  // Fetch results when selectedKyThiId changes
+  // Fetch results when selectedExamCampaignId changes
   useEffect(() => {
-    if (selectedKyThiId) {
-      loadKyThiResults(selectedKyThiId)
+    if (selectedExamCampaignId) {
+      loadKyThiResults(selectedExamCampaignId)
     } else {
       setResults([])
     }
-  }, [selectedKyThiId])
+  }, [selectedExamCampaignId])
 
-  const loadKyThiResults = async (examCampaignId: number) => {
+  async function loadKyThiResults(examCampaignId: number) {
     setIsLoading(true)
     try {
       const response = await gradingApi.getByKyThi(examCampaignId)
@@ -100,24 +102,24 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
     }
   }
 
-  // Departments list from ExamCampaign
-  const khoaList = Array.from(new Set(kyThiList.map(k => k.departmentName || k.donViToChuc).filter(Boolean) as string[])).sort()
-  const hasUnassigned = kyThiList.some(k => !k.departmentName && !k.donViToChuc)
+  // Departments list from ExamCampaign (1 kỳ thi giờ có thể gán cho 1-n khoa)
+  const khoaList = Array.from(new Set(kyThiList.flatMap(k => k.departmentNames.length > 0 ? k.departmentNames : (k.organizedBy ? [k.organizedBy] : [])))).sort()
+  const hasUnassigned = kyThiList.some(k => k.departmentNames.length === 0 && !k.organizedBy)
 
   // Filter ExamCampaign list by department
   const scopedKyThis = isDeptManager && myKhoa
-    ? kyThiList.filter(k => k.departmentName === myKhoa || k.donViToChuc === myKhoa)
+    ? kyThiList.filter(k => k.departmentNames.includes(myKhoa) || k.organizedBy === myKhoa)
     : selectedKhoa === '__unassigned__'
-      ? kyThiList.filter(k => !k.departmentName && !k.donViToChuc)
+      ? kyThiList.filter(k => k.departmentNames.length === 0 && !k.organizedBy)
       : selectedKhoa
-        ? kyThiList.filter(k => k.departmentName === selectedKhoa || k.donViToChuc === selectedKhoa)
+        ? kyThiList.filter(k => k.departmentNames.includes(selectedKhoa) || k.organizedBy === selectedKhoa)
         : kyThiList
 
   // All exams associated with the selected ExamCampaign
   const examsInSelectedKyThi = useMemo(() => {
-    if (!selectedKyThiId) return []
-    return exams.filter(e => e.examCampaignId === selectedKyThiId)
-  }, [selectedKyThiId, exams])
+    if (!selectedExamCampaignId) return []
+    return exams.filter(e => e.examCampaignId === selectedExamCampaignId)
+  }, [selectedExamCampaignId, exams])
 
   // Submissions grouped by examId
   const resultsByExam = useMemo(() => {
@@ -138,8 +140,8 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
   }, [examsInSelectedKyThi])
 
   // Toggle publishing grades for the entire ExamCampaign
-  const handleToggleKyThiVisibility = async () => {
-    if (!selectedKyThiId || examsInSelectedKyThi.length === 0) return
+  async function handleToggleKyThiVisibility() {
+    if (!selectedExamCampaignId || examsInSelectedKyThi.length === 0) return
     setTogglingVisibility(true)
     setErrorMsg(null)
     const nextState = !isAllPublished
@@ -154,31 +156,31 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
       )
       // Reload results and sync exams
       await Promise.all([
-        loadKyThiResults(selectedKyThiId),
+        loadKyThiResults(selectedExamCampaignId),
         dispatch(fetchActiveExams())
       ])
       setSuccessMsg(nextState ? 'Đã bật công bố điểm cho toàn bộ kỳ thi' : 'Đã tắt công bố điểm cho toàn bộ kỳ thi')
       setTimeout(() => setSuccessMsg(null), 3000)
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Không thể công bố điểm'
+    } catch (err) {
+      const msg = (err as any)?.response?.data?.message || 'Không thể công bố điểm'
       setErrorMsg(msg)
     } finally {
       setTogglingVisibility(false)
     }
   }
 
-  const handleRegrade = async (baiThiId: number) => {
+  async function handleRegrade(examSubmissionId: number) {
     if (!window.confirm('Chấm lại bài thi này?')) return
     try {
-      await gradingApi.regrade(baiThiId)
-      if (selectedKyThiId) {
-        loadKyThiResults(selectedKyThiId)
+      await gradingApi.regrade(examSubmissionId)
+      if (selectedExamCampaignId) {
+        loadKyThiResults(selectedExamCampaignId)
       }
     } catch { /* silent */ }
   }
 
 
-  const handleExportResults = async (examId: number, examPaperName: string) => {
+  async function handleExportResults(examId: number, examPaperName: string) {
     try {
       const response = await gradingApi.exportResults(examId)
       const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -287,20 +289,20 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
       <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-xl border shadow-sm">
         <select
           className="h-10 rounded-lg border border-input bg-background px-3 text-sm min-w-[280px] focus:outline-none focus:ring-2 focus:ring-primary/30"
-          value={selectedKyThiId ?? ''}
+          value={selectedExamCampaignId ?? ''}
           onChange={(e) => setSelectedKyThiId(e.target.value ? Number(e.target.value) : null)}
         >
           <option value="">— Chọn kỳ thi —</option>
           {scopedKyThis.map((kt) => (
             <option key={kt.id} value={kt.id}>
-              {kt.campaignCode} — {kt.campaignName}{kt.departmentName ? ` [${kt.departmentName}]` : kt.donViToChuc ? ` [${kt.donViToChuc}]` : ''}
+              {kt.campaignCode} — {kt.campaignName}{kt.departmentNames.length > 0 ? ` [${kt.departmentNames.join(', ')}]` : kt.organizedBy ? ` [${kt.organizedBy}]` : ''}
             </option>
           ))}
         </select>
 
-        {selectedKyThiId && examsInSelectedKyThi.length > 0 && (
+        {selectedExamCampaignId && examsInSelectedKyThi.length > 0 && (
           <div className="flex gap-2 ml-auto flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => loadKyThiResults(selectedKyThiId)}>
+            <Button variant="outline" size="sm" onClick={() => loadKyThiResults(selectedExamCampaignId)}>
               <RefreshCw className="h-4 w-4 mr-1" />
               Làm mới
             </Button>
@@ -319,7 +321,7 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
       </div>
 
       {/* Info: Trạng thái công bố & Tổng bài thi */}
-      {selectedKyThiId && examsInSelectedKyThi.length > 0 && (
+      {selectedExamCampaignId && examsInSelectedKyThi.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className={`md:col-span-2 px-4 py-3 rounded-xl text-sm border flex items-center ${
             isAllPublished
@@ -371,19 +373,35 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
                 ? `Có ${pendingEssays.length} bài thi tự luận ${pendingEssayFilter === 'ungraded' ? 'đang chờ chấm' : 'đã chấm'}`
                 : `Không có bài thi nào ${pendingEssayFilter === 'ungraded' ? 'chờ chấm' : 'đã chấm'}`}
             </p>
-            <Button variant="outline" size="sm" onClick={() => loadPendingEssay()} disabled={pendingLoading}>
-              <RefreshCw className={`h-4 w-4 mr-1 ${pendingLoading ? 'animate-spin' : ''}`} />
-              Làm mới
-            </Button>
+            <div className="flex gap-2">
+              {selectedExamCampaignId && pendingEssays.length > 0 && (
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => {
+                    const url = isDeptManager ? '/dept-manager/grading/bulk' : '/admin/grading/bulk'
+                    navigate(`${url}?examCampaignId=${selectedExamCampaignId}`)
+                  }}
+                >
+                  <PenLine className="h-4 w-4 mr-2" />
+                  Chấm hàng loạt
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => loadPendingEssay()} disabled={pendingLoading}>
+                <RefreshCw className={`h-4 w-4 mr-1 ${pendingLoading ? 'animate-spin' : ''}`} />
+                Làm mới
+              </Button>
+            </div>
           </div>
           <PendingEssayTable
             items={pendingEssays}
             isLoading={pendingLoading}
-            onViewDetail={(id) => setDetailBaiThiId(id)}
+            onViewDetail={(id) => setDetailexamSubmissionId(id)}
             isGraded={pendingEssayFilter === 'graded'}
           />
         </div>
-      ) : !selectedKyThiId ? (
+      ) : !selectedExamCampaignId ? (
         <div className="text-center py-16 border-2 border-dashed rounded-xl text-gray-400 bg-white">
           <CalendarDays className="h-14 w-14 mx-auto mb-3 opacity-30 text-gray-400" />
           <p className="font-medium text-gray-500">Chọn kỳ thi để xem kết quả & chấm điểm</p>
@@ -399,7 +417,7 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
             const hasSubmissions = resultsForExam.length > 0
 
             // Check if all submissions of this exam are fully graded
-            const allGradedCount = resultsForExam.filter(r => r.soCauDaCham === r.tongSoCau && (r.tongSoCau ?? 0) > 0).length
+            const allGradedCount = resultsForExam.filter(r => r.questionsGraded === r.totalQuestions && (r.totalQuestions ?? 0) > 0).length
             const isFullyGraded = hasSubmissions && allGradedCount === resultsForExam.length
 
             return (
@@ -452,7 +470,7 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
                     <ExamResultsTable
                       results={resultsForExam}
                       isLoading={isLoading}
-                      onViewDetail={(r) => setDetailBaiThiId(r.baiThiId)}
+                      onViewDetail={(r) => setDetailexamSubmissionId(r.examSubmissionId)}
                       onRegrade={handleRegrade}
                     />
                   )}
@@ -464,13 +482,13 @@ export function GradingPage({ preselectedExamId }: { preselectedExamId?: number 
       )}
 
       <ResultDetailDialog
-        open={!!detailBaiThiId}
-        baiThiId={detailBaiThiId}
+        open={!!detailexamSubmissionId}
+        examSubmissionId={detailexamSubmissionId}
         onClose={() => {
-          setDetailBaiThiId(null)
+          setDetailexamSubmissionId(null)
           // Reload kết quả sau khi chấm xong để cập nhật điểm mới
-          if (selectedKyThiId) {
-            loadKyThiResults(selectedKyThiId)
+          if (selectedExamCampaignId) {
+            loadKyThiResults(selectedExamCampaignId)
           }
           // Cũng refresh lại danh sách tự luận chờ chấm
           loadPendingEssay()

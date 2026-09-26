@@ -11,8 +11,11 @@ namespace BanTayVang.API.Services.Interfaces
         Task<BaseResponseDto<QuestionDto>> UpdateQuestionAsync(UpdateQuestionDto updateDto, int updatedBy);
         Task<BaseResponseDto> DeleteQuestionAsync(int id, int updatedBy);
         Task<BaseResponseDto<List<QuestionDto>>> ImportQuestionsFromExcelAsync(IFormFile file, int createdBy, string department, int questionCategoryId, bool isExamImport = false, int? expectedCount = null);
+        Task<BaseResponseDto<List<QuestionDto>>> PreviewQuestionsFromExcelAsync(IFormFile file, int createdBy, string department, int questionCategoryId);
+        Task<BaseResponseDto<List<QuestionDto>>> ImportQuestionsFromWordAsync(IFormFile file, int createdBy, string department, int questionCategoryId);
         Task<BaseResponseDto<byte[]>> DownloadImportTemplateAsync(int questionCategoryId, bool isExamImport = false);
-        Task<BaseResponseDto<List<QuestionDto>>> GetRandomQuestionsAsync(int count);
+        Task<BaseResponseDto<byte[]>> DownloadWordTemplateAsync();
+        Task<BaseResponseDto<List<QuestionDto>>> GetRandomQuestionsAsync(int count, int? categoryId = null);
         Task<bool> CheckDuplicateAsync(string content, string? department = null, int? excludeId = null);
     }
 }

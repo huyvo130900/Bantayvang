@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAppSelector } from '@/app/hooks'
 import { createUserSchema, updateUserSchema, type CreateUserFormData, type UpdateUserFormData } from '../schemas'
@@ -35,16 +35,20 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
     defaultValues: {
       username: '', password: '', fullName: '',
       employeeCode: '', jobTitle: '', department: '',
-      roleId: 3, deptManagerDeptId: null as any, status: true,
+      roleId: 3, deptManagerDeptId: null as any as number, status: true,
       email: '', phoneNumber: '',
     },
   })
+
+  const watchedRole = useWatch({ control: form.control, name: 'roleId' })
+  const selectedKhoaPhong = useWatch({ control: form.control, name: 'department' })
+  const watchedDeptManagerDeptId = useWatch({ control: form.control, name: 'deptManagerDeptId' })
 
   useEffect(() => {
     // Load departments for DeptManager assignment
     departmentApi.getAll({ status: true, pageSize: 100 })
       .then(res => setDepartments(res.data?.data || []))
-      .catch(() => {})
+      .catch(() => setDepartments([]))
   }, [])
 
   // Close dropdown on click outside
@@ -72,21 +76,23 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
           fullName: user.fullName || '',
           employeeCode: user.employeeCode || '', jobTitle: user.jobTitle || '',
           department: user.department || '', roleId: user.roleId || 3,
-          deptManagerDeptId: user.deptManagerDeptId || null as any,
+          deptManagerDeptId: user.deptManagerDeptId || null as any as number,
           status: user.status ?? true,
           email: user.email || '',
           phoneNumber: user.phoneNumber || '',
         })
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSearchTerm(user.department || '')
       } else {
         form.reset({
           username: '', password: '', fullName: '',
           employeeCode: '', jobTitle: '', department: isUserDeptManager && myKhoa ? myKhoa : '', roleId: 3,
-          deptManagerDeptId: null as any,
+          deptManagerDeptId: null as any as number,
           status: true,
           email: '',
           phoneNumber: '',
         })
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSearchTerm(isUserDeptManager && myKhoa ? myKhoa : '')
       }
       setIsDropdownOpen(false)
@@ -108,9 +114,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
     }
   }
 
-  const watchedRole = form.watch('roleId')
   const isDeptManager = Number(watchedRole) === ROLE_IDS.DEPT_MANAGER
-  const selectedKhoaPhong = form.watch('department')
   const filteredDepts = departments.filter(d => {
     if (searchTerm === selectedKhoaPhong) return true
     return d.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -229,7 +233,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
             <Field label="Vai trò *">
               <select
                 {...form.register('roleId', { valueAsNumber: true })}
-                value={form.watch('roleId')}
+                value={watchedRole}
                 onChange={e => {
                   form.setValue('roleId', parseInt(e.target.value))
                 }}
@@ -255,7 +259,7 @@ export function UserFormDialog({ open, user, onClose, onSubmit, isLoading }: Use
             <Field label="Khoa quản lý *" error={form.formState.errors.deptManagerDeptId?.message}>
               <select
                 {...form.register('deptManagerDeptId', { setValueAs: (v) => v === "" || Number.isNaN(parseInt(v)) ? null : parseInt(v) })}
-                value={form.watch('deptManagerDeptId') ?? ''}
+                value={watchedDeptManagerDeptId ?? ''}
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
                 <option value="">— Chọn khoa —</option>

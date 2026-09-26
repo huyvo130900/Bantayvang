@@ -283,12 +283,12 @@ async function testExams() {
 
   await test('Create exam', async () => {
     const res = await api.post('/exam', {
-      maDeThi: examCode,
+      examPaperCode: examCode,
       tenDeThi: 'Đề thi test automation',
       thoiGianLamBai: 30,
       thoiGianBatDau: new Date(Date.now() - 60000).toISOString(), // started 1 min ago
       trangThai: 'Active',
-      danhSachIdCauHoi: [createdQuestionId],
+      questionIds: [createdQuestionId],
     })
     assert(res.data.success, `Create exam failed: ${res.data.message}`)
     createdExamId = examCode
@@ -303,7 +303,7 @@ async function testExams() {
   await test('Get exam by code', async () => {
     const res = await api.get(`/exam/code/${createdExamId}`)
     assert(res.data.success, 'Should succeed')
-    assert(res.data.data.maDeThi === createdExamId, 'Code should match')
+    assert(res.data.data.examPaperCode === createdExamId, 'Code should match')
   })
 
   await test('Assign student to exam', async () => {
@@ -328,7 +328,7 @@ async function testExamTaking() {
   setAuth(studentToken)
 
   await test('Start exam', async () => {
-    const res = await api.post('/exam/start', { maDeThi: createdExamId })
+    const res = await api.post('/exam/start', { examPaperCode: createdExamId })
     assert(res.data.success, `Start exam failed: ${res.data.message}`)
     createdBaithiId = res.data.data.id
     assert(res.data.data.trangThai === 'InProgress', 'Status should be InProgress')
@@ -347,8 +347,8 @@ async function testExamTaking() {
     const correctChoice = question.danhSachLuaChon[0] // first choice (correct one)
 
     const res = await api.post('/exam/answer', {
-      idBaiThi: createdBaithiId,
-      idCauHoi: question.id,
+      examSubmissionId: createdBaithiId,
+      questionId: question.id,
       idLuaChonDaChon: correctChoice.id,
       daLuu: true,
     })
@@ -363,7 +363,7 @@ async function testExamTaking() {
 
   await test('Log cheating warning', async () => {
     const res = await api.post('/exam/warning', {
-      idBaiThi: createdBaithiId,
+      examSubmissionId: createdBaithiId,
       loaiCanhBao: 'TAB_SWITCH',
       moTa: 'Test automation warning',
     })
@@ -382,10 +382,10 @@ async function testExamTaking() {
     const choice = question.danhSachLuaChon[0]
 
     const res = await api.post('/exam/submit', {
-      idBaiThi: createdBaithiId,
-      danhSachCauTraLoi: [{
-        idBaiThi: createdBaithiId,
-        idCauHoi: question.id,
+      examSubmissionId: createdBaithiId,
+      answers: [{
+        examSubmissionId: createdBaithiId,
+        questionId: question.id,
         idLuaChonDaChon: choice.id,
         daLuu: true,
       }],
@@ -474,7 +474,7 @@ async function testKyThi() {
       thoiGianBatDau: new Date().toISOString(),
       thoiGianKetThuc: new Date(Date.now() + 3600000).toISOString(),
       soLuongToiDa: 50,
-      ghiChu: 'Ca thi test',
+      notes: 'Ca thi test',
     })
     assert(res.data.success, `Create ca thi failed: ${res.data.message}`)
     createdCaThiId = res.data.data.id

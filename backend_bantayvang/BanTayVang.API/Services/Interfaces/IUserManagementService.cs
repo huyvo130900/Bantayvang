@@ -18,7 +18,8 @@ namespace BanTayVang.API.Services.Interfaces
         Task<BaseResponseDto> DeleteUserAsync(int id);
         Task<BaseResponseDto> RestoreUserAsync(int id);
         Task<BaseResponseDto> HardDeleteUserAsync(int id);
-        Task<BaseResponseDto> BulkDeleteUsersAsync(List<int> ids);
+        Task<BaseResponseDto> BulkDeleteUsersAsync(List<int> ids, string? restrictToDepartment = null);
+        Task<BaseResponseDto> BulkHardDeleteUsersAsync(List<int> ids);
         Task<BaseResponseDto<byte[]>> DownloadImportTemplateAsync();
         Task<BaseResponseDto<ExcelImportResultDto>> ImportUsersFromExcelAsync(Microsoft.AspNetCore.Http.IFormFile file);
     }

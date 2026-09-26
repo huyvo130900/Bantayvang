@@ -2,13 +2,13 @@ export interface ExamQuestionDto {
   id: number
   content: string | null
   imageUrl: string | null
-  thuTuCau: number
+  questionOrder: number
   options: ExamChoiceDto[]
-  idLuaChonDaChon: number | null
-  idLuaChonDaChonList?: number[]
-  cauTraLoiTuLuan: string | null
-  daLuu: boolean
-  choPhepChonNhieu?: boolean
+  selectedOptionId: number | null
+  selectedOptionIdList?: number[]
+  essayAnswer: string | null
+  isSaved: boolean
+  allowMultipleSelection?: boolean
 }
 
 export interface ExamChoiceDto {
@@ -25,15 +25,15 @@ export interface ExamSubmissionDto {
   status: string | null
   submitTime: string | null
   totalScore: number | null
-  diemSo?: number | null  // computed: (correctAnswers/tongSoCau)*10
+  calculatedScore?: number | null  // computed: (correctAnswers/totalQuestions)*10
   correctAnswers: number | null
-  tongSoCau: number | null
-  tongSoCanhBao: number | null
+  totalQuestions: number | null
+  totalWarnings: number | null
   examPaperName: string | null
   examPaperCode: string | null
   durationMinutes: number | null
-  thoiGianBatDau: string | null
-  thoiGianConLai: number | null // seconds
+  startTime: string | null
+  remainingTimeSeconds: number | null // seconds
   isResultPublished?: boolean
   pass?: boolean | null
 }
@@ -46,14 +46,24 @@ export interface StartExamDto {
 export interface SubmitAnswerDto {
   examSubmissionId: number
   questionId: number
-  idLuaChonDaChon: number | null
-  cauTraLoiTuLuan?: string
-  daLuu: boolean
+  selectedOptionId: number | null
+  essayAnswer?: string
+  essayImageUrl?: string | null
+  isSaved: boolean
 }
 
 export interface SubmitExamDto {
   examSubmissionId: number
-  danhSachCauTraLoi: SubmitAnswerDto[]
+  answers: SubmitAnswerDto[]
+}
+
+export interface SubmitMultipleAnswerDto {
+  examSubmissionId: number
+  questionId: number
+  selectedOptionId: number[]
+  essayAnswer?: string
+  essayImageUrl?: string | null
+  isSaved: boolean
 }
 
 export interface CheatingWarningDto {

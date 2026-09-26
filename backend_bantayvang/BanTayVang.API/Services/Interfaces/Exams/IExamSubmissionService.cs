@@ -34,6 +34,8 @@ namespace BanTayVang.API.Services.Interfaces.Exams
         /// <returns>Operation result</returns>
         Task<BaseResponseDto> AutoSubmitExpiredExamsAsync(CancellationToken cancellationToken = default);
 
+        Task<BaseResponseDto> ForceSubmitAsync(int examSubmissionId, int? supervisorId, int? supervisorDeptId, string? supervisorDeptName = null, bool isDeptManager = false);
+
         /// <summary>
         /// Validates answer before saving
         /// </summary>

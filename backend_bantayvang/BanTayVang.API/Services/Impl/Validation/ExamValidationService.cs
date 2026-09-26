@@ -22,18 +22,31 @@ namespace BanTayVang.API.Services.Impl.Validation
         // OWASP: Define security patterns
         private static readonly Regex SafeTextPattern = new(@"^[^<>""'%;()&+]*$", RegexOptions.Compiled);
         private static readonly Regex ExamCodePattern = new(@"^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
-        private static readonly Regex SqlInjectionPattern = new(@"(\b(ALTER|CREATE|DELETE|DROP|EXEC(UTE){0,1}|INSERT( +INTO){0,1}|MERGE|SELECT|UPDATE|UNION( +ALL){0,1})\b)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        // BUG FIX: the old pattern blocked any input containing a bare SQL keyword
+        // (SELECT, INSERT, UPDATE, DELETE, ...) as a whole word, which has no real security
+        // value here - all queries in this app go through EF Core LINQ (parameterized), never
+        // raw string-concatenated SQL - but it does false-positive on legitimate exam names and
+        // essay answers that use those words as ordinary English/medical terms (e.g. "Insert
+        // catheter tinh mach", "Select benh nhan phu hop"). Require actual SQL syntax around the
+        // keyword (comment markers, statement terminators, tautologies, UNION SELECT, or a
+        // keyword followed by its normal SQL clause) so plain natural-language use is not flagged.
+        private static readonly Regex SqlInjectionPattern = new(
+            @"(--|;\s*--|/\*.*?\*/)" +
+            @"|('\s*(or|and)\s+.+?=)" +
+            @"|(\bunion\b(\s+all)?\s+\bselect\b)" +
+            @"|(\b(select\s+.+?\s+from|insert\s+into|delete\s+from|drop\s+(table|database)|update\s+\S+\s+set|alter\s+(table|database)|exec(ute)?\s*\(|xp_cmdshell|sp_executesql)\b)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public ExamValidationService(
-            IExamPaperRepository dethiRepository,
+            IExamPaperRepository examPaperRepository,
             IExamSubmissionRepository baithiRepository,
-            IQuestionRepository cauhoiRepository,
+            IQuestionRepository questionRepository,
             BanTayVangDbContext context,
             ILogger<ExamValidationService> logger)
         {
-            _examPaperRepository = dethiRepository;
+            _examPaperRepository = examPaperRepository;
             _examSubmissionRepository = baithiRepository;
-            _questionRepository = cauhoiRepository;
+            _questionRepository = questionRepository;
             _context = context;
             _logger = logger;
         }
@@ -94,15 +107,27 @@ namespace BanTayVang.API.Services.Impl.Validation
                     }
                 }
 
-                // Time validation
-                if (createDto.StartTime < DateTime.Now.AddMinutes(-10))
+                // BUG FIX: createDto.StartTime becomes ExamPaper.StartTime, which is stored as
+                // TRUE UTC (frontend sends via .toISOString()) - same class of bug already fixed
+                // a few lines below in ValidateStartExamAsync (see "round 2" comment) and in
+                // UpdateExamPaperDto's equivalent check, just missed here. Comparing it against
+                // the fake-VN-time UtcNow.AddHours(7) meant any start time within the next ~7
+                // hours (a perfectly valid near-future time) incorrectly tripped this warning.
+                if (createDto.StartTime < DateTime.UtcNow.AddMinutes(-10))
                 {
                     warnings.Add("Start time is in the past");
                 }
 
-                return errors.Any()
-                    ? ValidationResultDto.Failure(errors, "VALIDATION_FAILED")
-                    : ValidationResultDto.Success();
+                if (errors.Any())
+                {
+                    return ValidationResultDto.Failure(errors, "VALIDATION_FAILED");
+                }
+
+                // BUG FIX (mục 43): ValidationResultDto.Success() luôn trả về Warnings rỗng,
+                // nên cảnh báo ở trên ("Start time is in the past") trước đây không bao giờ thực sự đến được response.
+                var successResult = ValidationResultDto.Success();
+                successResult.Warnings = warnings;
+                return successResult;
             }
             catch (Exception ex)
             {
@@ -159,11 +184,65 @@ namespace BanTayVang.API.Services.Impl.Validation
                     return ValidationResultDto.Failure(errors, "EXAM_CLOSED");
                 }
 
-                // FIX 2: Dùng DateTime.Now thay vì DateTime.UtcNow (tránh lệch 7 tiếng)
-                if (exam.StartTime.HasValue && exam.StartTime > DateTime.Now)
+                // FIX 2: Dùng DateTime.UtcNow.AddHours(7) (giờ VN) thay vì DateTime.UtcNow.AddHours(7) phụ thuộc vào timezone của server
+                // BUG FIX (round 2): exam.StartTime (ExamPaper.StartTime) is stored as TRUE UTC
+                // (copied from ExamCampaign.StartTime, set via the frontend's .toISOString()), NOT the
+                // fake-VN convention used elsewhere in this codebase. Comparing it against
+                // DateTime.UtcNow.AddHours(7) made this gate off by ~7 hours. Compare against real UTC instead.
+                var nowUtcForStartCheck = DateTime.UtcNow;
+
+                // Kỳ thi luyện tập (IsPracticeMode) tồn tại vĩnh viễn - cần biết cờ này TRƯỚC khi
+                // kiểm tra StartTime, để bỏ qua luôn cả gate "chưa đến giờ thi" bên dưới.
+                var campaignIdForStatusCheck = startDto.ExamCampaignId ?? exam.ExamCampaignId;
+                var campaignInfo = campaignIdForStatusCheck.HasValue
+                    ? await _context.ExamCampaigns
+                        .Where(c => c.Id == campaignIdForStatusCheck.Value)
+                        .Select(c => new { c.Status, c.AccessMode, c.IsPracticeMode })
+                        .FirstOrDefaultAsync(cancellationToken)
+                    : null;
+                var isPracticeMode = campaignInfo?.IsPracticeMode == true;
+
+                if (!isPracticeMode && exam.StartTime.HasValue && exam.StartTime > nowUtcForStartCheck)
                 {
                     errors.Add("Chưa đến thời gian thi");
                     return ValidationResultDto.Failure(errors, "EXAM_NOT_STARTED");
+                }
+
+                // BUG FIX: ExamCampaign.Status ("TamDung"/"DaKetThuc", set via the admin/DeptManager
+                // "change status" dropdown) used to never be checked here at all - pausing or manually
+                // ending a campaign only changed the badge shown in the admin UI, with zero effect on
+                // whether a student could still start a brand-new attempt while the campaign's own
+                // StartTime/EndTime window was still open. This is the actual emergency-stop gate.
+                if (campaignIdForStatusCheck.HasValue)
+                {
+                    if (campaignInfo?.Status == "TamDung")
+                    {
+                        errors.Add("Kỳ thi đang tạm dừng, vui lòng thử lại sau");
+                        return ValidationResultDto.Failure(errors, "EXAM_CAMPAIGN_PAUSED");
+                    }
+                    if (campaignInfo?.Status == "DaKetThuc")
+                    {
+                        errors.Add("Kỳ thi đã kết thúc");
+                        return ValidationResultDto.Failure(errors, "EXAM_CAMPAIGN_ENDED");
+                    }
+
+                    // BUG FIX (feature): a campaign in "AssignedList" mode is only supposed to let
+                    // in the specific people an admin uploaded (see ExamCampaignController's
+                    // assign-from-excel) - before this check, ExamAssignment rows were written but
+                    // never read anywhere in the actual start-exam path, so ANY authenticated user
+                    // could still start it same as a normal campaign. This is the real gate; the
+                    // department-based path (AccessMode == "Department") is unaffected and keeps
+                    // relying on ExamCampaignService.GetAllAsync's list-visibility filter as before.
+                    if (campaignInfo?.AccessMode == "AssignedList")
+                    {
+                        var isAssigned = await _context.ExamAssignments
+                            .AnyAsync(a => a.UserId == userId && a.ExamId == exam.Id && a.IsActive, cancellationToken);
+                        if (!isAssigned)
+                        {
+                            errors.Add("Bạn không có trong danh sách được chỉ định thi kỳ thi này");
+                            return ValidationResultDto.Failure(errors, "NOT_ASSIGNED");
+                        }
+                    }
                 }
 
                 // Check if user already completed this exam / ExamCampaign
@@ -178,8 +257,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                     {
                         var start = examCampaign.StartTime;
                         var end = examCampaign.EndTime;
-                        var now = DateTime.Now;
-                        if ((!start.HasValue || now >= start.Value) && (!end.HasValue || now <= end.Value))
+                        if ((!start.HasValue || nowUtcForStartCheck >= start.Value) && (!end.HasValue || nowUtcForStartCheck <= end.Value))
                         {
                             withinDuration = true;
                         }
@@ -189,29 +267,30 @@ namespace BanTayVang.API.Services.Impl.Validation
                 {
                     var start = exam.StartTime;
                     var duration = exam.DurationMinutes ?? 60;
-                    var now = DateTime.Now;
-                    if (start.HasValue && now >= start.Value && now <= start.Value.AddMinutes(duration))
+                    if (start.HasValue && nowUtcForStartCheck >= start.Value && nowUtcForStartCheck <= start.Value.AddMinutes(duration))
                     {
                         withinDuration = true;
                     }
                 }
 
-                if (!withinDuration)
+                // Kỳ thi luyện tập cho phép làm lại không giới hạn số lần, bất kể thời gian - bỏ
+                // qua hẳn khối kiểm tra "đã hết hạn/đã nộp bài, không được thi lại" bên dưới.
+                if (!withinDuration && !isPracticeMode)
                 {
                     if (startDto.ExamCampaignId.HasValue)
                     {
-                        var completedSessionInKyThi = studentSessions.Any(b => b.ExamCampaignId == startDto.ExamCampaignId.Value 
+                        var completedSessionInCampaign = studentSessions.Any(b => b.ExamCampaignId == startDto.ExamCampaignId.Value
                             && b.Status != "InProgress" && b.Status != "Paused");
-                        if (completedSessionInKyThi)
+                        if (completedSessionInCampaign)
                         {
                             errors.Add("Kỳ thi đã hết hạn hoặc bạn đã nộp bài thi cho kỳ thi này và không được phép thi lại.");
                             return ValidationResultDto.Failure(errors, "EXAM_ALREADY_TAKEN");
                         }
                     }
 
-                    var completedSessionForDeThi = studentSessions.Any(b => b.ExamPaperId == exam.Id 
+                    var completedSessionForExamPaper = studentSessions.Any(b => b.ExamPaperId == exam.Id
                         && b.Status != "InProgress" && b.Status != "Paused");
-                    if (completedSessionForDeThi)
+                    if (completedSessionForExamPaper)
                     {
                         errors.Add("Đề thi đã hết hạn hoặc bạn đã nộp đề thi này và không được phép thi lại.");
                         return ValidationResultDto.Failure(errors, "EXAM_ALREADY_TAKEN");
@@ -263,6 +342,25 @@ namespace BanTayVang.API.Services.Impl.Validation
                 {
                     errors.Add("Exam session is not active");
                     return ValidationResultDto.Failure(errors, "SESSION_INACTIVE");
+                }
+
+                // BUG FIX: same gap as ValidateStartExamAsync - a student already mid-exam kept
+                // being able to save answers and submit even after an admin/DeptManager paused or
+                // manually ended the campaign, because nothing here ever checked ExamCampaign.Status.
+                // This call is shared by both SaveAnswerAsync (per-answer) and, via
+                // ValidateExamSubmissionAsync, the final SubmitExamAsync - so this one check covers
+                // both "save answer" and "submit exam" for an in-progress session.
+                if (examSession.ExamCampaignId.HasValue)
+                {
+                    var campaignStatus = await _context.ExamCampaigns
+                        .Where(c => c.Id == examSession.ExamCampaignId.Value)
+                        .Select(c => c.Status)
+                        .FirstOrDefaultAsync(cancellationToken);
+                    if (campaignStatus == "TamDung" || campaignStatus == "DaKetThuc")
+                    {
+                        errors.Add("Kỳ thi đã bị tạm dừng hoặc kết thúc, không thể tiếp tục làm bài");
+                        return ValidationResultDto.Failure(errors, "EXAM_CAMPAIGN_PAUSED");
+                    }
                 }
 
                 // OWASP A03: Injection Prevention for essay answers
@@ -450,7 +548,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                 }
 
                 // Validate all answers in submission
-                foreach (var answer in submitDto.DanhSachCauTraLoi)
+                foreach (var answer in submitDto.Answers)
                 {
                     var answerValidation = await ValidateAnswerSubmissionAsync(answer, userId, cancellationToken);
                     if (!answerValidation.IsValid)

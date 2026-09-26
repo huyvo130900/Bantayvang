@@ -35,13 +35,13 @@ export const EXAM_STATUS = {
   INACTIVE: 'Inactive',
 } as const
 
-export const BAITHI_STATUS = {
+export const SUBMISSION_STATUS = {
   IN_PROGRESS: 'InProgress',
   COMPLETED: 'Completed',
   PAUSED: 'Paused',
 } as const
 
-export const XEPLOAI = {
+export const CLASSIFICATION = {
   XUAT_SAC: 'Xuất sắc',   // >= 9.0
   GIOI: 'Giỏi',            // >= 8.0
   KHA: 'Khá',              // >= 6.5
@@ -49,12 +49,12 @@ export const XEPLOAI = {
   KHONG_DAT: 'Không đạt',  // < 5.0
 } as const
 
-export function getXepLoai(diem: number): string {
-  if (diem >= 9.0) return XEPLOAI.XUAT_SAC
-  if (diem >= 8.0) return XEPLOAI.GIOI
-  if (diem >= 6.5) return XEPLOAI.KHA
-  if (diem >= 5.0) return XEPLOAI.TRUNG_BINH
-  return XEPLOAI.KHONG_DAT
+export function getClassification(score: number): string {
+  if (score >= 9.0) return CLASSIFICATION.XUAT_SAC
+  if (score >= 8.0) return CLASSIFICATION.GIOI
+  if (score >= 6.5) return CLASSIFICATION.KHA
+  if (score >= 5.0) return CLASSIFICATION.TRUNG_BINH
+  return CLASSIFICATION.KHONG_DAT
 }
 
 export const MAX_CHEATING_WARNINGS = 6

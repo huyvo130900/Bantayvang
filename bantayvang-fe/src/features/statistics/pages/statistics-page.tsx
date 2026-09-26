@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { statisticsApi, type DashboardDto, type ExamStatisticsDto } from '../api'
 import { Users, FileQuestion, ClipboardList, Award, AlertTriangle, RefreshCw, BarChart2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
-import { kyThiApi } from '@/features/ky-thi/api'
+import { examCampaignApi } from '@/features/ky-thi/api'
 import type { ExamCampaignDto } from '@/features/ky-thi/types'
 
 function StatCard({
@@ -36,33 +36,35 @@ function StatCard({
 
 export function StatisticsPage() {
   const [dashboard, setDashboard] = useState<DashboardDto | null>(null)
-  const [examCampaigns, setKyThis] = useState<ExamCampaignDto[]>([])
-  const [kyThiStats, setKyThiStats] = useState<ExamStatisticsDto | null>(null)
-  const [selectedKyThiId, setSelectedKyThiId] = useState<number | ''>('')
+  const [examCampaigns, setExamCampaigns] = useState<ExamCampaignDto[]>([])
+  const [examCampaignStats, setKyThiStats] = useState<ExamStatisticsDto | null>(null)
+  const [selectedExamCampaignId, setSelectedKyThiId] = useState<number | ''>('')
   const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingKyThiStats, setIsLoadingKyThiStats] = useState(false)
+  const [isLoadingExamCampaignStats, setIsLoadingKyThiStats] = useState(false)
 
   useEffect(() => {
+     
     loadDashboard()
   }, [])
 
   useEffect(() => {
-    if (selectedKyThiId) {
-      loadKyThiStats(Number(selectedKyThiId))
+    if (selectedExamCampaignId) {
+      loadExamCampaignStats(Number(selectedExamCampaignId))
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setKyThiStats(null)
     }
-  }, [selectedKyThiId])
+  }, [selectedExamCampaignId])
 
-  const loadDashboard = async () => {
+  async function loadDashboard() {
     setIsLoading(true)
     try {
-      const [dashRes, kyThiRes] = await Promise.all([
+      const [dashRes, examCampaignRes] = await Promise.all([
         statisticsApi.getDashboard(),
-        kyThiApi.getAll(),
+        examCampaignApi.getAll(),
       ])
       if (dashRes.data.success && dashRes.data.data) setDashboard(dashRes.data.data)
-      if (kyThiRes.data.success && kyThiRes.data.data) setKyThis(kyThiRes.data.data)
+      if (examCampaignRes.data.success && examCampaignRes.data.data) setExamCampaigns(examCampaignRes.data.data)
     } catch {
       // silent
     } finally {
@@ -70,7 +72,7 @@ export function StatisticsPage() {
     }
   }
 
-  const loadKyThiStats = async (id: number) => {
+  async function loadExamCampaignStats(id: number) {
     setIsLoadingKyThiStats(true)
     try {
       const res = await statisticsApi.getKyThiStatistics(id)
@@ -103,7 +105,7 @@ export function StatisticsPage() {
   }
 
   const maxDistCount = Math.max(
-    ...(kyThiStats?.scoreDistribution.map((d) => d.count) || [1]),
+    ...(examCampaignStats?.scoreDistribution.map((d) => d.count) || [1]),
     1
   )
 
@@ -182,7 +184,7 @@ export function StatisticsPage() {
             <h2 className="font-semibold text-gray-900">Thống kê theo kỳ thi</h2>
           </div>
           <select
-            value={selectedKyThiId}
+            value={selectedExamCampaignId}
             onChange={(e) => setSelectedKyThiId(e.target.value ? Number(e.target.value) : '')}
             className="h-9 rounded-lg border border-gray-200 px-3 text-sm min-w-[240px] focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
@@ -193,26 +195,26 @@ export function StatisticsPage() {
           </select>
         </div>
 
-        {!selectedKyThiId && (
+        {!selectedExamCampaignId && (
           <div className="py-16 text-center text-gray-400">
             <BarChart2 className="h-12 w-12 mx-auto mb-3 opacity-20" />
             <p>Chọn kỳ thi để xem thống kê chi tiết</p>
           </div>
         )}
 
-        {selectedKyThiId && isLoadingKyThiStats && (
+        {selectedExamCampaignId && isLoadingExamCampaignStats && (
           <div className="py-12 text-center text-gray-400 animate-pulse">Đang tải...</div>
         )}
 
-        {selectedKyThiId && !isLoadingKyThiStats && kyThiStats && (
+        {selectedExamCampaignId && !isLoadingExamCampaignStats && examCampaignStats && (
           <div className="p-5 space-y-5">
             {/* Exam summary stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: 'Thí sinh tham gia', value: kyThiStats.totalParticipants, cls: 'text-gray-700' },
-                { label: 'Tỷ lệ đạt', value: `${kyThiStats.passRate.toFixed(1)}%`, cls: 'text-green-600' },
-                { label: 'Điểm TB', value: kyThiStats.averageScore.toFixed(1), cls: 'text-primary' },
-                { label: 'Cao nhất / Thấp nhất', value: `${kyThiStats.highestScore} / ${kyThiStats.lowestScore}`, cls: 'text-gray-600' },
+                { label: 'Thí sinh tham gia', value: examCampaignStats.totalParticipants, cls: 'text-gray-700' },
+                { label: 'Tỷ lệ đạt', value: `${examCampaignStats.passRate.toFixed(1)}%`, cls: 'text-green-600' },
+                { label: 'Điểm TB', value: examCampaignStats.averageScore.toFixed(1), cls: 'text-primary' },
+                { label: 'Cao nhất / Thấp nhất', value: `${examCampaignStats.highestScore} / ${examCampaignStats.lowestScore}`, cls: 'text-gray-600' },
               ].map((s) => (
                 <div key={s.label} className="bg-gray-50 rounded-xl p-4 text-center border">
                   <p className={`text-xl font-bold ${s.cls}`}>{s.value}</p>
@@ -224,25 +226,25 @@ export function StatisticsPage() {
             {/* Pass/fail bar */}
             <div className="bg-gray-50 rounded-xl p-4 border">
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-green-600 font-medium">Đạt: {kyThiStats.passCount}</span>
-                <span className="text-red-500 font-medium">Không đạt: {kyThiStats.failCount}</span>
+                <span className="text-green-600 font-medium">Đạt: {examCampaignStats.passCount}</span>
+                <span className="text-red-500 font-medium">Không đạt: {examCampaignStats.failCount}</span>
               </div>
-              {kyThiStats.totalParticipants > 0 && (
+              {examCampaignStats.totalParticipants > 0 && (
                 <div className="h-4 bg-red-100 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-green-500 rounded-full transition-all duration-700"
-                    style={{ width: `${(kyThiStats.passCount / kyThiStats.totalParticipants) * 100}%` }}
+                    style={{ width: `${(examCampaignStats.passCount / examCampaignStats.totalParticipants) * 100}%` }}
                   />
                 </div>
               )}
             </div>
 
             {/* Score distribution chart */}
-            {kyThiStats.scoreDistribution.length > 0 && (
+            {examCampaignStats.scoreDistribution.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Phân phối điểm</h3>
                 <div className="space-y-2">
-                  {kyThiStats.scoreDistribution.map((dist) => (
+                  {examCampaignStats.scoreDistribution.map((dist) => (
                     <div key={dist.range} className="flex items-center gap-3">
                       <span className="text-xs text-gray-500 w-20 text-right shrink-0">{dist.range}</span>
                       <div className="flex-1 h-6 bg-gray-100 rounded-lg overflow-hidden">

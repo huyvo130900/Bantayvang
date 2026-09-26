@@ -11,19 +11,19 @@ public partial class ExamSubmission
     public string? Status { get; set; }
     public int? CorrectAnswers { get; set; }
     public int? TotalQuestions { get; set; }
-    public string? DanhGiaKhoa { get; set; }
+    public string? DepartmentEvaluation { get; set; }
 
     /// <summary>
     /// Công bố điểm riêng cho thí sinh này (không phụ thuộc IsResultPublished của đề thi).
     /// Nếu true → thí sinh thấy điểm dù IsResultPublished của ExamPaper = false.
     /// </summary>
-    public bool CongBoRieng { get; set; } = false;
+    public bool IsIndividualResultPublished { get; set; } = false;
 
     /// <summary>Thời điểm công bố riêng</summary>
     public DateTime? IndividualPublishedAt { get; set; }
 
     /// <summary>Người thực hiện công bố riêng (Admin/DeptManager)</summary>
-    public int? NguoiCongBoRieng { get; set; }
+    public int? IndividualPublisherId { get; set; }
 
     /// <summary>Mã đề thi (cache từ ExamPaper.ExamPaperCode)</summary>
     public string? ExamPaperCode { get; set; }
@@ -33,7 +33,7 @@ public partial class ExamSubmission
     public virtual ExamCampaign? ExamCampaign { get; set; }
 
     /// <summary>Tổng số cảnh báo gian lận trong bài thi này</summary>
-    public int? TongSoCanhBao { get; set; }
+    public int? WarningCount { get; set; }
 
     public virtual ExamPaper? ExamPaper { get; set; }
     public virtual User? User { get; set; }

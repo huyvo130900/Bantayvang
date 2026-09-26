@@ -30,7 +30,7 @@ export const fetchUsers = createAsyncThunk(
         return rejectWithValue(response.data.message)
       }
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi tải danh sách')
     }
@@ -46,7 +46,7 @@ export const createUser = createAsyncThunk(
         return rejectWithValue(response.data.message)
       }
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi tạo người dùng')
     }
@@ -62,7 +62,7 @@ export const updateUser = createAsyncThunk(
         return rejectWithValue(response.data.message)
       }
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi cập nhật')
     }
@@ -80,7 +80,7 @@ export const toggleUserStatus = createAsyncThunk(
         return rejectWithValue(response.data.message)
       }
       return { id, activate }
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi thay đổi trạng thái')
     }
@@ -96,7 +96,7 @@ export const deleteUser = createAsyncThunk(
         return rejectWithValue(response.data.message)
       }
       return id
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi xóa người dùng')
     }
@@ -112,7 +112,7 @@ export const restoreUser = createAsyncThunk(
         return rejectWithValue(response.data.message)
       }
       return id
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi khôi phục người dùng')
     }
@@ -128,13 +128,19 @@ export const hardDeleteUser = createAsyncThunk(
         return rejectWithValue(response.data.message)
       }
       return id
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi xóa vĩnh viễn người dùng')
     }
   }
 )
 
+// BUG FIX: these two thunks used to discard the backend's response entirely and just return the
+// original `ids` array back to the caller on success - so when the server skipped some users
+// (DeptManager selecting a user outside their department, or an Admin account that bulk-delete
+// always skips) and returned a message with the REAL count, the UI had no way to know and showed
+// a hardcoded "Đã xóa {selectedIds.length} tài khoản thành công" - overstating how many accounts
+// were actually affected. Now returns the server's own message so the caller can display it.
 export const bulkDeleteUsers = createAsyncThunk(
   'users/bulkDeleteUsers',
   async (ids: number[], { rejectWithValue }) => {
@@ -143,10 +149,26 @@ export const bulkDeleteUsers = createAsyncThunk(
       if (!response.data.success) {
         return rejectWithValue(response.data.message)
       }
-      return ids
-    } catch (error: unknown) {
+      return response.data.message
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Lỗi xóa hàng loạt')
+    }
+  }
+)
+
+export const bulkHardDeleteUsers = createAsyncThunk(
+  'users/bulkHardDeleteUsers',
+  async (ids: number[], { rejectWithValue }) => {
+    try {
+      const response = await usersApi.bulkHardDelete(ids)
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message)
+      }
+      return response.data.message
+    } catch (error: any) {
+      const err = error as { response?: { data?: { message?: string } } }
+      return rejectWithValue(err.response?.data?.message || 'Lỗi xóa vĩnh viễn hàng loạt')
     }
   }
 )

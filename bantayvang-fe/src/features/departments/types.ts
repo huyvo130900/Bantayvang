@@ -5,7 +5,7 @@ export interface DepartmentDto {
   description?: string
   status: boolean
   deptManagerId?: number
-  tenQuanLy?: string
+  managerName?: string
   createdAt: string
   updatedAt?: string
 }
@@ -34,19 +34,19 @@ export interface ExamVisibilityDto {
 export interface DepartmentDashboardDto {
   deptId: number
   departmentName: string
-  tongSoCauHoi: number
-  tongSoDeThi: number
-  tongSoThiSinh: number
-  diemTrungBinh: number
-  kyThiGanDay: KyThiSummaryDto[]
+  totalQuestions: number
+  totalExams: number
+  totalCandidates: number
+  averageScore: number
+  recentCampaigns: ExamCampaignSummaryDto[]
 }
 
-export interface KyThiSummaryDto {
+export interface ExamCampaignSummaryDto {
   id: number
   campaignName: string
-  thoiGianBatDau?: string
-  thoiGianKetThuc?: string
+  startTime?: string
+  endTime?: string
   status: string
-  soDeThi: number
-  soThiSinh: number
+  examCount: number
+  candidateCount: number
 }

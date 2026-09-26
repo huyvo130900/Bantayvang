@@ -22,15 +22,15 @@ namespace BanTayVang.API.Services.Impl.Exams
         private readonly ILogger<ExamManagementService> _logger;
 
         public ExamManagementService(
-            IExamPaperRepository dethiRepository,
-            IQuestionRepository cauhoiRepository,
+            IExamPaperRepository examPaperRepository,
+            IQuestionRepository questionRepository,
             IExamValidationService validationService,
             IMapper mapper,
             BanTayVangDbContext context,
             ILogger<ExamManagementService> logger)
         {
-            _examPaperRepository = dethiRepository;
-            _questionRepository = cauhoiRepository;
+            _examPaperRepository = examPaperRepository;
+            _questionRepository = questionRepository;
             _validationService = validationService;
             _mapper = mapper;
             _context = context;
@@ -94,13 +94,18 @@ namespace BanTayVang.API.Services.Impl.Exams
                         Department = createDto.Department,
                         MinPassQuestions = createDto.MinPassQuestions,
                         CreatedBy = createdBy,
-                        CreatedAt = DateTime.UtcNow,
+                        // BUG FIX: this used real UTC while ExamCampaignService.GenerateExamsForCampaignAsync
+                        // sets the same ExamPaper.CreatedAt field via UtcNow.AddHours(7) (the fake-VN-time
+                        // display convention used almost everywhere else for Created/UpdatedAt) - so an exam
+                        // paper's shown "creation time" was off by 7h depending on which of the two paths
+                        // created it. Match the established convention.
+                        CreatedAt = DateTime.UtcNow.AddHours(7),
                         LinkTruyCap = GenerateSecureExamLink(createDto.ExamPaperCode),
                         ChecksumData = CalculateExamChecksum(createDto),
                         ExamCampaignId = createDto.ExamCampaignId
                     };
 
-                    var savedDethi = await _examPaperRepository.AddAsync(examPaper);
+                    var savedExamPaper = await _examPaperRepository.AddAsync(examPaper);
 
                     // Xác định danh sách câu hỏi
                     List<int> questionIds = new();
@@ -129,8 +134,8 @@ namespace BanTayVang.API.Services.Impl.Exams
                         questionIds = selectedQuestions.Select(q => q.Id).ToList();
 
                         // Lưu config vào ChecksumData
-                        savedDethi.ChecksumData = $"KHOA:{createDto.Department}|SO_CAU:{(examCampaign != null && examCampaign.TotalQuestions.HasValue ? examCampaign.TotalQuestions.Value : allQuestions.Count)}|POOL:{allQuestions.Count}";
-                        savedDethi.TotalScore = questionIds.Count;
+                        savedExamPaper.ChecksumData = $"KHOA:{createDto.Department}|SO_CAU:{(examCampaign != null && examCampaign.TotalQuestions.HasValue ? examCampaign.TotalQuestions.Value : allQuestions.Count)}|POOL:{allQuestions.Count}";
+                        savedExamPaper.TotalScore = questionIds.Count;
                     }
 
                     if (examCampaign != null && examCampaign.TotalQuestions.HasValue && questionIds.Count != examCampaign.TotalQuestions.Value)
@@ -144,12 +149,12 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                     if (questionIds.Any())
                     {
-                        var addResult = await _examPaperRepository.AddQuestionsToExamAsync(savedDethi.Id, questionIds);
+                        var addResult = await _examPaperRepository.AddQuestionsToExamAsync(savedExamPaper.Id, questionIds);
                         if (!addResult)
                             throw new InvalidOperationException("Failed to add questions to exam");
 
-                        savedDethi.TotalScore = questionIds.Count;
-                        await _examPaperRepository.UpdateAsync(savedDethi);
+                        savedExamPaper.TotalScore = questionIds.Count;
+                        await _examPaperRepository.UpdateAsync(savedExamPaper);
                     }
 
                     // Validate: MinPassQuestions cannot exceed total questions
@@ -162,11 +167,11 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                     await transaction.CommitAsync(cancellationToken);
 
-                    var result = _mapper.Map<ExamPaperDto>(savedDethi);
+                    var result = _mapper.Map<ExamPaperDto>(savedExamPaper);
                     result.TotalQuestions = questionIds.Count;
 
                     _logger.LogInformation("Exam created: {ExamId}, Code: {Code}, Questions: {Count}, Department: {Department}",
-                        savedDethi.Id, savedDethi.ExamPaperCode, questionIds.Count, createDto.Department);
+                        savedExamPaper.Id, savedExamPaper.ExamPaperCode, questionIds.Count, createDto.Department);
 
                     return BaseResponseDto<ExamPaperDto>.SuccessResult(result, "Tạo đề thi thành công");
                 }
@@ -278,7 +283,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                         existingExam.Department = examCampaign.Department?.DepartmentName;
                     }
                     existingExam.UpdatedBy = updatedBy;
-                    existingExam.UpdatedAt = DateTime.UtcNow;
+                    existingExam.UpdatedAt = DateTime.UtcNow.AddHours(7); // BUG FIX: see CreateExamAsync above
 
                     if (updateDto.QuestionIds.Any())
                     {
@@ -327,7 +332,7 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                 exam.Status = status;
                 exam.UpdatedBy = updatedBy;
-                exam.UpdatedAt = DateTime.UtcNow;
+                exam.UpdatedAt = DateTime.UtcNow.AddHours(7); // BUG FIX: see CreateExamAsync above
 
                 await _examPaperRepository.UpdateAsync(exam);
 
@@ -366,7 +371,7 @@ namespace BanTayVang.API.Services.Impl.Exams
 
                 exam.Status = "Inactive";
                 exam.UpdatedBy = updatedBy;
-                exam.UpdatedAt = DateTime.UtcNow;
+                exam.UpdatedAt = DateTime.UtcNow.AddHours(7); // BUG FIX: see CreateExamAsync above
                 await _examPaperRepository.UpdateAsync(exam);
                 return BaseResponseDto.SuccessResult("Exam deactivated successfully");
             }

@@ -1,6 +1,7 @@
 using BanTayVang.API.DTOs.Category;
 using BanTayVang.API.DTOs.Common;
 using BanTayVang.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BanTayVang.API.Controllers
@@ -25,7 +26,7 @@ namespace BanTayVang.API.Controllers
         /// Lấy danh sách tất cả loại câu hỏi
         /// </summary>
         [HttpGet("types")]
-        public async Task<ActionResult<BaseResponseDto<List<LoaicauhoiDto>>>> GetQuestionTypes()
+        public async Task<ActionResult<BaseResponseDto<List<QuestionCategoryDto>>>> GetQuestionTypes()
         {
             var result = await _categoryService.GetAllQuestionTypesAsync();
             return Ok(result);
@@ -35,7 +36,7 @@ namespace BanTayVang.API.Controllers
         /// Lấy chi tiết loại câu hỏi theo ID
         /// </summary>
         [HttpGet("types/{id}")]
-        public async Task<ActionResult<BaseResponseDto<LoaicauhoiDto>>> GetQuestionType(int id)
+        public async Task<ActionResult<BaseResponseDto<QuestionCategoryDto>>> GetQuestionType(int id)
         {
             var result = await _categoryService.GetQuestionTypeByIdAsync(id);
             if (!result.Success)
@@ -46,8 +47,13 @@ namespace BanTayVang.API.Controllers
         /// <summary>
         /// Tạo loại câu hỏi mới
         /// </summary>
+        // BUG FIX: question categories (TN/TL) are a system-wide shared taxonomy, not scoped to any
+        // department, but Create/Update/Delete below were ManagementOnly - any DeptManager could
+        // rename/delete/create a category used by every other department (EssayQuestionHelper
+        // matches essay detection by category name across the whole app). Restrict to Admin only.
         [HttpPost("types")]
-        public async Task<ActionResult<BaseResponseDto<LoaicauhoiDto>>> CreateQuestionType([FromBody] CreateLoaicauhoiDto createDto)
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<BaseResponseDto<QuestionCategoryDto>>> CreateQuestionType([FromBody] CreateQuestionCategoryDto createDto)
         {
             var result = await _categoryService.CreateQuestionTypeAsync(createDto);
             if (!result.Success)
@@ -59,7 +65,8 @@ namespace BanTayVang.API.Controllers
         /// Cập nhật loại câu hỏi
         /// </summary>
         [HttpPut("types/{id}")]
-        public async Task<ActionResult<BaseResponseDto<LoaicauhoiDto>>> UpdateQuestionType(int id, [FromBody] CreateLoaicauhoiDto updateDto)
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<BaseResponseDto<QuestionCategoryDto>>> UpdateQuestionType(int id, [FromBody] CreateQuestionCategoryDto updateDto)
         {
             var result = await _categoryService.UpdateQuestionTypeAsync(id, updateDto);
             if (!result.Success)
@@ -71,6 +78,7 @@ namespace BanTayVang.API.Controllers
         /// Xóa loại câu hỏi
         /// </summary>
         [HttpDelete("types/{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<BaseResponseDto>> DeleteQuestionType(int id)
         {
             var result = await _categoryService.DeleteQuestionTypeAsync(id);

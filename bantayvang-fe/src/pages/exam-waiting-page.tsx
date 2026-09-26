@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { kyThiApi } from '@/features/ky-thi/api'
+import { examCampaignApi } from '@/features/ky-thi/api'
 import { examTakingApi } from '@/features/exam-taking/api'
 import { useAppSelector } from '@/app/hooks'
 import type { ExamCampaignDto } from '@/features/ky-thi/types'
@@ -11,18 +11,18 @@ import { Clock, Play, RefreshCw, ClipboardList } from 'lucide-react'
 export function ExamWaitingPage() {
   const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
-  const [examCampaigns, setKyThis] = useState<ExamCampaignDto[]>([])
+  const [examCampaigns, setExamCampaigns] = useState<ExamCampaignDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [startingId, setStartingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [myResults, setMyResults] = useState<Map<string, ExamSubmissionDto>>(new Map())
 
-  const loadData = async () => {
-    setIsLoading(true)
+  async function loadData(isRefresh = false) {
+    if (isRefresh) setIsLoading(true)
     setError(null)
     try {
-      const [kyThiRes, myResultsRes] = await Promise.all([
-        kyThiApi.getAll(),
+      const [examCampaignRes, myResultsRes] = await Promise.all([
+        examCampaignApi.getAll(),
         examTakingApi.getMyResults(),
       ])
 
@@ -40,9 +40,9 @@ export function ExamWaitingPage() {
         setMyResults(map)
       }
 
-      const list: ExamCampaignDto[] = (kyThiRes.data.success && kyThiRes.data.data)
-        ? kyThiRes.data.data : []
-      setKyThis(list)
+      const list: ExamCampaignDto[] = (examCampaignRes.data.success && examCampaignRes.data.data)
+        ? examCampaignRes.data.data : []
+      setExamCampaigns(list)
     } catch {
       setError('Không thể tải danh sách kỳ thi. Vui lòng thử lại.')
     } finally {
@@ -51,12 +51,13 @@ export function ExamWaitingPage() {
   }
 
   useEffect(() => {
-    loadData()
-    const interval = setInterval(loadData, 30_000)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData(false)
+    const interval = setInterval(() => loadData(false), 30_000)
     return () => clearInterval(interval)
-  }, []) // eslint-disable-line
+  }, [])  
 
-  const handleStartExam = async (examPaperCode: string | null | undefined, examCampaignId: number) => {
+  async function handleStartExam(examPaperCode: string | null | undefined, examCampaignId: number) {
     setStartingId(examCampaignId)
     setError(null)
     try {
@@ -66,7 +67,7 @@ export function ExamWaitingPage() {
       } else {
         setError(res.data.message || 'Không thể bắt đầu bài thi')
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Có lỗi khi bắt đầu bài thi'
@@ -78,38 +79,45 @@ export function ExamWaitingPage() {
 
   const now = new Date()
 
-  const hasTakenKyThi = (ky: ExamCampaignDto) => {
+  const hasTakenExamCampaign = (examCampaign: ExamCampaignDto) => {
     const resultsArray = Array.from(myResults.values())
-    const hasByKyThiId = resultsArray.some((r) => r.examCampaignId === ky.id)
+    const hasByKyThiId = resultsArray.some((r) => r.examCampaignId === examCampaign.id)
     if (hasByKyThiId) return true
 
-    if (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0) {
-      return ky.danhSachMaDeThi.some((code) => myResults.has(code))
+    if (examCampaign.examPaperCodes && examCampaign.examPaperCodes.length > 0) {
+      return examCampaign.examPaperCodes.some((code) => myResults.has(code))
     }
 
-    return ky.examPaperCode ? myResults.has(ky.examPaperCode) : false
+    return examCampaign.examPaperCode ? myResults.has(examCampaign.examPaperCode) : false
   }
 
 
 
-  const available = examCampaigns.filter((ky) => {
-    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
-    if (!hasExams) return false
-    
+  const hasExamPapers = (examCampaign: ExamCampaignDto) =>
+    !!(examCampaign.examPaperCode || (examCampaign.totalExamPapers && examCampaign.totalExamPapers > 0) || (examCampaign.examPaperCodes && examCampaign.examPaperCodes.length > 0))
+
+  // Kỳ thi luyện tập tồn tại vĩnh viễn - tách hẳn khỏi danh sách kỳ thi thật (có/sắp có hạn) để
+  // đúng cảm giác "luôn ở đó", không lẫn vào giữa các kỳ thi có ngày giờ cụ thể.
+  const practiceExams = examCampaigns.filter((k) => k.isPracticeMode && hasExamPapers(k))
+
+  const available = examCampaigns.filter((examCampaign) => {
+    if (examCampaign.isPracticeMode) return false
+    if (!hasExamPapers(examCampaign)) return false
+
     // Cho phép thi lại nếu còn hạn của kỳ thi
-    const start = ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : null
-    const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
+    const start = examCampaign.startTime ? new Date(examCampaign.startTime) : null
+    const end = examCampaign.endTime ? new Date(examCampaign.endTime) : null
     if (start && start > now) return false
-    if (end && end < now && !hasTakenKyThi(ky)) return false
+    if (end && end < now && !hasTakenExamCampaign(examCampaign)) return false
     return true
   })
 
-  const upcoming = examCampaigns.filter((ky) => {
-    const hasExams = ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0) || (ky.danhSachMaDeThi && ky.danhSachMaDeThi.length > 0)
-    if (!hasExams) return false
-    if (hasTakenKyThi(ky)) return false
-    const start = ky.thoiGianBatDau ? new Date(ky.thoiGianBatDau) : null
-    const end = ky.thoiGianKetThuc ? new Date(ky.thoiGianKetThuc) : null
+  const upcoming = examCampaigns.filter((examCampaign) => {
+    if (examCampaign.isPracticeMode) return false
+    if (!hasExamPapers(examCampaign)) return false
+    if (hasTakenExamCampaign(examCampaign)) return false
+    const start = examCampaign.startTime ? new Date(examCampaign.startTime) : null
+    const end = examCampaign.endTime ? new Date(examCampaign.endTime) : null
     if (end && end < now) return false
     return start != null && start > now
   })
@@ -125,7 +133,7 @@ export function ExamWaitingPage() {
           </p>
         </div>
         <button
-          onClick={loadData}
+          onClick={() => loadData(true)}
           disabled={isLoading}
           className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50 transition-colors w-full sm:w-auto"
         >
@@ -155,45 +163,47 @@ export function ExamWaitingPage() {
                 <Play className="h-3.5 w-3.5 fill-green-700" /> Có thể vào thi ngay
               </h2>
               <div className="space-y-2">
-                {available.map((ky) => (
-                  <div key={ky.id} className={`bg-white border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
-                    hasTakenKyThi(ky) ? 'border-amber-200' : 'border-green-200'
+                {available.map((examCampaign) => (
+                  <div key={examCampaign.id} className={`bg-white border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
+                    hasTakenExamCampaign(examCampaign) ? 'border-amber-200' : 'border-green-200'
                   }`}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-gray-900">{ky.campaignName}</p>
-                        {hasTakenKyThi(ky) && (
+                        <p className="font-semibold text-gray-900">{examCampaign.campaignName}</p>
+                        {hasTakenExamCampaign(examCampaign) && (
                           <span className="inline-flex items-center text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">
-                            {ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now ? 'Kỳ thi đã kết thúc' : 'Đã thi (Cho phép thi lại)'}
+                            <div className="flex items-center gap-2">
+                              {examCampaign.endTime && new Date(examCampaign.endTime) < now ? 'Exam ended' : 'Attempted (Retake allowed)'}
+                            </div>
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-primary mt-0.5">{ky.campaignCode}</p>
-                      <div className="flex flex-wrap gap-3 mt-1">
-                        {ky.thoiGianBatDau && (
-                          <span className="text-xs text-gray-400 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDate(ky.thoiGianBatDau)}
-                            {ky.thoiGianKetThuc && ` → ${formatDate(ky.thoiGianKetThuc)}`}
+                      <p className="text-xs text-primary mt-0.5">{examCampaign.campaignCode}</p>
+                      <div className="flex items-center gap-1.5 text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-md border border-gray-100">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        {examCampaign.startTime && (
+                          <span>
+                            {formatDate(examCampaign.startTime)}
+                            {examCampaign.endTime && ` → ${formatDate(examCampaign.endTime)}`}
                           </span>
                         )}
-                        {ky.description && (
-                          <span className="text-xs text-gray-400 italic">{ky.description}</span>
+                        {examCampaign.description && (
+                          <span className="text-xs text-gray-400 italic">{examCampaign.description}</span>
                         )}
                       </div>
                     </div>
                     <button
-                      onClick={() => handleStartExam(ky.examPaperCode, ky.id)}
-                      disabled={startingId === ky.id || !(ky.examPaperCode || (ky.soLuongDeThi && ky.soLuongDeThi > 0)) || !!(ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now)}
-                      className={`shrink-0 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors w-full sm:w-auto text-center ${
-                        ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now
+                      onClick={() => handleStartExam(examCampaign.examPaperCode, examCampaign.id)}
+                      disabled={startingId === examCampaign.id || !(examCampaign.examPaperCode || (examCampaign.totalExamPapers && examCampaign.totalExamPapers > 0)) || !!(examCampaign.endTime && new Date(examCampaign.endTime) < now)}
+                      className={`whitespace-nowrap px-6 shadow-sm text-white text-sm font-semibold py-2.5 rounded-lg transition-colors w-full sm:w-auto text-center ${
+                        examCampaign.endTime && new Date(examCampaign.endTime) < now
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed border'
-                          : hasTakenKyThi(ky)
+                          : hasTakenExamCampaign(examCampaign)
                             ? 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300'
                             : 'bg-green-600 hover:bg-green-700 disabled:bg-green-300'
                       }`}
                     >
-                      {ky.thoiGianKetThuc && new Date(ky.thoiGianKetThuc) < now ? 'Kỳ thi đã kết thúc' : startingId === ky.id ? 'Đang mở...' : hasTakenKyThi(ky) ? 'Thi lại →' : 'Vào thi →'}
+                      {examCampaign.endTime && new Date(examCampaign.endTime) < now ? 'Kỳ thi đã kết thúc' : startingId === examCampaign.id ? 'Đang mở...' : hasTakenExamCampaign(examCampaign) ? 'Thi lại →' : 'Vào thi →'}
                     </button>
                   </div>
                 ))}
@@ -208,13 +218,13 @@ export function ExamWaitingPage() {
                 <Clock className="h-3.5 w-3.5" /> Sắp diễn ra
               </h2>
               <div className="space-y-2">
-                {upcoming.map((ky) => (
-                  <div key={ky.id} className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {upcoming.map((examCampaign) => (
+                  <div key={examCampaign.id} className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <p className="font-semibold text-gray-900">{ky.campaignName}</p>
-                      <p className="text-xs text-primary mt-0.5">{ky.campaignCode}</p>
+                      <p className="font-semibold text-gray-900">{examCampaign.campaignName}</p>
+                      <p className="text-xs text-primary mt-0.5">{examCampaign.campaignCode}</p>
                       <p className="text-xs text-blue-600 mt-1">
-                        🕐 Bắt đầu: {formatDate(ky.thoiGianBatDau)}
+                        🕐 Bắt đầu: {formatDate(examCampaign.startTime)}
                       </p>
                     </div>
                     <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium w-full sm:w-auto text-center shrink-0">
@@ -226,8 +236,37 @@ export function ExamWaitingPage() {
             </section>
           )}
 
+          {/* Luyện tập - tồn tại vĩnh viễn, không giới hạn thời gian/số lần */}
+          {practiceExams.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-purple-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <ClipboardList className="h-3.5 w-3.5" /> Luyện tập
+              </h2>
+              <div className="space-y-2">
+                {practiceExams.map((examCampaign) => (
+                  <div key={examCampaign.id} className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900">{examCampaign.campaignName}</p>
+                      <p className="text-xs text-primary mt-0.5">{examCampaign.campaignCode}</p>
+                      {examCampaign.description && (
+                        <p className="text-xs text-gray-400 italic mt-1">{examCampaign.description}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleStartExam(examCampaign.examPaperCode, examCampaign.id)}
+                      disabled={startingId === examCampaign.id}
+                      className="whitespace-nowrap px-6 shadow-sm text-white text-sm font-semibold py-2.5 rounded-lg transition-colors w-full sm:w-auto text-center bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300"
+                    >
+                      {startingId === examCampaign.id ? 'Đang mở...' : hasTakenExamCampaign(examCampaign) ? 'Luyện tập lại →' : 'Vào luyện tập →'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Empty state */}
-          {available.length === 0 && upcoming.length === 0 && !isLoading && (
+          {available.length === 0 && upcoming.length === 0 && practiceExams.length === 0 && !isLoading && (
             <div className="text-center py-16">
               <ClipboardList className="h-16 w-16 mx-auto text-gray-200 mb-4" />
               <p className="text-gray-600 font-medium text-lg">Không có kỳ thi nào</p>

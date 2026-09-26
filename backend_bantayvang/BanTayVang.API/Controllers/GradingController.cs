@@ -2,6 +2,7 @@ using BanTayVang.API.DTOs.Common;
 using BanTayVang.API.DTOs.Grading;
 using BanTayVang.API.Helpers;
 using BanTayVang.API.Models;
+using BanTayVang.API.Services.Impl;
 using BanTayVang.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,11 +20,13 @@ namespace BanTayVang.API.Controllers
     {
         private readonly IGradingService _gradingService;
         private readonly BanTayVangDbContext _db;
+        private readonly ILogger<GradingController> _logger;
 
-        public GradingController(IGradingService gradingService, BanTayVangDbContext db)
+        public GradingController(IGradingService gradingService, BanTayVangDbContext db, ILogger<GradingController> logger)
         {
             _gradingService = gradingService;
             _db = db;
+            _logger = logger;
         }
 
         /// <summary>
@@ -35,7 +38,7 @@ namespace BanTayVang.API.Controllers
         {
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 var examSubmission = await _db.ExamSubmissions
                     .Include(b => b.User)
                     .Include(b => b.ExamPaper)
@@ -44,9 +47,9 @@ namespace BanTayVang.API.Controllers
                 
                 if (examSubmission == null) return Forbid();
                 
-                bool isOwner = examSubmission.User?.Department == myKhoa ||
-                               examSubmission.ExamPaper?.Department == myKhoa ||
-                               examSubmission.ExamCampaign?.OrganizedBy == myKhoa;
+                bool isOwner = examSubmission.User?.Department == myDepartment ||
+                               examSubmission.ExamPaper?.Department == myDepartment ||
+                               examSubmission.ExamCampaign?.OrganizedBy == myDepartment;
                                
                 if (!isOwner)
                 {
@@ -60,14 +63,22 @@ namespace BanTayVang.API.Controllers
             if (result.Data != null)
             {
                 var isStudent = User.IsInRole("Student") || (!DepartmentAuthHelper.IsAdmin(User) && !DepartmentAuthHelper.IsDeptManager(User));
-                var currentUserId = HttpContext.Items["UserId"] as int? ?? 1;
+                var currentUserId = HttpContext.Items["UserId"] as int?;
 
-                if (isStudent && !result.Data.IsResultPublished && result.Data.UserId == currentUserId)
+                if (isStudent)
                 {
-                    result.Data.TotalScore = null;
-                    result.Data.CorrectAnswers = null;
-                    result.Data.Answers = new List<AnswerDetailDto>();
-                    result.Data.Pass = false;
+                    if (currentUserId == null || result.Data.UserId != currentUserId)
+                    {
+                        return Forbid();
+                    }
+
+                    if (!result.Data.IsResultPublished)
+                    {
+                        result.Data.TotalScore = null;
+                        result.Data.CorrectAnswers = null;
+                        result.Data.Answers = new List<AnswerDetailDto>();
+                        result.Data.Pass = false;
+                    }
                 }
             }
 
@@ -78,21 +89,22 @@ namespace BanTayVang.API.Controllers
         /// Lấy danh sách kết quả của 1 đề thi (cho admin/teacher)
         /// </summary>
         [HttpGet("exam/{examId}/results")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto<List<ExamResultDetailDto>>>> GetResultsByExam(int examId)
         {
             var result = await _gradingService.GetResultsByExamAsync(examId);
 
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 var examPaper = await _db.ExamPapers.FindAsync(examId);
-                bool isOwner = examPaper != null && examPaper.Department == myKhoa;
+                bool isOwner = examPaper != null && examPaper.Department == myDepartment;
                 
                 if (!isOwner)
                 {
                     if (result.Success && result.Data != null)
                     {
-                        result.Data = result.Data.Where(r => r.Department == myKhoa).ToList();
+                        result.Data = result.Data.Where(r => r.Department == myDepartment).ToList();
                     }
                 }
             }
@@ -104,21 +116,22 @@ namespace BanTayVang.API.Controllers
         /// Bảng xếp hạng (top performers) của 1 đề thi
         /// </summary>
         [HttpGet("exam/{examId}/ranking")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto<List<ExamResultDetailDto>>>> GetRanking(int examId, [FromQuery] int top = 50)
         {
             var result = await _gradingService.GetRankingByExamAsync(examId, top);
 
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 var examPaper = await _db.ExamPapers.FindAsync(examId);
-                bool isOwner = examPaper != null && examPaper.Department == myKhoa;
+                bool isOwner = examPaper != null && examPaper.Department == myDepartment;
                 
                 if (!isOwner)
                 {
                     if (result.Success && result.Data != null)
                     {
-                        result.Data = result.Data.Where(r => r.Department == myKhoa).ToList();
+                        result.Data = result.Data.Where(r => r.Department == myDepartment).ToList();
                     }
                 }
             }
@@ -130,11 +143,12 @@ namespace BanTayVang.API.Controllers
         /// Chấm lại bài thi
         /// </summary>
         [HttpPost("regrade/{examSubmissionId}")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto<ExamResultDetailDto>>> Regrade(int examSubmissionId)
         {
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 var examSubmission = await _db.ExamSubmissions
                     .Include(b => b.User)
                     .Include(b => b.ExamPaper)
@@ -143,9 +157,9 @@ namespace BanTayVang.API.Controllers
                 
                 if (examSubmission == null) return Forbid();
                 
-                bool isOwner = examSubmission.User?.Department == myKhoa ||
-                               examSubmission.ExamPaper?.Department == myKhoa ||
-                               examSubmission.ExamCampaign?.OrganizedBy == myKhoa;
+                bool isOwner = examSubmission.User?.Department == myDepartment ||
+                               examSubmission.ExamPaper?.Department == myDepartment ||
+                               examSubmission.ExamCampaign?.OrganizedBy == myDepartment;
                                
                 if (!isOwner)
                 {
@@ -166,7 +180,7 @@ namespace BanTayVang.API.Controllers
         [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto<List<object>>>> GetPendingEssay([FromQuery] bool isGraded = false)
         {
-            var myKhoa = DepartmentAuthHelper.IsDeptManager(User) ? DepartmentAuthHelper.GetKhoaPhong(User) : null;
+            var myDepartment = DepartmentAuthHelper.IsDeptManager(User) ? DepartmentAuthHelper.GetDepartmentClaim(User) : null;
 
             var pendingQuery = _db.ExamSubmissions
                 .Where(b => b.Status == "Completed" || b.Status == "Submitted")
@@ -180,9 +194,7 @@ namespace BanTayVang.API.Controllers
                 pendingQuery = pendingQuery.Where(b => b.SubmissionDetails.Any(c =>
                     c.Question != null &&
                     c.Question.QuestionCategory != null &&
-                    (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
-                     c.Question.QuestionCategory.CategoryName == "TuLuan" ||
-                     c.Question.QuestionCategory.CategoryName == "TL") &&
+                    EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName) &&
                     c.ScoreObtained == null));
             }
             else
@@ -191,26 +203,22 @@ namespace BanTayVang.API.Controllers
                     b.SubmissionDetails.Any(c =>
                         c.Question != null &&
                         c.Question.QuestionCategory != null &&
-                        (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
-                         c.Question.QuestionCategory.CategoryName == "TuLuan" ||
-                         c.Question.QuestionCategory.CategoryName == "TL"))
+                        EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName))
                     && 
                     !b.SubmissionDetails.Any(c =>
                         c.Question != null &&
                         c.Question.QuestionCategory != null &&
-                        (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
-                         c.Question.QuestionCategory.CategoryName == "TuLuan" ||
-                         c.Question.QuestionCategory.CategoryName == "TL") &&
+                        EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName) &&
                         c.ScoreObtained == null));
             }
 
             // Nếu là Quản lý Khoa thì lọc theo khoa của mình
-            if (myKhoa != null)
+            if (myDepartment != null)
             {
                 pendingQuery = pendingQuery.Where(b =>
-                    b.User!.Department == myKhoa ||
-                    b.ExamPaper!.Department == myKhoa ||
-                    b.ExamCampaign!.OrganizedBy == myKhoa);
+                    b.User!.Department == myDepartment ||
+                    b.ExamPaper!.Department == myDepartment ||
+                    b.ExamCampaign!.OrganizedBy == myDepartment);
             }
 
             var examSubmissions = await pendingQuery
@@ -232,19 +240,15 @@ namespace BanTayVang.API.Controllers
                     TotalQuestions = b.TotalQuestions,
                     Status = b.Status,
                     // Đếm số câu tự luận chưa chấm
-                    SoCauTuLuanChuaCham = b.SubmissionDetails.Count(c =>
+                    UngradedEssayQuestions = b.SubmissionDetails.Count(c =>
                         c.Question != null &&
                         c.Question.QuestionCategory != null &&
-                        (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
-                         c.Question.QuestionCategory.CategoryName == "TuLuan" ||
-                         c.Question.QuestionCategory.CategoryName == "TL") &&
+                        EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName) &&
                         c.ScoreObtained == null),
-                    TongSoCauTuLuan = b.SubmissionDetails.Count(c =>
+                    TotalEssayQuestions = b.SubmissionDetails.Count(c =>
                         c.Question != null &&
                         c.Question.QuestionCategory != null &&
-                        (c.Question.QuestionCategory.CategoryName == "Tự luận" ||
-                         c.Question.QuestionCategory.CategoryName == "TuLuan" ||
-                         c.Question.QuestionCategory.CategoryName == "TL")),
+                        EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName)),
                     CampaignName = b.ExamCampaign != null ? b.ExamCampaign.CampaignName : null,
                 })
                 .ToListAsync();
@@ -257,15 +261,88 @@ namespace BanTayVang.API.Controllers
             });
         }
 
+        [HttpGet("pending-essay-answers")]
+        [Authorize(Policy = "ManagementOnly")]
+        public async Task<ActionResult<BaseResponseDto<List<object>>>> GetPendingEssayAnswers([FromQuery] int? examCampaignId = null, [FromQuery] int? examId = null, [FromQuery] bool ungradedOnly = false)
+        {
+            var isAdmin = DepartmentAuthHelper.IsAdmin(User);
+            var myDepartment = DepartmentAuthHelper.IsDeptManager(User) ? DepartmentAuthHelper.GetDepartmentClaim(User) : null;
+
+            var query = _db.SubmissionDetails
+                .Include(c => c.Question)
+                    .ThenInclude(q => q!.QuestionOptions)
+                .Include(c => c.ExamSubmission)
+                .ThenInclude(e => e.User)
+                .Where(c => c.Question != null && c.Question.QuestionCategory != null &&
+                            EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName));
+
+            if (ungradedOnly)
+            {
+                query = query.Where(c => c.ScoreObtained == null);
+            }
+
+            if (examCampaignId.HasValue)
+            {
+                query = query.Where(c => c.ExamSubmission != null && c.ExamSubmission.ExamCampaignId == examCampaignId.Value);
+            }
+
+            if (examId.HasValue)
+            {
+                query = query.Where(c => c.ExamSubmission != null && c.ExamSubmission.ExamPaperId == examId.Value);
+            }
+
+            if (!isAdmin && myDepartment != null)
+            {
+                query = query.Where(c => c.ExamSubmission != null && c.ExamSubmission.User != null && c.ExamSubmission.User.Department == myDepartment);
+            }
+
+            var answers = await query
+                .OrderByDescending(c => c.ExamSubmission!.SubmitTime)
+                .Select(c => new
+                {
+                    SubmissionDetailId = c.Id,
+                    ExamSubmissionId = c.ExamSubmissionId,
+                    UserId = c.ExamSubmission!.UserId,
+                    FullName = c.ExamSubmission.User!.FullName,
+                    EmployeeCode = c.ExamSubmission.User.EmployeeCode,
+                    // BUG FIX (confirmed live): a student who retakes an exam gets a brand new
+                    // ExamSubmissionId per attempt, but nothing here told the grader WHICH attempt
+                    // an essay answer belonged to - two cards for the same student (one per
+                    // attempt) looked identical apart from the answer text itself. A grader
+                    // reviewing the wrong one (e.g. an old blank/failed attempt) instead of the
+                    // latest one wouldn't notice. SubmitTime lets the UI show that.
+                    SubmitTime = c.ExamSubmission.SubmitTime,
+                    QuestionContent = c.Question!.Content,
+                    EssayAnswer = c.EssayAnswer,
+                    SuggestedAnswer = c.Question.SuggestedAnswer,
+                    CorrectAnswerContent = c.Question.QuestionOptions.FirstOrDefault(o => o.IsCorrect == true) != null ? c.Question.QuestionOptions.FirstOrDefault(o => o.IsCorrect == true)!.Content : null,
+                    ScoreObtained = c.ScoreObtained,
+                    TeacherComment = c.TeacherComment,
+                    // AI Grading fields
+                    AiScore = c.AiScore,
+                    AiComment = c.AiComment,
+                    AiGradingStatus = c.AiGradingStatus
+                })
+                .Take(500)
+                .ToListAsync();
+
+            return Ok(new BaseResponseDto<List<object>>
+            {
+                Success = true,
+                Data = answers.Cast<object>().ToList()
+            });
+        }
+
         /// <summary>
         /// Chấm thủ công câu tự luận
         /// </summary>
         [HttpPost("manual-grade")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto>> ManualGrade([FromBody] ManualGradingDto dto)
         {
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 var detail = await _db.SubmissionDetails
                     .Include(c => c.ExamSubmission)
                         .ThenInclude(b => b.User)
@@ -273,14 +350,14 @@ namespace BanTayVang.API.Controllers
                         .ThenInclude(b => b.ExamPaper)
                     .Include(c => c.ExamSubmission)
                         .ThenInclude(b => b.ExamCampaign)
-                    .FirstOrDefaultAsync(c => c.Id == dto.ChiTietLamBaiId);
+                    .FirstOrDefaultAsync(c => c.Id == dto.SubmissionDetailId);
                 
                 if (detail?.ExamSubmission == null) return Forbid();
                 
                 var examSubmission = detail.ExamSubmission;
-                bool isOwner = examSubmission.User?.Department == myKhoa ||
-                               examSubmission.ExamPaper?.Department == myKhoa ||
-                               examSubmission.ExamCampaign?.OrganizedBy == myKhoa;
+                bool isOwner = examSubmission.User?.Department == myDepartment ||
+                               examSubmission.ExamPaper?.Department == myDepartment ||
+                               examSubmission.ExamCampaign?.OrganizedBy == myDepartment;
                                
                 if (!isOwner)
                 {
@@ -297,31 +374,96 @@ namespace BanTayVang.API.Controllers
         /// Auto-grade tất cả bài thi chưa chấm
         /// </summary>
         [HttpPost("auto-grade-all")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto<int>>> AutoGradeAll()
         {
-            var result = await _gradingService.AutoGradeAllAsync();
+            var restrictToDepartment = DepartmentAuthHelper.IsDeptManager(User) ? DepartmentAuthHelper.GetDepartmentClaim(User) : null;
+            var result = await _gradingService.AutoGradeAllAsync(restrictToDepartment);
             return Ok(result);
+        }
+
+        /// <summary>
+        /// Kích hoạt AI chấm hàng loạt câu tự luận (async - trả về ngay, Worker xử lý nền).
+        /// POST /api/grading/ai-grade-batch
+        /// Body: { "submissionDetailIds": [1, 2, 3] }
+        /// </summary>
+        [HttpPost("ai-grade-batch")]
+        [Authorize(Policy = "ManagementOnly")]
+        public async Task<ActionResult<BaseResponseDto>> AiGradeBatch(
+            [FromBody] AiGradeBatchDto dto,
+            [FromServices] AiGradingQueue queue)
+        {
+            if (dto.SubmissionDetailIds == null || dto.SubmissionDetailIds.Count == 0)
+                return BadRequest(new BaseResponseDto { Success = false, Message = "Danh sách ID trống" });
+
+            if (dto.SubmissionDetailIds.Count > 200)
+                return BadRequest(new BaseResponseDto { Success = false, Message = "Tối đa 200 câu mỗi lần" });
+
+            // Chỉ chấm các câu chưa có điểm (ScoreObtained == null)
+            var detailsQuery = _db.SubmissionDetails
+                .Include(c => c.ExamSubmission!).ThenInclude(b => b.User)
+                .Include(c => c.ExamSubmission!).ThenInclude(b => b.ExamPaper)
+                .Include(c => c.ExamSubmission!).ThenInclude(b => b.ExamCampaign)
+                .Where(c => dto.SubmissionDetailIds.Contains(c.Id) && c.ScoreObtained == null)
+                .AsQueryable();
+
+            // BUG FIX: unlike every other grading endpoint (ManualGrade, GetResultsByExam, ...),
+            // this one queued AI grading for whatever submissionDetailIds were posted with no
+            // department check at all - confirmed live: a DeptManager for "Công xa" could queue
+            // AI grading for a "Khoa Ngoại" student's answer. Apply the same 3-way ownership
+            // filter used everywhere else so a DeptManager can only queue their own department's.
+            if (DepartmentAuthHelper.IsDeptManager(User))
+            {
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
+                detailsQuery = detailsQuery.Where(c =>
+                    c.ExamSubmission!.User!.Department == myDepartment ||
+                    c.ExamSubmission.ExamPaper!.Department == myDepartment ||
+                    c.ExamSubmission.ExamCampaign!.OrganizedBy == myDepartment);
+            }
+
+            var details = await detailsQuery.ToListAsync();
+
+            if (!details.Any())
+                return Ok(new BaseResponseDto { Success = true, Message = "Không có câu nào cần chấm (tất cả đã có điểm)" });
+
+            // Cập nhật trạng thái → Pending để FE biết đang xử lý
+            foreach (var d in details)
+                d.AiGradingStatus = "Pending";
+            await _db.SaveChangesAsync();
+
+            // Đẩy vào Queue - Worker sẽ xử lý ngầm
+            foreach (var id in details.Select(d => d.Id))
+                await queue.EnqueueAsync(id, dto.AutoFinalize);
+
+            return Ok(new BaseResponseDto
+            {
+                Success = true,
+                Message = dto.AutoFinalize
+                    ? $"Đã đưa {details.Count} câu vào hàng đợi AI chấm. Điểm sẽ được chốt tự động."
+                    : $"Đã đưa {details.Count} câu vào hàng đợi AI chấm. AI sẽ đưa ra gợi ý, cần người chấm duyệt lại trước khi chốt điểm."
+            });
         }
 
         /// <summary>
         /// Export kết quả của 1 đề thi ra Excel
         /// </summary>
         [HttpGet("exam/{examId}/export")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<IActionResult> ExportExamResults(int examId)
         {
             var result = await _gradingService.GetResultsByExamAsync(examId);
 
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 var examPaper = await _db.ExamPapers.FindAsync(examId);
-                bool isOwner = examPaper != null && examPaper.Department == myKhoa;
+                bool isOwner = examPaper != null && examPaper.Department == myDepartment;
                 
                 if (!isOwner)
                 {
                     if (result.Success && result.Data != null)
                     {
-                        result.Data = result.Data.Where(r => r.Department == myKhoa).ToList();
+                        result.Data = result.Data.Where(r => r.Department == myDepartment).ToList();
                     }
                 }
             }
@@ -373,7 +515,7 @@ namespace BanTayVang.API.Controllers
                 ws.Cell(row, 13).Value = r.TotalScore ?? 0;
                 ws.Cell(row, 14).Value = r.Status;
                 ws.Cell(row, 15).Value = r.Pass ? "Đạt" : "Không đạt";
-                ws.Cell(row, 16).Value = r.SoCanhBao ?? 0;
+                ws.Cell(row, 16).Value = r.WarningCount ?? 0;
                 ws.Cell(row, 17).Value = r.IsResultPublished == true ? "Đã công bố" : "Chưa công bố";
                 row++;
             }
@@ -384,7 +526,7 @@ namespace BanTayVang.API.Controllers
             workbook.SaveAs(stream);
             stream.Position = 0;
 
-            var fileName = $"KetQua_DeThi_{examId}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"KetQua_DeThi_{examId}_{DateTime.UtcNow.AddHours(7):yyyyMMdd_HHmmss}.xlsx";
             return File(stream.ToArray(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 fileName);
@@ -394,21 +536,22 @@ namespace BanTayVang.API.Controllers
         /// Export bảng xếp hạng ra Excel
         /// </summary>
         [HttpGet("exam/{examId}/ranking/export")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<IActionResult> ExportRanking(int examId, [FromQuery] int top = 50)
         {
             var result = await _gradingService.GetRankingByExamAsync(examId, top);
 
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 var examPaper = await _db.ExamPapers.FindAsync(examId);
-                bool isOwner = examPaper != null && examPaper.Department == myKhoa;
+                bool isOwner = examPaper != null && examPaper.Department == myDepartment;
                 
                 if (!isOwner)
                 {
                     if (result.Success && result.Data != null)
                     {
-                        result.Data = result.Data.Where(r => r.Department == myKhoa).ToList();
+                        result.Data = result.Data.Where(r => r.Department == myDepartment).ToList();
                     }
                 }
             }
@@ -453,7 +596,7 @@ namespace BanTayVang.API.Controllers
             workbook.SaveAs(stream);
             stream.Position = 0;
 
-            var fileName = $"BangXepHang_DeThi_{examId}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"BangXepHang_DeThi_{examId}_{DateTime.UtcNow.AddHours(7):yyyyMMdd_HHmmss}.xlsx";
             return File(stream.ToArray(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 fileName);
@@ -463,18 +606,19 @@ namespace BanTayVang.API.Controllers
         /// Export các bài thi được chọn ra Excel (kèm theo số lần thi tương ứng hiển thị trên UI)
         /// </summary>
         [HttpPost("export-selected")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<IActionResult> ExportSelected([FromBody] List<SelectedExportItemDto> items)
         {
             if (items == null || !items.Any())
                 return BadRequest(new { success = false, message = "Không có dữ liệu để xuất" });
 
-            var baiThiIds = items.Select(i => i.ExamSubmissionId).ToList();
+            var ExamSubmissionIds = items.Select(i => i.ExamSubmissionId).ToList();
 
             var examSubmissions = await _db.ExamSubmissions
                 .Include(b => b.User)
                 .Include(b => b.ExamPaper)
                 .Include(b => b.ExamCampaign)
-                .Where(b => baiThiIds.Contains(b.Id))
+                .Where(b => ExamSubmissionIds.Contains(b.Id))
                 .ToListAsync();
 
             // Maintain the original order sent from frontend
@@ -492,11 +636,11 @@ namespace BanTayVang.API.Controllers
             // DeptManager check
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 orderedBaithis = orderedBaithis.Where(x => 
-                    x.ExamSubmission.User?.Department == myKhoa ||
-                    x.ExamSubmission.ExamPaper?.Department == myKhoa ||
-                    x.ExamSubmission.ExamCampaign?.OrganizedBy == myKhoa
+                    x.ExamSubmission.User?.Department == myDepartment ||
+                    x.ExamSubmission.ExamPaper?.Department == myDepartment ||
+                    x.ExamSubmission.ExamCampaign?.OrganizedBy == myDepartment
                 ).ToList();
             }
 
@@ -557,10 +701,10 @@ namespace BanTayVang.API.Controllers
                 ws.Cell(row, 12).Value = b.TotalQuestions ?? 0;
                 ws.Cell(row, 13).Value = b.CorrectAnswers ?? 0;
                 ws.Cell(row, 14).Value = b.Status ?? "";
-                ws.Cell(row, 15).Value = x.Item.LanThi;
+                ws.Cell(row, 15).Value = x.Item.AttemptNumber;
                 ws.Cell(row, 16).Value = isPass ? "Đạt" : "Không đạt";
-                ws.Cell(row, 17).Value = b.TongSoCanhBao ?? 0;
-                ws.Cell(row, 18).Value = (b.CongBoRieng || (b.ExamPaper?.IsResultPublished ?? false)) ? "Đã công bố" : "Chưa công bố";
+                ws.Cell(row, 17).Value = b.WarningCount ?? 0;
+                ws.Cell(row, 18).Value = (b.IsIndividualResultPublished || (b.ExamPaper?.IsResultPublished ?? false)) ? "Đã công bố" : "Chưa công bố";
                 row++;
             }
 
@@ -570,7 +714,7 @@ namespace BanTayVang.API.Controllers
             workbook.SaveAs(stream);
             stream.Position = 0;
 
-            var fileName = $"KetQua_BaoCao_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"KetQua_BaoCao_{DateTime.UtcNow.AddHours(7):yyyyMMdd_HHmmss}.xlsx";
             return File(stream.ToArray(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 fileName);
@@ -580,6 +724,7 @@ namespace BanTayVang.API.Controllers
         /// Lấy kết quả thi phân cấp theo Kỳ thi (cho DeptManager & Admin)
         /// </summary>
         [HttpGet("by-exam-campaign/{examCampaignId}")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<ActionResult<BaseResponseDto<List<ExamResultDetailDto>>>> GetByKyThi(int examCampaignId)
         {
             try
@@ -588,27 +733,28 @@ namespace BanTayVang.API.Controllers
 
                 if (DepartmentAuthHelper.IsDeptManager(User))
                 {
-                    var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                    var kythi = await _db.ExamCampaigns.FindAsync(examCampaignId);
-                    bool isOwner = kythi != null && kythi.OrganizedBy == myKhoa;
+                    var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
+                    var examCampaign = await _db.ExamCampaigns.FindAsync(examCampaignId);
+                    bool isOwner = examCampaign != null && examCampaign.OrganizedBy == myDepartment;
 
                     if (!isOwner)
                     {
                         if (result.Success && result.Data != null)
                         {
-                            result.Data = result.Data.Where(r => r.Department == myKhoa).ToList();
+                            result.Data = result.Data.Where(r => r.Department == myDepartment).ToList();
                         }
                     }
                 }
 
                 return Ok(result);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Lỗi khi lấy kết quả thi theo kỳ thi {ExamCampaignId}", examCampaignId);
                 return Ok(new BaseResponseDto<List<ExamResultDetailDto>>
                 {
-                    Success = true,
-                    Message = "Chưa có dữ liệu",
+                    Success = false,
+                    Message = "Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại.",
                     Data = new List<ExamResultDetailDto>()
                 });
             }
@@ -618,11 +764,12 @@ namespace BanTayVang.API.Controllers
         /// PUT /api/grading/danh-gia/{examSubmissionId} — Quản lý khoa đánh giá thí sinh
         /// </summary>
         [HttpPut("evaluate/{examSubmissionId}")]
+        [Authorize(Policy = "ManagementOnly")]
         public async Task<IActionResult> EvaluateCandidate(int examSubmissionId, [FromBody] DanhGiaThiSinhDto dto)
         {
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 var examSubmission = await _db.ExamSubmissions
                     .Include(b => b.User)
                     .Include(b => b.ExamPaper)
@@ -631,9 +778,9 @@ namespace BanTayVang.API.Controllers
                 
                 if (examSubmission == null) return Forbid();
                 
-                bool isOwner = examSubmission.User?.Department == myKhoa ||
-                               examSubmission.ExamPaper?.Department == myKhoa ||
-                               examSubmission.ExamCampaign?.OrganizedBy == myKhoa;
+                bool isOwner = examSubmission.User?.Department == myDepartment ||
+                               examSubmission.ExamPaper?.Department == myDepartment ||
+                               examSubmission.ExamCampaign?.OrganizedBy == myDepartment;
                                
                 if (!isOwner)
                 {
@@ -653,7 +800,7 @@ namespace BanTayVang.API.Controllers
         /// <summary>
         /// POST /api/grading/publish-single/{examSubmissionId}
         /// Admin hoặc Quản lý khoa công bố điểm cho 1 thí sinh cụ thể.
-        /// Ghi nhận vào bảng ExamSubmission.CongBoRieng = true.
+        /// Ghi nhận vào bảng ExamSubmission.IsIndividualResultPublished = true.
         /// </summary>
         [HttpPost("publish-single/{examSubmissionId}")]
         [Authorize(Policy = "ManagementOnly")]
@@ -666,10 +813,21 @@ namespace BanTayVang.API.Controllers
             if (examSubmission == null)
                 return NotFound(new BaseResponseDto { Success = false, Message = "Không tìm thấy bài thi" });
 
+            // BUG FIX: unlike ToggleExamVisibility and AutoPublishExpiredExamsJob (both of which
+            // filter their "any ungraded essay" query to Status=="Completed" submissions only),
+            // this endpoint never checked the submission's own Status at all. Calling it on an
+            // InProgress submission with a pure-MCQ exam (no essay rows to match the query below)
+            // would mark a not-yet-finished attempt as published while TotalScore/CorrectAnswers
+            // are still null.
+            if (examSubmission.Status != "Completed")
+            {
+                return BadRequest(new BaseResponseDto { Success = false, Message = "Chỉ có thể công bố điểm cho bài thi đã nộp" });
+            }
+
             // DeptManager chỉ được công bố bài thi của khoa mình hoặc nếu quản lý đề thi/kỳ thi đó
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
                 
                 var baithiFull = await _db.ExamSubmissions
                     .Include(b => b.User)
@@ -677,23 +835,23 @@ namespace BanTayVang.API.Controllers
                     .Include(b => b.ExamCampaign)
                     .FirstOrDefaultAsync(b => b.Id == examSubmissionId);
 
-                bool isOwner = baithiFull?.User?.Department == myKhoa ||
-                               baithiFull?.ExamPaper?.Department == myKhoa ||
-                               baithiFull?.ExamCampaign?.OrganizedBy == myKhoa;
+                bool isOwner = baithiFull?.User?.Department == myDepartment ||
+                               baithiFull?.ExamPaper?.Department == myDepartment ||
+                               baithiFull?.ExamCampaign?.OrganizedBy == myDepartment;
                                
                 if (!isOwner) return Forbid();
             }
 
-            examSubmission.CongBoRieng = true;
-            examSubmission.IndividualPublishedAt = DateTime.Now;
+            examSubmission.IsIndividualResultPublished = true;
+            examSubmission.IndividualPublishedAt = DateTime.UtcNow.AddHours(7);
             var nguoiCongBo = DepartmentAuthHelper.GetUserId(User);
-            examSubmission.NguoiCongBoRieng = nguoiCongBo;
+            examSubmission.IndividualPublisherId = nguoiCongBo;
 
             var hasUngraded = await _db.SubmissionDetails
                 .AnyAsync(c => c.ExamSubmissionId == examSubmissionId
                             && c.Question != null
                             && c.Question.QuestionCategory != null
-                            && (c.Question.QuestionCategory.CategoryName == "Tự luận" || c.Question.QuestionCategory.CategoryName == "TuLuan" || c.Question.QuestionCategory.CategoryName == "TL")
+                            && EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName)
                             && c.ScoreObtained == null);
             if (hasUngraded)
             {
@@ -726,14 +884,14 @@ namespace BanTayVang.API.Controllers
 
             if (DepartmentAuthHelper.IsDeptManager(User))
             {
-                var myKhoa = DepartmentAuthHelper.GetKhoaPhong(User);
-                if (examSubmission.ExamPaper?.Department != myKhoa)
+                var myDepartment = DepartmentAuthHelper.GetDepartmentClaim(User);
+                if (examSubmission.ExamPaper?.Department != myDepartment)
                     return Forbid();
             }
 
-            examSubmission.CongBoRieng = false;
+            examSubmission.IsIndividualResultPublished = false;
             examSubmission.IndividualPublishedAt = null;
-            examSubmission.NguoiCongBoRieng = null;
+            examSubmission.IndividualPublisherId = null;
 
             await _db.SaveChangesAsync();
 

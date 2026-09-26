@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 
@@ -6,6 +7,7 @@ namespace BanTayVang.API.Hubs
     /// <summary>
     /// SignalR Hub for real-time general notifications
     /// </summary>
+    [Authorize]
     public class NotificationHub : Hub
     {
         private readonly ILogger<NotificationHub> _logger;
@@ -17,15 +19,13 @@ namespace BanTayVang.API.Hubs
 
         public override async Task OnConnectedAsync()
         {
-            var httpContext = Context.GetHttpContext();
-            var userIdStr = httpContext?.Request.Query["userId"].ToString();
-            
-            if (string.IsNullOrEmpty(userIdStr))
-            {
-                // Fallback to ClaimsPrincipal if authenticated
-                userIdStr = Context.User?.FindFirst("user_id")?.Value 
+            // OWASP A01: Broken Access Control - the group a connection joins MUST come
+            // from the authenticated JWT (validated by [Authorize] + the "access_token"
+            // query-string bridge already wired up in Program.cs for /hubs paths), never
+            // from a client-supplied "userId" query parameter (that let anyone read anyone
+            // else's private notifications by just changing the URL).
+            var userIdStr = Context.User?.FindFirst("user_id")?.Value
                             ?? Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            }
 
             if (int.TryParse(userIdStr, out var userId))
             {
@@ -35,7 +35,7 @@ namespace BanTayVang.API.Hubs
             }
             else
             {
-                _logger.LogWarning("Anonymous client connected to NotificationHub (Connection: {ConnectionId})", Context.ConnectionId);
+                _logger.LogWarning("Authenticated client with unparsable user id connected to NotificationHub (Connection: {ConnectionId})", Context.ConnectionId);
             }
 
             await base.OnConnectedAsync();

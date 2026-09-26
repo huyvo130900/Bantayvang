@@ -1,5 +1,6 @@
 using BanTayVang.API.DTOs.Common;
 using BanTayVang.API.DTOs.Grading;
+using BanTayVang.API.Helpers;
 using BanTayVang.API.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,6 +23,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var examSubmission = await _context.ExamSubmissions
+                    .AsNoTracking()
                     .IgnoreQueryFilters()
                     .Include(b => b.User)
                     .Include(b => b.ExamPaper)
@@ -44,12 +46,13 @@ namespace BanTayVang.API.Services.Impl
                 if (examSubmission.UserId != null && examSubmission.ExamPaperId != null)
                 {
                     var attempts = await _context.ExamSubmissions
+                        .AsNoTracking()
                         .Where(b => b.UserId == examSubmission.UserId && b.ExamPaperId == examSubmission.ExamPaperId && (b.Status == "Completed" || b.Id == examSubmission.Id))
                         .ToListAsync();
 
-                    detail.SoLanThi = attempts.Count;
-                    detail.SoLanGianLan = attempts.Sum(b => b.TongSoCanhBao ?? 0);
-                    detail.SoLanThiLai = Math.Max(0, attempts.Count - 1);
+                    detail.AttemptCount = attempts.Count;
+                    detail.CheatingCount = attempts.Sum(b => b.WarningCount ?? 0);
+                    detail.RetakeCount = Math.Max(0, attempts.Count - 1);
                 }
 
                 return new BaseResponseDto<ExamResultDetailDto>
@@ -77,6 +80,7 @@ namespace BanTayVang.API.Services.Impl
             {
                 // Lấy TẤT CẢ bài thi của đề này (kể cả thi lại) để tính số lần thi
                 var allBaithis = await _context.ExamSubmissions
+                    .AsNoTracking()
                     .IgnoreQueryFilters()
                     .Where(b => b.ExamPaperId == examId && b.Status == "Completed")
                     .Include(b => b.User)
@@ -97,12 +101,13 @@ namespace BanTayVang.API.Services.Impl
                     .ToDictionary(
                         g => g.Key ?? 0,
                         g => new {
-                            SoLanThi = g.Count(),
-                            SoLanGianLan = g.Sum(b => b.TongSoCanhBao ?? 0)
+                            AttemptCount = g.Count(),
+                            CheatingCount = g.Sum(b => b.WarningCount ?? 0)
                         });
 
                 var latestPerUserIds = latestPerUser.Select(b => b.Id).ToList();
                 var gradedCounts = await _context.SubmissionDetails
+                    .AsNoTracking()
                     .Where(c => c.ExamSubmissionId != null && latestPerUserIds.Contains(c.ExamSubmissionId.Value) && c.ScoreObtained != null)
                     .GroupBy(c => c.ExamSubmissionId!.Value)
                     .Select(g => new { ExamSubmissionId = g.Key, GradedCount = g.Count() })
@@ -112,15 +117,14 @@ namespace BanTayVang.API.Services.Impl
                 if (latestPerUserIds.Any())
                 {
                     var chitietStats = await _context.SubmissionDetails
+                        .AsNoTracking()
                         .Where(c => c.ExamSubmissionId != null && latestPerUserIds.Contains(c.ExamSubmissionId.Value))
                         .Select(c => new {
                             c.ExamSubmissionId,
                             IsGraded = c.ScoreObtained != null,
                             IsEssay = c.Question != null 
                                 && c.Question.QuestionCategory != null 
-                                && (c.Question.QuestionCategory.CategoryName == "Tự luận" 
-                                    || c.Question.QuestionCategory.CategoryName == "TuLuan"
-                                    || c.Question.QuestionCategory.CategoryName == "TL")
+                                && EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName)
                         })
                         .ToListAsync();
 
@@ -141,17 +145,17 @@ namespace BanTayVang.API.Services.Impl
                     var dto = MapToDetailDtoSummary(b);
                     if (countPerUser.TryGetValue(b.UserId ?? 0, out var counts))
                     {
-                        dto.SoLanThi = counts.SoLanThi;
-                        dto.SoLanGianLan = counts.SoLanGianLan;
-                        dto.SoLanThiLai = counts.SoLanThi - 1;
+                        dto.AttemptCount = counts.AttemptCount;
+                        dto.CheatingCount = counts.CheatingCount;
+                        dto.RetakeCount = counts.AttemptCount - 1;
                     }
-                    dto.SoCauDaCham = gradedCounts.TryGetValue(b.Id, out var gc) ? gc : 0;
+                    dto.QuestionsGraded = gradedCounts.TryGetValue(b.Id, out var gc) ? gc : 0;
                     if (statsDict.TryGetValue(b.Id, out var stats))
                     {
-                        dto.TongSoCauTracNghiem = stats.mcqTotal;
-                        dto.SoCauTracNghiemDaCham = stats.mcqGraded;
-                        dto.TongSoCauTuLuan = stats.essayTotal;
-                        dto.SoCauTuLuanDaCham = stats.essayGraded;
+                        dto.TotalMultipleChoiceQuestions = stats.mcqTotal;
+                        dto.MultipleChoiceQuestionsGraded = stats.mcqGraded;
+                        dto.TotalEssayQuestions = stats.essayTotal;
+                        dto.EssayQuestionsGraded = stats.essayGraded;
                     }
                     return dto;
                 }).ToList();
@@ -211,17 +215,17 @@ namespace BanTayVang.API.Services.Impl
 
                     var categoryName = question.QuestionCategory?.CategoryName;
                             var description = question.QuestionCategory?.Description;
-                    var isEssay = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL" || correctChoiceIds.Count == 0;
+                    var isEssay = EssayQuestionHelper.IsEssay(question);
 
                     if (isEssay)
                     {
                         // For essay, preserve existing ScoreObtained which is manually graded
                         var score = group.FirstOrDefault()?.ScoreObtained ?? 0;
-                        if (score >= 1)
+                        if (score > 0)
                         {
                             correctCount++;
-                            totalScore += 1;
                         }
+                        totalScore += score;
                     }
                     else
                     {
@@ -255,7 +259,7 @@ namespace BanTayVang.API.Services.Impl
 
                 examSubmission.CorrectAnswers = correctCount;
                 var tongSoCau = examSubmission.TotalQuestions ?? answersByQuestion.Count();
-                examSubmission.TotalScore = correctCount;
+                examSubmission.TotalScore = BanTayVang.API.Services.Impl.Exams.ExamSubmissionService.CalculateTotalScore(totalScore, tongSoCau);
 
                 await _context.SaveChangesAsync();
 
@@ -277,18 +281,19 @@ namespace BanTayVang.API.Services.Impl
         {
             try
             {
+                if (dto.Score.HasValue && dto.Score != 0 && dto.Score != 0.5 && dto.Score != 1)
+                    return new BaseResponseDto { Success = false, Message = "Điểm chỉ được là 0, 0.5 hoặc 1" };
+
                 var detail = await _context.SubmissionDetails
                     .Include(c => c.ExamSubmission)
                     .Include(c => c.Question)
-                    .FirstOrDefaultAsync(c => c.Id == dto.ChiTietLamBaiId);
+                    .FirstOrDefaultAsync(c => c.Id == dto.SubmissionDetailId);
 
                 if (detail == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy chi tiết bài làm" };
 
-                // Đánh dấu Đúng/Sai: ScoreObtained = 1 nếu đúng, = 0 nếu sai, = null nếu chấm lại
-                detail.ScoreObtained = dto.IsCorrect.HasValue ? (dto.IsCorrect.Value ? 1.0 : 0.0) : (double?)null;
-                if (!string.IsNullOrEmpty(dto.NhanXet))
-                    detail.EssayAnswer = detail.EssayAnswer; // giữ nguyên nội dung
+                detail.ScoreObtained = dto.Score;
+                detail.TeacherComment = dto.Comment;
 
                 await _context.SaveChangesAsync();
 
@@ -298,29 +303,47 @@ namespace BanTayVang.API.Services.Impl
                     var examSubmission = await _context.ExamSubmissions
                         .Include(b => b.SubmissionDetails)
                             .ThenInclude(c => c.Question)
+                                .ThenInclude(ch => ch!.QuestionCategory)
+                        .Include(b => b.SubmissionDetails)
+                            .ThenInclude(c => c.Question)
+                                .ThenInclude(ch => ch!.QuestionOptions)
                         .FirstOrDefaultAsync(b => b.Id == detail.ExamSubmissionId.Value);
                     
                     if (examSubmission != null)
                     {
-                        // Tính số câu đúng: trắc nghiệm (isCorrect = là câu chọn đúng) + tự luận (ScoreObtained == 1)
+                        double sumScore = 0;
                         int correctAnswers = 0;
-                        foreach (var ct in examSubmission.SubmissionDetails)
+
+                        // Group theo QuestionId để xử lý đúng câu hỏi nhiều đáp án (multi-select)
+                        var byQuestion = examSubmission.SubmissionDetails
+                            .Where(c => c.QuestionId.HasValue)
+                            .GroupBy(c => c.QuestionId!.Value);
+
+                        foreach (var group in byQuestion)
                         {
-                            var categoryName = ct.Question?.QuestionCategory?.CategoryName;
-                            var description = ct.Question?.QuestionCategory?.Description;
-                            bool isTuLuan = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL";
+                            var question = group.First().Question;
+                            var categoryName = question?.QuestionCategory?.CategoryName;
+                            bool isTuLuan = EssayQuestionHelper.IsEssay(question);
+
                             if (isTuLuan)
                             {
-                                if (ct.ScoreObtained == 1.0) correctAnswers++;
+                                // Câu tự luận: lấy điểm của dòng đầu tiên (chỉ 1 dòng/câu)
+                                var score = group.First().ScoreObtained;
+                                if (score > 0) correctAnswers++;
+                                sumScore += score ?? 0;
                             }
                             else
                             {
-                                // Trắc nghiệm: đã được chấm tự động, ScoreObtained > 0 nghĩa là đúng
-                                if ((ct.ScoreObtained ?? 0) > 0) correctAnswers++;
+                                // Câu trắc nghiệm: mỗi đáp án đúng được chia đều 1.0/group.Count()
+                                // Tổng các dòng trong group = 1.0 nếu đúng hết, < 1.0 nếu đúng một phần
+                                var groupSum = group.Sum(c => c.ScoreObtained ?? 0);
+                                if (groupSum > 0) correctAnswers++;
+                                sumScore += groupSum;
                             }
                         }
+
                         examSubmission.CorrectAnswers = correctAnswers;
-                        examSubmission.TotalScore = correctAnswers;
+                        examSubmission.TotalScore = BanTayVang.API.Services.Impl.Exams.ExamSubmissionService.CalculateTotalScore(sumScore, examSubmission.TotalQuestions ?? 0);
                         await _context.SaveChangesAsync();
                     }
                 }
@@ -339,6 +362,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var examSubmissions = await _context.ExamSubmissions
+                    .AsNoTracking()
                     .IgnoreQueryFilters()
                     .Where(b => b.ExamPaperId == examId && b.Status == "Completed")
                     .Include(b => b.User)
@@ -370,18 +394,35 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto<int>> AutoGradeAllAsync()
+        public async Task<BaseResponseDto<int>> AutoGradeAllAsync(string? restrictToDepartment = null)
         {
             try
             {
-                var ungraded = await _context.ExamSubmissions
-                    .Where(b => b.Status == "Completed" && (b.TotalScore == null || b.CorrectAnswers == null))
+                // BUG FIX: this was ManagementOnly (Admin + DeptManager) but had zero department
+                // scoping - unlike every other grading action in this controller (Regrade,
+                // ManualGrade, AiGradeBatch, GetResultsByExam...), which all restrict a DeptManager
+                // to their own department's submissions. A DeptManager could trigger a re-grade of
+                // every ungraded exam submission system-wide, not just their own department's.
+                var query = _context.ExamSubmissions
+                    .AsNoTracking()
+                    .Where(b => b.Status == "Completed" && (b.TotalScore == null || b.CorrectAnswers == null));
+
+                if (!string.IsNullOrEmpty(restrictToDepartment))
+                {
+                    query = query.Where(b =>
+                        (b.User != null && b.User.Department == restrictToDepartment) ||
+                        (b.ExamPaper != null && b.ExamPaper.Department == restrictToDepartment) ||
+                        (b.ExamCampaign != null && b.ExamCampaign.OrganizedBy == restrictToDepartment));
+                }
+
+                var ungradedIds = await query
+                    .Select(b => b.Id)
                     .ToListAsync();
 
                 int count = 0;
-                foreach (var b in ungraded)
+                foreach (var id in ungradedIds)
                 {
-                    await RegradeAsync(b.Id);
+                    await RegradeAsync(id);
                     count++;
                 }
 
@@ -433,9 +474,7 @@ namespace BanTayVang.API.Services.Impl
                 SubmitTime = examSubmission.SubmitTime,
                 DurationMinutes = durationMinutes,
                 DurationSeconds = durationSeconds,
-                TotalScore = examSubmission.TotalQuestions.HasValue && examSubmission.TotalQuestions.Value > 0
-                    ? Math.Round((double)(examSubmission.CorrectAnswers ?? 0) / examSubmission.TotalQuestions.Value * 10, 2)
-                    : 0,
+                TotalScore = examSubmission.TotalScore,
                 CorrectAnswers = examSubmission.CorrectAnswers,
                 TotalQuestions = examSubmission.TotalQuestions,
                 Status = examSubmission.Status,
@@ -445,8 +484,8 @@ namespace BanTayVang.API.Services.Impl
                         ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamPaper.MinPassQuestions.Value 
                         : true),
                 MinPassQuestions = examSubmission.ExamCampaign?.MinPassQuestions ?? examSubmission.ExamPaper?.MinPassQuestions,
-                SoCanhBao = examSubmission.TongSoCanhBao,
-                IsResultPublished = examSubmission.CongBoRieng || (examSubmission.ExamPaper?.IsResultPublished ?? false),
+                WarningCount = examSubmission.WarningCount,
+                IsResultPublished = examSubmission.IsIndividualResultPublished || (examSubmission.ExamPaper?.IsResultPublished ?? false),
                 Answers = new List<AnswerDetailDto>()
             };
 
@@ -466,7 +505,7 @@ namespace BanTayVang.API.Services.Impl
 
                 var categoryName = question.QuestionCategory?.CategoryName;
                             var description = question.QuestionCategory?.Description;
-                bool isEssay = categoryName == "Tự luận" || categoryName == "TuLuan" || categoryName == "TL";
+                bool isEssay = EssayQuestionHelper.IsEssay(question);
 
                 if (isEssay)
                 {
@@ -494,7 +533,7 @@ namespace BanTayVang.API.Services.Impl
                 if (isEssay)
                 {
                     var score = group.FirstOrDefault()?.ScoreObtained ?? 0;
-                    isFullyCorrect = score >= 1;
+                    isFullyCorrect = score > 0;
                 }
                 else
                 {
@@ -523,24 +562,30 @@ namespace BanTayVang.API.Services.Impl
                 detail.Answers.Add(new AnswerDetailDto
                 {
                     QuestionId = question.Id,
-                    NoiDungCauHoi = question.Content,
+                    QuestionContent = question.Content,
                     QuestionCategory = question.QuestionCategory?.CategoryName,
-                    SelectedOptionId = firstCt.SelectedOptionId, // Fallback
-                    NoiDungDapAn = isEssay ? firstCt.EssayAnswer : userChoiceText,
+                    SelectedOptionId = firstCt.SelectedOptionId, 
+                    AnswerContent = isEssay ? firstCt.EssayAnswer : userChoiceText,
                     EssayAnswer = firstCt.EssayAnswer,
+                    EssayImageUrl = firstCt.EssayImageUrl,
+                    SuggestedAnswer = firstCt.Question?.SuggestedAnswer,
                     IsCorrect = isFullyCorrect,
                     ScoreObtained = group.All(c => c.ScoreObtained == null) ? (double?)null : group.Sum(c => c.ScoreObtained ?? 0),
-                    IdLuaChonDung = firstCorrectChoice?.Id, // Fallback
-                    NoiDungDapAnDung = correctChoiceText,
-                    ChiTietLamBaiId = firstCt.Id
+                    CorrectOptionId = firstCorrectChoice?.Id, 
+                    CorrectAnswerContent = correctChoiceText,
+                    SubmissionDetailId = firstCt.Id,
+                    TeacherComment = firstCt.TeacherComment,
+                    AiScore = firstCt.AiScore,
+                    AiComment = firstCt.AiComment,
+                    AiGradingStatus = firstCt.AiGradingStatus
                 });
             }
 
-            detail.SoCauDaCham = answersByQuestion.Count(g => g.Any(c => c.ScoreObtained != null));
-            detail.TongSoCauTracNghiem = mcqTotal;
-            detail.SoCauTracNghiemDaCham = mcqGraded;
-            detail.TongSoCauTuLuan = essayTotal;
-            detail.SoCauTuLuanDaCham = essayGraded;
+            detail.QuestionsGraded = answersByQuestion.Count(g => g.Any(c => c.ScoreObtained != null));
+            detail.TotalMultipleChoiceQuestions = mcqTotal;
+            detail.MultipleChoiceQuestionsGraded = mcqGraded;
+            detail.TotalEssayQuestions = essayTotal;
+            detail.EssayQuestionsGraded = essayGraded;
 
             return detail;
         }
@@ -567,9 +612,7 @@ namespace BanTayVang.API.Services.Impl
                 StartTime = examSubmission.StartTime,
                 SubmitTime = examSubmission.SubmitTime,
                 DurationMinutes = duration,
-                TotalScore = examSubmission.TotalQuestions.HasValue && examSubmission.TotalQuestions.Value > 0
-                    ? Math.Round((double)(examSubmission.CorrectAnswers ?? 0) / examSubmission.TotalQuestions.Value * 10, 2)
-                    : 0,
+                TotalScore = examSubmission.TotalScore,
                 CorrectAnswers = examSubmission.CorrectAnswers,
                 TotalQuestions = examSubmission.TotalQuestions,
                 Status = examSubmission.Status,
@@ -579,9 +622,10 @@ namespace BanTayVang.API.Services.Impl
                         ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamPaper.MinPassQuestions.Value 
                         : true),
                 MinPassQuestions = examSubmission.ExamCampaign?.MinPassQuestions ?? examSubmission.ExamPaper?.MinPassQuestions,
-                SoCanhBao = examSubmission.TongSoCanhBao,
-                IsResultPublished = examSubmission.CongBoRieng || (examSubmission.ExamPaper?.IsResultPublished ?? false),
-                DanhGiaKhoa = examSubmission.DanhGiaKhoa,
+                WarningCount = examSubmission.WarningCount,
+                IsResultPublished = examSubmission.IsIndividualResultPublished || (examSubmission.ExamPaper?.IsResultPublished ?? false),
+                QuestionsGraded = examSubmission.SubmissionDetails?.Count(d => d.ScoreObtained != null) ?? 0,
+                DepartmentEvaluation = examSubmission.DepartmentEvaluation,
             };
         }
 
@@ -597,14 +641,14 @@ namespace BanTayVang.API.Services.Impl
                 if (examSubmission == null)
                     return new BaseResponseDto { Success = false, Message = "Không tìm thấy bài thi" };
 
-                examSubmission.DanhGiaKhoa = evaluation;
+                examSubmission.DepartmentEvaluation = evaluation;
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseDto { Success = true, Message = "Đã lưu đánh giá" };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving DanhGiaKhoa for examSubmission {ExamSubmissionId}", examSubmissionId);
+                _logger.LogError(ex, "Error saving DepartmentEvaluation for examSubmission {ExamSubmissionId}", examSubmissionId);
                 return new BaseResponseDto { Success = false, Message = "Lỗi khi lưu đánh giá" };
             }
         }
@@ -619,6 +663,7 @@ namespace BanTayVang.API.Services.Impl
             try
             {
                 var examSubmissions = await _context.ExamSubmissions
+                    .AsNoTracking()
                     .IgnoreQueryFilters()
                     .Include(b => b.User)
                     .Include(b => b.ExamPaper)
@@ -629,48 +674,49 @@ namespace BanTayVang.API.Services.Impl
 
                 var userIds = examSubmissions.Select(b => b.UserId).Distinct().ToList();
                 var examIds = examSubmissions.Select(b => b.ExamPaperId).Distinct().ToList();
-                var baithiIds = examSubmissions.Select(b => b.Id).ToList();
+                var ExamSubmissionIds = examSubmissions.Select(b => b.Id).ToList();
 
-                var attemptsDict = new Dictionary<string, (int SoLanThi, int SoLanGianLan)>();
+                var attemptsDict = new Dictionary<string, (int AttemptCount, int CheatingCount)>();
                 var gradedCounts = new Dictionary<int, int>();
                 if (userIds.Any() && examIds.Any())
                 {
                     var allUserExamAttempts = await _context.ExamSubmissions
+                        .AsNoTracking()
                         .Where(b => b.UserId != null && userIds.Contains(b.UserId) 
                                  && b.ExamPaperId != null && examIds.Contains(b.ExamPaperId.Value)
-                                 && (b.Status == "Completed" || baithiIds.Contains(b.Id)))
+                                 && (b.Status == "Completed" || ExamSubmissionIds.Contains(b.Id)))
                         .ToListAsync();
 
                     attemptsDict = allUserExamAttempts
                         .GroupBy(b => new { UserId = b.UserId ?? 0, ExamPaperId = b.ExamPaperId ?? 0 })
                         .ToDictionary(
                             g => $"{g.Key.UserId}_{g.Key.ExamPaperId}",
-                            g => (SoLanThi: g.Count(), SoLanGianLan: g.Sum(b => b.TongSoCanhBao ?? 0))
+                            g => (AttemptCount: g.Count(), CheatingCount: g.Sum(b => b.WarningCount ?? 0))
                         );
                 }
 
-                if (baithiIds.Any())
+                if (ExamSubmissionIds.Any())
                 {
                     gradedCounts = await _context.SubmissionDetails
-                        .Where(c => c.ExamSubmissionId != null && baithiIds.Contains(c.ExamSubmissionId.Value) && c.ScoreObtained != null)
+                        .AsNoTracking()
+                        .Where(c => c.ExamSubmissionId != null && ExamSubmissionIds.Contains(c.ExamSubmissionId.Value) && c.ScoreObtained != null)
                         .GroupBy(c => c.ExamSubmissionId!.Value)
                         .Select(g => new { ExamSubmissionId = g.Key, GradedCount = g.Count() })
                         .ToDictionaryAsync(x => x.ExamSubmissionId, x => x.GradedCount);
                 }
 
                 var statsDict = new Dictionary<int, (int mcqTotal, int mcqGraded, int essayTotal, int essayGraded)>();
-                if (baithiIds.Any())
+                if (ExamSubmissionIds.Any())
                 {
                     var chitietStats = await _context.SubmissionDetails
-                        .Where(c => c.ExamSubmissionId != null && baithiIds.Contains(c.ExamSubmissionId.Value))
+                        .AsNoTracking()
+                        .Where(c => c.ExamSubmissionId != null && ExamSubmissionIds.Contains(c.ExamSubmissionId.Value))
                         .Select(c => new {
                             c.ExamSubmissionId,
                             IsGraded = c.ScoreObtained != null,
                             IsEssay = c.Question != null 
                                 && c.Question.QuestionCategory != null 
-                                && (c.Question.QuestionCategory.CategoryName == "Tự luận" 
-                                    || c.Question.QuestionCategory.CategoryName == "TuLuan"
-                                    || c.Question.QuestionCategory.CategoryName == "TL")
+                                && EssayQuestionHelper.EssayCategoryNamesArray.Contains(c.Question.QuestionCategory.CategoryName)
                         })
                         .ToListAsync();
 
@@ -691,16 +737,16 @@ namespace BanTayVang.API.Services.Impl
                     var duration = (b.SubmitTime.HasValue && b.StartTime.HasValue)
                         ? (int)(b.SubmitTime.Value - b.StartTime.Value).TotalMinutes : 0;
 
-                    int soLanThi = 1;
-                    int soLanGianLan = 0;
-                    int soLanThiLai = 0;
+                    int attemptCount = 1;
+                    int cheatingCount = 0;
+                    int retakeCount = 0;
 
                     var key = $"{b.UserId ?? 0}_{b.ExamPaperId ?? 0}";
                     if (attemptsDict.TryGetValue(key, out var counts))
                     {
-                        soLanThi = counts.SoLanThi;
-                        soLanGianLan = counts.SoLanGianLan;
-                        soLanThiLai = Math.Max(0, counts.SoLanThi - 1);
+                        attemptCount = counts.AttemptCount;
+                        cheatingCount = counts.CheatingCount;
+                        retakeCount = Math.Max(0, counts.AttemptCount - 1);
                     }
 
                     int mcqTotal = 0, mcqGraded = 0, essayTotal = 0, essayGraded = 0;
@@ -726,9 +772,7 @@ namespace BanTayVang.API.Services.Impl
                         StartTime = b.StartTime,
                         SubmitTime = b.SubmitTime,
                         DurationMinutes = duration,
-                        TotalScore = b.TotalQuestions.HasValue && b.TotalQuestions.Value > 0
-                            ? Math.Round((double)(b.CorrectAnswers ?? 0) / b.TotalQuestions.Value * 10, 2)
-                            : 0,
+                        TotalScore = b.TotalScore,
                         CorrectAnswers = b.CorrectAnswers,
                         TotalQuestions = b.TotalQuestions,
                         Status = b.Status,
@@ -738,16 +782,16 @@ namespace BanTayVang.API.Services.Impl
                                 ? (b.CorrectAnswers ?? 0) >= b.ExamPaper.MinPassQuestions.Value 
                                 : true),
                         MinPassQuestions = b.ExamCampaign?.MinPassQuestions ?? b.ExamPaper?.MinPassQuestions,
-                        SoCanhBao = b.TongSoCanhBao,
-                        IsResultPublished = b.CongBoRieng || (b.ExamPaper?.IsResultPublished ?? false),
-                        SoLanThi = soLanThi,
-                        SoLanGianLan = soLanGianLan,
-                        SoLanThiLai = soLanThiLai,
-                        SoCauDaCham = gradedCounts.TryGetValue(b.Id, out var gc) ? gc : 0,
-                        TongSoCauTracNghiem = mcqTotal,
-                        SoCauTracNghiemDaCham = mcqGraded,
-                        TongSoCauTuLuan = essayTotal,
-                        SoCauTuLuanDaCham = essayGraded
+                        WarningCount = b.WarningCount,
+                        IsResultPublished = b.IsIndividualResultPublished || (b.ExamPaper?.IsResultPublished ?? false),
+                        AttemptCount = attemptCount,
+                        CheatingCount = cheatingCount,
+                        RetakeCount = retakeCount,
+                        QuestionsGraded = gradedCounts.TryGetValue(b.Id, out var gc) ? gc : 0,
+                        TotalMultipleChoiceQuestions = mcqTotal,
+                        MultipleChoiceQuestionsGraded = mcqGraded,
+                        TotalEssayQuestions = essayTotal,
+                        EssayQuestionsGraded = essayGraded
                     };
                 }).ToList();
 

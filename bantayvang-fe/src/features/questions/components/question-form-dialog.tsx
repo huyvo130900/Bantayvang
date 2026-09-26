@@ -47,18 +47,36 @@ export function QuestionFormDialog({
   const khoaPhongValue = form.watch('department')
   const questionCategoryId = form.watch('questionCategoryId')
   const selectedType = questionTypes.find((t) => t.id === questionCategoryId)
-  const isEssay = selectedType?.categoryName?.toLowerCase().includes('tự luận') || selectedType?.categoryName?.toLowerCase().includes('tu luan') || selectedType?.description?.toLowerCase().includes('tự luận') || selectedType?.description?.toLowerCase().includes('tu luan')
+  // BUG FIX: previously only matched 'tự luận'/'tu luan' as a substring of the category
+  // name/description, which missed short category codes like "TL" (the abbreviation this
+  // app actually uses in several seeded/real categories - see the matching backend fix in
+  // EssayQuestionHelper / CreateQuestionAsync). Use the same canonical essay-code list so the
+  // frontend and backend agree on which categories are Tự luận.
+  const ESSAY_CATEGORY_CODES = ['tự luận', 'tuluan', 'tu luan', 'tu_luan', 'tl', 'essay']
+  const matchesEssayCode = (value?: string | null) => {
+    if (!value) return false
+    const normalized = value.trim().toLowerCase()
+    return ESSAY_CATEGORY_CODES.includes(normalized) || normalized.includes('tự luận') || normalized.includes('tu luan')
+  }
+  const isEssay = matchesEssayCode(selectedType?.categoryName) || matchesEssayCode(selectedType?.description)
 
   useEffect(() => {
     if (isEssay) {
       const currentChoices = form.getValues('options')
-      if (!currentChoices || currentChoices.length !== 1) {
+      const first = currentChoices?.[0]
+      // A single-element array isn't necessarily complete: react-hook-form's register()
+      // on 'options.0.content' can auto-vivify options[0] with only `content` set (no
+      // orderIndex/isCorrect) before this effect runs, which happens whenever the question
+      // started with an empty options array (essay questions imported via Excel/Word only
+      // populate SuggestedAnswer, not QuestionOptions). Require orderIndex/isCorrect to
+      // actually be present before treating the array as already synced.
+      const isComplete = !!currentChoices && currentChoices.length === 1
+        && first?.orderIndex !== undefined && first?.isCorrect !== undefined
+      if (!isComplete) {
         form.setValue('options', [
-          { content: currentChoices?.[0]?.content || '', orderIndex: 1, isCorrect: true },
+          { content: first?.content || '', orderIndex: 1, isCorrect: true },
         ])
       }
-      form.setValue('imageUrl', undefined)
-      setImagePreview(null)
     } else {
       const currentChoices = form.getValues('options')
       if (!currentChoices || currentChoices.length < 2) {
@@ -114,20 +132,28 @@ export function QuestionFormDialog({
 
   if (!open) return null
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingImage(true)
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const res = await apiClient.post<ApiResponse<{ url: string }>>(
-        '/upload/image?folder=questions',
+      
+      const dept = form.getValues('department') || 'khac'
+      const safeDept = dept.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'khac'
+      const folderPath = `questions/${safeDept}`
+
+      const res = await apiClient.post<ApiResponse<{ fileUrl: string }>>(
+        `/upload/image?folder=${encodeURIComponent(folderPath)}`,
         formData,
+        // BUG FIX: literal 'multipart/form-data' (no boundary) makes the browser send that exact
+        // Content-Type instead of auto-generating one with a boundary - `undefined` deletes
+        // apiClient's default 'application/json' header so the browser computes it correctly.
         { headers: { 'Content-Type': undefined } }
       )
-      if (res.data.success && res.data.data?.url) {
-        const url = res.data.data.url
+      if (res.data.success && res.data.data?.fileUrl) {
+        const url = res.data.data.fileUrl
         form.setValue('imageUrl', url)
         setImagePreview(url)
       }
@@ -161,16 +187,14 @@ export function QuestionFormDialog({
         })
         return
       }
-      if (!data.options.some(c => c.isCorrect)) {
+      const hasCorrect = data.options.some(c => c.isCorrect)
+      if (!hasCorrect) {
         form.setError('options', {
           type: 'manual',
-          message: 'Phải có ít nhất 1 đáp án đúng',
+          message: 'Phải chọn ít nhất 1 đáp án đúng',
         })
         return
       }
-    } else {
-      data.options = []
-      data.imageUrl = undefined
     }
     onSubmit(data)
   })
@@ -260,22 +284,22 @@ export function QuestionFormDialog({
           </div>
 
           {/* Image upload */}
-          {!isEssay && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Hình ảnh (tùy chọn)</label>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Hình ảnh (tùy chọn)</label>
+            <div className="mt-1">
               {imagePreview ? (
-                <div className="relative inline-block">
+                <div className="relative flex items-center justify-center p-4 border rounded-xl bg-gray-50/50 w-full">
                   <img
                     src={imagePreview}
                     alt="Preview"
-                    className="max-h-48 max-w-full rounded-lg border object-contain"
+                    className="max-h-56 rounded-md object-contain"
                   />
                   <button
                     type="button"
                     onClick={handleRemoveImage}
-                    className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 shadow"
+                    className="absolute top-3 right-3 p-2 rounded-lg bg-white/90 text-red-500 hover:bg-red-50 hover:text-red-600 shadow-sm border transition-colors backdrop-blur-sm"
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               ) : (
@@ -283,10 +307,11 @@ export function QuestionFormDialog({
                   type="button"
                   onClick={() => imgInputRef.current?.click()}
                   disabled={uploadingImage}
-                  className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors disabled:opacity-50"
+                  className="flex flex-col items-center justify-center gap-2 w-full py-8 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-50"
                 >
-                  <ImagePlus className="h-4 w-4" />
-                  {uploadingImage ? 'Đang upload...' : 'Thêm hình ảnh'}
+                  <ImagePlus className="h-8 w-8 text-gray-400 mb-1" />
+                  <span className="font-medium text-gray-600">{uploadingImage ? 'Đang tải ảnh lên...' : 'Nhấn để chọn hình ảnh'}</span>
+                  <span className="text-xs text-gray-400">Hỗ trợ JPG, PNG, GIF, BMP</span>
                 </button>
               )}
               <input
@@ -297,7 +322,7 @@ export function QuestionFormDialog({
                 onChange={handleImageUpload}
               />
             </div>
-          )}
+          </div>
 
           {/* Choices / Standard Answer */}
           {isEssay ? (
@@ -344,17 +369,31 @@ export function QuestionFormDialog({
 
 function getDefaults(question: QuestionDto | null): CreateQuestionFormData {
   if (question) {
+    // BUG FIX: the "Đáp án chuẩn" textarea for Tự luận questions is registered on
+    // `options.0.content` (see the render below), so editing a question always reads its
+    // existing answer from `options[0]` - but a question whose SuggestedAnswer was set via
+    // direct API/import (Excel/Word, or an admin script) legitimately has an EMPTY options
+    // array, so the field showed blank even though a real answer existed in the DB. Fall back
+    // to `question.suggestedAnswer` whenever there's no options[0] to read from, so opening
+    // the edit dialog doesn't look like the answer never made it in - and, combined with the
+    // matching backend fix, doesn't risk quietly blanking it out on save either.
+    const options = question.options.length > 0
+      ? question.options.map((l) => ({
+          content: l.content || '',
+          orderIndex: l.orderIndex || 1,
+          isCorrect: l.isCorrect || false,
+        }))
+      : question.suggestedAnswer
+        ? [{ content: question.suggestedAnswer, orderIndex: 1, isCorrect: true }]
+        : []
+
     return {
       content: question.content || '',
       questionCategoryId: question.questionCategoryId || undefined,
       difficulty: question.difficulty || 'Dễ',
       department: question.department || undefined,
       imageUrl: question.imageUrl || undefined,
-      options: question.options.map((l) => ({
-        content: l.content || '',
-        orderIndex: l.orderIndex || 1,
-        isCorrect: l.isCorrect || false,
-      })),
+      options,
     }
   }
   return {

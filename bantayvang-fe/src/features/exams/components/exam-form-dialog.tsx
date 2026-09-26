@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createExamSchema, type CreateExamFormData } from '../schemas'
@@ -9,11 +9,12 @@ import { questionsApi } from '@/features/questions/api'
 import type { QuestionDto } from '@/features/questions/types'
 import { useAppSelector } from '@/app/hooks'
 import { ROLES } from '@/lib/constants'
-import { kyThiApi } from '@/features/ky-thi/api'
+import { examCampaignApi } from '@/features/ky-thi/api'
 import type { ExamCampaignDto } from '@/features/ky-thi/types'
-import { examsApi } from '../api'
+import { examsApi, examsApiExtended } from '../api'
 import { departmentApi } from '@/features/departments/api'
 import type { DepartmentDto } from '@/features/departments/types'
+import type { ExamPaperDto } from '../types'
 
 interface ExamFormDialogProps {
   open: boolean
@@ -23,6 +24,7 @@ interface ExamFormDialogProps {
   lockedKhoa?: string
   kyThiList: { id: number; tenKyThiText: string }[]
   defaultKyThiId?: number
+  initialData?: ExamPaperDto
 }
 
 // KHOA_PHONG_OPTIONS removed in favor of dynamic loading
@@ -42,7 +44,8 @@ const generateDeThiCode = () => {
   return `DT_${year}${month}${day}_${hours}${minutes}${seconds}_${rand}`
 }
 
-export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa, kyThiList, defaultKyThiId }: ExamFormDialogProps) {
+export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa, kyThiList, defaultKyThiId, initialData }: ExamFormDialogProps) {
+  const isEditMode = !!initialData
   const currentUser = useAppSelector((state) => state.auth.user)
   const isAdmin = currentUser?.role === ROLES.ADMIN || currentUser?.roleName === 'Admin'
 
@@ -74,6 +77,11 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
   const [importedCount, setImportedCount] = useState<number>(0)
   const [themVaoNganHang, setThemVaoNganHang] = useState(false)
   const [bankKhoa, setBankKhoa] = useState('')
+  // Che do sua: de thi co the da duoc gan mot khoa/phong CU THE, khac voi khoa mac dinh cua ky
+  // thi no thuoc ve (vd ky thi "Tat ca cac khoa" nhung de nay chi danh cho "Khoa Noi"). Effect
+  // dong bo department-theo-ky-thi ben duoi chay ngay khi mo dialog sua (vi examCampaignId da
+  // co san tu initialData) va se ghi de mat lua chon rieng nay neu khong co co nay chan lai 1 lan.
+  const skipNextCampaignDeptSync = useRef(false)
 
   const form = useForm<CreateExamFormData>({
     resolver: zodResolver(createExamSchema) as any,
@@ -81,31 +89,39 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       examPaperCode: '',
       examPaperName: '',
       durationMinutes: 60,
-      thoiGianBatDau: '',
+      startTime: '',
       status: 'Active',
       department: lockedKhoa || '',
-      soCauRandom: 30,
-      danhSachIdCauHoi: [],
+      randomQuestionCount: 30,
+      questionIds: [],
       examCampaignId: defaultKyThiId || '' as any,
-      soCauDungToiThieu: '' as any,
+      minPassQuestions: '' as any,
     },
   })
 
   useEffect(() => {
+    let cancelled = false
     if (open) {
-      const isAll = isAllDeptName(lockedKhoa)
-      const finalKhoa = isAll ? '' : (lockedKhoa || '')
+      // BUG (caught in review): isAll must be derived from the SAME source finalKhoa falls back
+      // to. Checking isAllDeptName(lockedKhoa) alone meant an admin (lockedKhoa is always
+      // undefined for them) editing an exam that already had a real department would see isAll
+      // resolve to true from the empty lockedKhoa - forcing finalKhoa to '' and silently
+      // discarding the exam's actual department on the reset below, before the user touches
+      // anything.
+      const deptSource = initialData?.department || lockedKhoa || ''
+      const isAll = isAllDeptName(deptSource)
+      const finalKhoa = isAll ? '' : deptSource
       form.reset({
-        examPaperCode: generateDeThiCode(),
-        examPaperName: '',
-        durationMinutes: 60,
-        thoiGianBatDau: '',
-        status: 'Active',
+        examPaperCode: initialData?.examPaperCode || generateDeThiCode(),
+        examPaperName: initialData?.examPaperName || '',
+        durationMinutes: initialData?.durationMinutes ?? 60,
+        startTime: initialData?.startTime || '',
+        status: initialData?.status || 'Active',
         department: finalKhoa,
-        soCauRandom: 30,
-        danhSachIdCauHoi: [],
-        examCampaignId: defaultKyThiId || '' as any,
-        soCauDungToiThieu: '' as any,
+        randomQuestionCount: initialData?.randomQuestionCount ?? 30,
+        questionIds: [],
+        examCampaignId: initialData?.examCampaignId || defaultKyThiId || '' as any,
+        minPassQuestions: (initialData?.minPassQuestions ?? '') as any,
       })
       setSelectedKhoa(finalKhoa)
       setPoolKhoa(finalKhoa)
@@ -121,6 +137,23 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       setThemVaoNganHang(false)
       setBankKhoa(finalKhoa || 'Tất cả các khoa')
       setSelectedKyThiDetails(null)
+      // Xem ghi chu canh khai bao skipNextCampaignDeptSync o tren.
+      skipNextCampaignDeptSync.current = isEditMode
+
+      // Che do sua: nap lai danh sach cau hoi da co san trong de thi de tick san.
+      // Guard bang `cancelled`: component nay khong unmount giua 2 lan sua (return null chi
+      // an render, hooks/effect van song) - neu nguoi dung dong dialog dang sua de A roi mo
+      // ngay de B truoc khi preview(A) tra ve, ket qua cua A den tre co the ghi de nham
+      // selectedIds cua B. `cancelled` duoc bat trong cleanup ben duoi moi khi effect chay lai.
+      if (initialData?.id) {
+        examsApiExtended.preview(initialData.id)
+          .then((res) => {
+            if (cancelled) return
+            const ids = res.data?.data?.questions?.map((q) => q.id) || []
+            setSelectedIds(ids)
+          })
+          .catch(() => {})
+      }
 
       // Fetch dynamic departments
       departmentApi.getAll({ status: true, pageSize: 100 })
@@ -132,7 +165,9 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
         })
         .catch(() => {})
     }
-  }, [open, form, lockedKhoa, defaultKyThiId])
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, form, lockedKhoa, defaultKyThiId, initialData])
 
   const handleExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -171,11 +206,23 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
   const selectedKyThiId = form.watch('examCampaignId')
   useEffect(() => {
     if (open && selectedKyThiId) {
-      kyThiApi.getById(selectedKyThiId).then((res) => {
+      // Bo qua 1 lan dau khi vua mo dialog sua - de khoa/phong rieng cua de thi (da nap o effect
+      // tren) khong bi effect nay ghi de ngay lap tuc bang khoa mac dinh cua ky thi. Tu lan sau
+      // (nguoi dung tu tay doi ky thi trong dropdown) se dong bo lai binh thuong.
+      if (skipNextCampaignDeptSync.current) {
+        skipNextCampaignDeptSync.current = false
+        examCampaignApi.getById(selectedKyThiId).then((res) => {
+          if (res.data.success && res.data.data) setSelectedKyThiDetails(res.data.data)
+        }).catch(() => {})
+        return
+      }
+      examCampaignApi.getById(selectedKyThiId).then((res) => {
         if (res.data.success && res.data.data) {
           const examCampaign = res.data.data
           setSelectedKyThiDetails(examCampaign)
-          const departmentName = examCampaign.departmentName || ''
+          // Kỳ thi giờ có thể gán 1-n khoa - chỉ tự động khóa ngân hàng câu hỏi theo khoa khi
+          // kỳ thi gán ĐÚNG 1 khoa (giữ hành vi cũ); nhiều khoa hoặc không khoa nào = không giới hạn.
+          const departmentName = examCampaign.departmentNames.length === 1 ? examCampaign.departmentNames[0] : ''
           const isAll = isAllDeptName(departmentName)
           const finalKhoa = isAll ? '' : departmentName
           setSelectedKhoa(finalKhoa)
@@ -196,7 +243,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
   }, [selectedKyThiId, open, lockedKhoa, form])
 
   useEffect(() => {
-    form.clearErrors('danhSachIdCauHoi')
+    form.clearErrors('questionIds')
   }, [selectedIds, selectedKyThiId, configMode, form])
 
   useEffect(() => {
@@ -244,10 +291,11 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       setExcelErrors([])
       setImportedCount(0)
 
-      // 1. Pre-validate exam code duplication (before calling Excel import)
+      // 1. Pre-validate exam code duplication (before calling Excel import) - bo qua neu code
+      // trung khop chinh de dang sua (che do edit)
       try {
         const checkRes = await examsApi.getByCode(data.examPaperCode)
-        if (checkRes.data.success) {
+        if (checkRes.data.success && checkRes.data.data?.id !== initialData?.id) {
           form.setError('examPaperCode', {
             type: 'manual',
             message: 'Mã đề thi đã tồn tại trong hệ thống',
@@ -259,13 +307,13 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
         // If it throws an error/404, it means it doesn't exist yet, which is what we want.
       }
 
-      // 2. Pre-validate soCauDungToiThieu against selectedKyThiDetails.tongSoCauHoi
-      if (selectedKyThiDetails?.tongSoCauHoi) {
-        const requiredCount = selectedKyThiDetails.tongSoCauHoi
-        if (data.soCauDungToiThieu != null && data.soCauDungToiThieu > requiredCount) {
-          form.setError('soCauDungToiThieu', {
+      // 2. Pre-validate minPassQuestions against selectedKyThiDetails.totalQuestions
+      if (selectedKyThiDetails?.totalQuestions) {
+        const requiredCount = selectedKyThiDetails.totalQuestions
+        if (data.minPassQuestions != null && data.minPassQuestions > requiredCount) {
+          form.setError('minPassQuestions', {
             type: 'manual',
-            message: `Số câu đúng tối thiểu (${data.soCauDungToiThieu}) không được lớn hơn tổng số câu hỏi yêu cầu (${requiredCount})`,
+            message: `Số câu đúng tối thiểu (${data.minPassQuestions}) không được lớn hơn tổng số câu hỏi yêu cầu (${requiredCount})`,
           })
           setIsUploadingExcel(false)
           return
@@ -273,8 +321,8 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       }
 
       try {
-        let targetKhoa = themVaoNganHang 
-          ? (bankKhoa || 'Tất cả các khoa') 
+        let targetKhoa = themVaoNganHang
+          ? (bankKhoa || 'Tất cả các khoa')
           : 'Không thuộc ngân hàng'
 
         if (!isAdmin && themVaoNganHang) {
@@ -282,7 +330,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
         }
 
         // 1 = Trắc nghiệm, isExamImport = true, expectedCount
-        const response = await questionsApi.importExcel(excelFile, targetKhoa, 1, true, selectedKyThiDetails?.tongSoCauHoi ?? undefined)
+        const response = await questionsApi.importExcel(excelFile, targetKhoa, 1, true, selectedKyThiDetails?.totalQuestions ?? undefined)
         if (response.data.success && response.data.data) {
           const importedQuestions = response.data.data
           finalIds = importedQuestions.map((q: any) => q.id)
@@ -310,15 +358,15 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
     }
 
     // Client-side validation: check if selected questions match the required count for ExamCampaign
-    if (selectedKyThiDetails?.tongSoCauHoi) {
-      const requiredCount = selectedKyThiDetails.tongSoCauHoi
+    if (selectedKyThiDetails?.totalQuestions) {
+      const requiredCount = selectedKyThiDetails.totalQuestions
       if (finalIds.length < requiredCount) {
         const missing = requiredCount - finalIds.length
         const errorMsg = `Số lượng câu hỏi chưa đủ, còn thiếu ${missing} câu hỏi`
         if (configMode === 'excel') {
           setExcelErrors([errorMsg])
         } else {
-          form.setError('danhSachIdCauHoi', {
+          form.setError('questionIds', {
             type: 'manual',
             message: errorMsg,
           })
@@ -330,7 +378,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
         if (configMode === 'excel') {
           setExcelErrors([errorMsg])
         } else {
-          form.setError('danhSachIdCauHoi', {
+          form.setError('questionIds', {
             type: 'manual',
             message: errorMsg,
           })
@@ -339,15 +387,15 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       }
     }
 
-    // Client-side validation: soCauDungToiThieu cannot exceed selected questions
-    if (data.soCauDungToiThieu != null && data.soCauDungToiThieu > finalIds.length) {
-      form.setError('soCauDungToiThieu', {
+    // Client-side validation: minPassQuestions cannot exceed selected questions
+    if (data.minPassQuestions != null && data.minPassQuestions > finalIds.length) {
+      form.setError('minPassQuestions', {
         type: 'manual',
-        message: `Số câu đúng tối thiểu (${data.soCauDungToiThieu}) không được lớn hơn tổng số câu hỏi đã chọn (${finalIds.length})`,
+        message: `Số câu đúng tối thiểu (${data.minPassQuestions}) không được lớn hơn tổng số câu hỏi đã chọn (${finalIds.length})`,
       })
       return
     }
-    onSubmit({ ...data, danhSachIdCauHoi: finalIds, soCauRandom: finalIds.length })
+    onSubmit({ ...data, questionIds: finalIds, randomQuestionCount: finalIds.length })
   }
 
   const filteredPool = poolSearch
@@ -364,7 +412,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
         <form onSubmit={form.handleSubmit(handleSubmit)}>
           <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
-            <h2 className="text-lg font-semibold">Tạo đề thi mới</h2>
+            <h2 className="text-lg font-semibold">{isEditMode ? 'Cập nhật đề thi' : 'Tạo đề thi mới'}</h2>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" onClick={onClose}>Hủy</Button>
               <Button
@@ -376,7 +424,7 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                   (configMode === 'excel' && !excelFile)
                 }
               >
-                {isLoading || isUploadingExcel ? 'Đang tạo...' : 'Tạo đề thi'}
+                {isLoading || isUploadingExcel ? 'Đang lưu...' : isEditMode ? 'Cập nhật đề thi' : 'Tạo đề thi'}
               </Button>
             </div>
           </div>
@@ -588,17 +636,17 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                     </div>
                   </div>
 
-                  {selectedKyThiDetails?.tongSoCauHoi && (
+                  {selectedKyThiDetails?.totalQuestions && (
                     <p className="text-xs text-purple-600">
-                      Yêu cầu của kỳ thi: <strong>{selectedKyThiDetails.tongSoCauHoi} câu hỏi</strong>.
+                      Yêu cầu của kỳ thi: <strong>{selectedKyThiDetails.totalQuestions} câu hỏi</strong>.
                     </p>
                   )}
                   {selectedIds.length === 0 && (
                     <p className="text-xs text-red-400">⚠ Chưa chọn câu hỏi nào</p>
                   )}
-                  {form.formState.errors.danhSachIdCauHoi && (
+                  {form.formState.errors.questionIds && (
                     <p className="text-xs text-red-500 font-semibold mt-1">
-                      ⚠ {form.formState.errors.danhSachIdCauHoi.message as string}
+                      ⚠ {form.formState.errors.questionIds.message as string}
                     </p>
                   )}
                 </>
@@ -706,27 +754,27 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
               type="number"
               min={0}
               placeholder="Để trống nếu không xét đạt/không đạt"
-              {...form.register('soCauDungToiThieu')}
+              {...form.register('minPassQuestions')}
               className="h-9 w-full rounded-md border border-amber-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
             />
-            {form.formState.errors.soCauDungToiThieu && (
-              <p className="text-xs text-red-500">{form.formState.errors.soCauDungToiThieu.message as string}</p>
+            {form.formState.errors.minPassQuestions && (
+              <p className="text-xs text-red-500">{form.formState.errors.minPassQuestions.message as string}</p>
             )}
             {configMode === 'bank' && (
               <div className="text-xs text-amber-600 space-y-1">
                 <p>
                   Tổng số câu đã chọn: <strong>{selectedIds.length}</strong> câu.
-                  {selectedKyThiDetails?.tongSoCauHoi ? ` Yêu cầu: ${selectedKyThiDetails.tongSoCauHoi} câu.` : ''}
+                  {selectedKyThiDetails?.totalQuestions ? ` Yêu cầu: ${selectedKyThiDetails.totalQuestions} câu.` : ''}
                   {selectedIds.length > 0 && ` Số câu đúng tối thiểu phải ≤ ${selectedIds.length}.`}
                 </p>
-                {selectedKyThiDetails?.tongSoCauHoi && selectedIds.length < selectedKyThiDetails.tongSoCauHoi && (
+                {selectedKyThiDetails?.totalQuestions && selectedIds.length < selectedKyThiDetails.totalQuestions && (
                   <p className="text-red-500 font-semibold">
-                    ⚠ Số lượng câu hỏi chưa đủ, còn thiếu {selectedKyThiDetails.tongSoCauHoi - selectedIds.length} câu hỏi.
+                    ⚠ Số lượng câu hỏi chưa đủ, còn thiếu {selectedKyThiDetails.totalQuestions - selectedIds.length} câu hỏi.
                   </p>
                 )}
-                {selectedKyThiDetails?.tongSoCauHoi && selectedIds.length > selectedKyThiDetails.tongSoCauHoi && (
+                {selectedKyThiDetails?.totalQuestions && selectedIds.length > selectedKyThiDetails.totalQuestions && (
                   <p className="text-red-500 font-semibold">
-                    ⚠ Số lượng câu hỏi vượt quá yêu cầu, thừa {selectedIds.length - selectedKyThiDetails.tongSoCauHoi} câu hỏi.
+                    ⚠ Số lượng câu hỏi vượt quá yêu cầu, thừa {selectedIds.length - selectedKyThiDetails.totalQuestions} câu hỏi.
                   </p>
                 )}
               </div>
@@ -738,14 +786,14 @@ export function ExamFormDialog({ open, onClose, onSubmit, isLoading, lockedKhoa,
                     Tổng số câu tải lên: <strong>{importedCount}</strong> câu. Số câu đúng tối thiểu phải ≤ {importedCount}.
                   </p>
                 )}
-                {selectedKyThiDetails?.tongSoCauHoi && importedCount > 0 && importedCount < selectedKyThiDetails.tongSoCauHoi && (
+                {selectedKyThiDetails?.totalQuestions && importedCount > 0 && importedCount < selectedKyThiDetails.totalQuestions && (
                   <p className="text-red-500 font-semibold">
-                    ⚠ Số lượng câu hỏi chưa đủ, còn thiếu {selectedKyThiDetails.tongSoCauHoi - importedCount} câu hỏi.
+                    ⚠ Số lượng câu hỏi chưa đủ, còn thiếu {selectedKyThiDetails.totalQuestions - importedCount} câu hỏi.
                   </p>
                 )}
-                {selectedKyThiDetails?.tongSoCauHoi && importedCount > 0 && importedCount > selectedKyThiDetails.tongSoCauHoi && (
+                {selectedKyThiDetails?.totalQuestions && importedCount > 0 && importedCount > selectedKyThiDetails.totalQuestions && (
                   <p className="text-red-500 font-semibold">
-                    ⚠ Số lượng câu hỏi vượt quá yêu cầu, thừa {importedCount - selectedKyThiDetails.tongSoCauHoi} câu hỏi.
+                    ⚠ Số lượng câu hỏi vượt quá yêu cầu, thừa {importedCount - selectedKyThiDetails.totalQuestions} câu hỏi.
                   </p>
                 )}
               </div>

@@ -20,7 +20,7 @@ export const login = createAsyncThunk(
         return rejectWithValue(response.data.message)
       }
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(
         err.response?.data?.message || 'Đăng nhập thất bại'
@@ -53,7 +53,7 @@ export const fetchCurrentUser = createAsyncThunk(
         return rejectWithValue('Failed to fetch user')
       }
       return response.data.data!
-    } catch (error: unknown) {
+    } catch (error: any) {
       const err = error as { response?: { data?: { message?: string } } }
       return rejectWithValue(err.response?.data?.message || 'Error')
     }

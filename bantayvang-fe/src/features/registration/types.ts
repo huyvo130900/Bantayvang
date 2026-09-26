@@ -1,29 +1,29 @@
 export interface ExamRegistrationDto {
   id: number;
   fullName: string;
-  cccd: string;
+  idCardNumber: string;
   phoneNumber: string;
-  email?: string;
+  email: string;
   workUnit?: string;
-  chuyenNganh?: string;
+  major?: string;
   departmentId?: number;
-  tenKhoaPhong?: string;
-  mucDichThi?: string;
+  departmentName?: string;
+  examPurpose?: string;
   status: string;
-  ngayDangKy: string;
-  ghiChu?: string;
+  registrationDate: string;
+  notes?: string;
 }
 
 export interface CreateExamRegistrationDto {
   fullName: string;
-  cccd: string;
+  idCardNumber: string;
   phoneNumber: string;
-  email?: string;
+  email: string;
   password: string;
   workUnit?: string;
-  chuyenNganh?: string;
+  major?: string;
   departmentId?: number;
-  mucDichThi?: string;
+  examPurpose?: string;
 }
 
 export interface RejectDto {

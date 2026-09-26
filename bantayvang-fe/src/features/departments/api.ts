@@ -24,14 +24,19 @@ export const departmentApi = {
   assignManager: (id: number, dto: AssignManagerDto) =>
     apiClient.post(`/Department/${id}/assign-manager`, dto),
 
-  toggleExamVisibility: (deThiId: number, dto: ExamVisibilityDto) =>
-    apiClient.post(`/Department/exam/${deThiId}/toggle-visibility`, dto),
+  toggleExamVisibility: (examPaperId: number, dto: ExamVisibilityDto) =>
+    apiClient.post(`/Department/exam/${examPaperId}/toggle-visibility`, dto),
 
   // ✨ Import danh sách khoa/phòng từ Excel (Admin only)
   importDepartments: (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
     return apiClient.post('/Department/import', formData, {
+      // BUG FIX: was hardcoded to the literal string 'multipart/form-data' (no boundary), which
+      // makes axios/the browser send that Content-Type verbatim instead of auto-generating
+      // 'multipart/form-data; boundary=...'. The browser only appends a boundary when it computes
+      // the header itself - `undefined` deletes apiClient's default 'application/json' header so
+      // that happens; the literal string suppressed it and silently broke every file upload.
       headers: { 'Content-Type': undefined },
     })
   },

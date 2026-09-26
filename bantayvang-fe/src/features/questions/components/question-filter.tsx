@@ -12,6 +12,7 @@ interface QuestionFilterProps {
   onFilterChange: (filter: Partial<QuestionFilterDto>) => void
   onCreateClick: () => void
   onImportClick: () => void
+  onImportWordClick: () => void
   hideKhoaFilter?: boolean
   // Admin truyền vào danh sách khoa động (lấy từ dữ liệu thực tế)
   khoaList?: string[]
@@ -25,6 +26,7 @@ export function QuestionFilter({
   onFilterChange,
   onCreateClick,
   onImportClick,
+  onImportWordClick,
   hideKhoaFilter = false,
   khoaList = [],
   kyThiList = [],
@@ -192,9 +194,9 @@ export function QuestionFilter({
         {/* Lọc theo đề thi */}
         <select
           className="h-10 rounded-md border border-input bg-background px-3 text-sm max-w-[180px]"
-          value={filter.deThiId ?? ''}
+          value={filter.examPaperId ?? ''}
           onChange={(e) =>
-            onFilterChange({ deThiId: e.target.value ? Number(e.target.value) : undefined, pageNumber: 1 })
+            onFilterChange({ examPaperId: e.target.value ? Number(e.target.value) : undefined, pageNumber: 1 })
           }
         >
           <option value="">Tất cả đề thi</option>
@@ -219,9 +221,13 @@ export function QuestionFilter({
         )}
 
         <div className="ml-auto flex gap-2">
-          <Button variant="outline" onClick={onImportClick}>
+          <Button variant="outline" onClick={onImportClick} className="text-emerald-700 border-emerald-200 hover:bg-emerald-50">
             <Upload className="h-4 w-4 mr-1" />
             Nhập từ Excel
+          </Button>
+          <Button variant="outline" onClick={onImportWordClick} className="text-blue-700 border-blue-200 hover:bg-blue-50">
+            <Upload className="h-4 w-4 mr-1" />
+            Nhập từ Word
           </Button>
           <Button onClick={onCreateClick}>
             <Plus className="h-4 w-4 mr-1" />

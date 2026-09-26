@@ -47,7 +47,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
     }
   }, [location.pathname])
 
-  const loadUnreadCount = async () => {
+  async function loadUnreadCount() {
     try {
       const res = await notificationsApi.getUnreadCount()
       if (res.data.success && res.data.data != null) {
@@ -58,7 +58,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
     }
   }
 
-  const handleLogout = async () => {
+  async function handleLogout() {
     await dispatch(logout())
     navigate('/login')
   }

@@ -11,18 +11,18 @@ namespace BanTayVang.API.DTOs.Exam
 
         // Điểm tự tính: (CorrectAnswers * 10.0 / TotalQuestions)
         public double? TotalScore { get; set; }
-        public double? DiemSo => TotalQuestions > 0 ? Math.Round((CorrectAnswers ?? 0) * 10.0 / TotalQuestions!.Value, 2) : TotalScore;
+        public double? CalculatedScore => TotalQuestions > 0 ? Math.Round((CorrectAnswers ?? 0) * 10.0 / TotalQuestions!.Value, 2) : TotalScore;
 
         public int? CorrectAnswers { get; set; }
         public int? TotalQuestions { get; set; }
-        public int? TongSoCanhBao { get; set; }
+        public int? TotalWarnings { get; set; }
 
         // Thông tin đề thi
         public string? ExamPaperName { get; set; }
         public string? ExamPaperCode { get; set; }
         public int? DurationMinutes { get; set; }
         public DateTime? StartTime { get; set; }
-        public int? ThoiGianConLai { get; set; } // giây
+        public int? RemainingTimeSeconds { get; set; } // giây
 
         // Công bố kết quả
         public bool IsResultPublished { get; set; } = false;

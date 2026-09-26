@@ -34,14 +34,14 @@ namespace BanTayVang.API.Services.Impl
                 {
                     UserId = userId,
                     Username = username,
-                    LoaiThaoTac = actionType?.Length > 100 ? actionType.Substring(0, 100) : actionType,
+                    ActionType = actionType?.Length > 100 ? actionType.Substring(0, 100) : actionType,
                     Detail = description?.Length > 4000 ? description.Substring(0, 4000) : description,
-                    PhuongThuc = method,
-                    DuongDan = path?.Length > 500 ? path.Substring(0, 500) : path,
-                    MaHttp = statusCode,
-                    ActionTime = DateTime.Now,
+                    HttpMethod = method,
+                    ApiPath = path?.Length > 500 ? path.Substring(0, 500) : path,
+                    HttpStatusCode = statusCode,
+                    ActionTime = DateTime.UtcNow.AddHours(7),
                     ExamSubmissionId = examSubmissionId,
-                    DiaChiIp = ipAddress,
+                    IpAddress = ipAddress,
                     UserAgent = userAgent?.Length > 500 ? userAgent.Substring(0, 500) : userAgent,
                     Department = department
                 };
@@ -55,30 +55,39 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<List<AuditLogEntry>> GetRecentLogsAsync(int top = 500)
+        public async Task<List<AuditLogEntry>> GetRecentLogsAsync(int top = 500, string? department = null)
         {
-            return await _context.AuditLogs
-                .Include(l => l.User)
+            var query = _context.AuditLogs.Include(l => l.User).AsQueryable();
+            if (!string.IsNullOrEmpty(department))
+                query = query.Where(l => l.Department == department);
+
+            return await query
                 .OrderByDescending(l => l.ActionTime)
                 .Take(top)
                 .Select(l => MapToEntry(l))
                 .ToListAsync();
         }
 
-        public async Task<List<AuditLogEntry>> GetUserLogsAsync(int userId, int top = 100)
+        public async Task<List<AuditLogEntry>> GetUserLogsAsync(int userId, int top = 100, string? department = null)
         {
-            return await _context.AuditLogs
-                .Where(l => l.UserId == userId)
+            var query = _context.AuditLogs.Where(l => l.UserId == userId);
+            if (!string.IsNullOrEmpty(department))
+                query = query.Where(l => l.Department == department);
+
+            return await query
                 .OrderByDescending(l => l.ActionTime)
                 .Take(top)
                 .Select(l => MapToEntry(l))
                 .ToListAsync();
         }
 
-        public async Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int examSubmissionId)
+        public async Task<List<AuditLogEntry>> GetExamSessionLogsAsync(int examSubmissionId, string? department = null)
         {
-            return await _context.AuditLogs
-                .Where(l => l.ExamSubmissionId == examSubmissionId)
+            var query = _context.AuditLogs.Where(l => l.ExamSubmissionId == examSubmissionId);
+            if (!string.IsNullOrEmpty(department))
+                query = query.Where(l => l.Department == department);
+
+            return await query
                 .OrderByDescending(l => l.ActionTime)
                 .Select(l => MapToEntry(l))
                 .ToListAsync();
@@ -90,12 +99,16 @@ namespace BanTayVang.API.Services.Impl
             DateTime? from = null,
             DateTime? to = null,
             int page = 1,
-            int pageSize = 50)
+            int pageSize = 50,
+            string? department = null)
         {
             var query = _context.AuditLogs.AsQueryable();
 
+            if (!string.IsNullOrEmpty(department))
+                query = query.Where(l => l.Department == department);
+
             if (!string.IsNullOrEmpty(actionType))
-                query = query.Where(l => l.LoaiThaoTac != null && l.LoaiThaoTac.Contains(actionType));
+                query = query.Where(l => l.ActionType != null && l.ActionType.Contains(actionType));
 
             if (!string.IsNullOrEmpty(username))
                 query = query.Where(l => l.Username != null && l.Username.Contains(username));
@@ -114,15 +127,14 @@ namespace BanTayVang.API.Services.Impl
                 .ToListAsync();
         }
 
-        public async Task<int> GetTotalCountAsync(
-            string? actionType = null,
-            string? username = null,
-            DateTime? from = null,
-            DateTime? to = null)
+        public async Task<int> GetTotalCountAsync(string? actionType = null, string? username = null, DateTime? from = null, DateTime? to = null, string? department = null)
         {
             var query = _context.AuditLogs.AsQueryable();
+
+            if (!string.IsNullOrEmpty(department))
+                query = query.Where(l => l.Department == department);
             if (!string.IsNullOrEmpty(actionType))
-                query = query.Where(l => l.LoaiThaoTac != null && l.LoaiThaoTac.Contains(actionType));
+                query = query.Where(l => l.ActionType != null && l.ActionType.Contains(actionType));
             if (!string.IsNullOrEmpty(username))
                 query = query.Where(l => l.Username != null && l.Username.Contains(username));
             if (from.HasValue) query = query.Where(l => l.ActionTime >= from);
@@ -136,15 +148,16 @@ namespace BanTayVang.API.Services.Impl
             UserId = l.UserId,
             Username = l.Username ?? l.User?.Username,
             ExamSubmissionId = l.ExamSubmissionId,
-            ActionType = l.LoaiThaoTac,
-            Method = l.PhuongThuc,
-            Path = l.DuongDan,
-            StatusCode = l.MaHttp,
+            ActionType = l.ActionType,
+            Method = l.HttpMethod,
+            Path = l.ApiPath,
+            StatusCode = l.HttpStatusCode,
             Description = l.Detail,
             Timestamp = l.ActionTime,
-            IpAddress = l.DiaChiIp,
+            IpAddress = l.IpAddress,
             UserAgent = l.UserAgent,
             Department = l.Department
         };
     }
 }
+

@@ -5,7 +5,7 @@ import { runQuestionTests } from './tests/04-questions.test.mjs'
 import { runExamTests } from './tests/05-exams.test.mjs'
 import { runExamTakingTests } from './tests/06-exam-taking.test.mjs'
 import { runGradingTests } from './tests/07-grading.test.mjs'
-import { runKyThiTests } from './tests/08-kythi.test.mjs'
+import { runKyThiTests } from './tests/08-examCampaign.test.mjs'
 
 async function main() {
   console.log('🚀 Logging in as admin once to bypass auth endpoint rate limits...')

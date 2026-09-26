@@ -96,64 +96,28 @@ namespace BanTayVang.API.Services.Impl.Auth
             }
 
             // Lowercase letters
-            if (Regex.IsMatch(password, @"[a-z]"))
-            {
-                score += 15;
-            }
-            else
-            {
-                result.Errors.Add("Mật khẩu phải chứa ít nhất 1 chữ cái thường");
-            }
+            if (Regex.IsMatch(password, @"[a-z]")) score += 15;
+            else result.Errors.Add("Mật khẩu phải chứa ít nhất 1 chữ cái thường");
 
             // Uppercase letters
-            if (Regex.IsMatch(password, @"[A-Z]"))
-            {
-                score += 15;
-            }
-            else
-            {
-                result.Errors.Add("Mật khẩu phải chứa ít nhất 1 chữ cái hoa");
-            }
+            if (Regex.IsMatch(password, @"[A-Z]")) score += 15;
+            else result.Errors.Add("Mật khẩu phải chứa ít nhất 1 chữ cái hoa");
 
             // Numbers
-            if (Regex.IsMatch(password, @"\d"))
-            {
-                score += 15;
-            }
-            else
-            {
-                result.Errors.Add("Mật khẩu phải chứa ít nhất 1 chữ số");
-            }
+            if (Regex.IsMatch(password, @"\d")) score += 15;
+            else result.Errors.Add("Mật khẩu phải chứa ít nhất 1 chữ số");
 
             // Special characters
-            if (Regex.IsMatch(password, @"[!@#$%^&*()_+\-=\[\]{};':""\\|,.<>\/?]"))
-            {
-                score += 15;
-            }
-            else
-            {
-                result.Errors.Add("Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt");
-            }
+            if (Regex.IsMatch(password, @"[!@#$%^&*()_+\-=\[\]{};':""\\|,.<>\/?]")) score += 15;
+            else result.Errors.Add("Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt");
 
             // No repeated characters
-            if (!Regex.IsMatch(password, @"(.)\1{2,}"))
-            {
-                score += 10;
-            }
-            else
-            {
-                result.Errors.Add("Mật khẩu không được chứa quá 2 ký tự giống nhau liên tiếp");
-            }
+            if (!Regex.IsMatch(password, @"(.)\1{2,}")) score += 10;
+            else result.Errors.Add("Mật khẩu không được chứa quá 2 ký tự giống nhau liên tiếp");
 
             // No common patterns
-            if (!ContainsCommonPatterns(password))
-            {
-                score += 5;
-            }
-            else
-            {
-                result.Errors.Add("Mật khẩu không được chứa các mẫu phổ biến (123, abc, qwerty, v.v.)");
-            }
+            if (!ContainsCommonPatterns(password)) score += 5;
+            else result.Errors.Add("Mật khẩu không được chứa các mẫu phổ biến (123, abc, qwerty, v.v.)");
 
             result.StrengthScore = Math.Min(score, 100);
             result.IsValid = result.Errors.Count == 0 && result.StrengthScore >= 70;

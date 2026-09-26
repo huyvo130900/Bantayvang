@@ -74,12 +74,12 @@ namespace BanTayVang.API.Mappings
                 .ForMember(dest => dest.ExamPaperName, opt => opt.Ignore())
                 .ForMember(dest => dest.DurationMinutes, opt => opt.Ignore())
                 .ForMember(dest => dest.StartTime, opt => opt.Ignore())
-                .ForMember(dest => dest.ThoiGianConLai, opt => opt.Ignore());
+                .ForMember(dest => dest.RemainingTimeSeconds, opt => opt.Ignore());
 
             // Exam Question mappings
             CreateMap<Question, ExamQuestionDto>()
                 .ForMember(dest => dest.Options, opt => opt.MapFrom(src => src.QuestionOptions))
-                .ForMember(dest => dest.ThuTuCau, opt => opt.Ignore())
+                .ForMember(dest => dest.QuestionOrder, opt => opt.Ignore())
                 .ForMember(dest => dest.SelectedOptionId, opt => opt.Ignore())
                 .ForMember(dest => dest.EssayAnswer, opt => opt.Ignore())
                 .ForMember(dest => dest.IsSaved, opt => opt.Ignore());
@@ -89,7 +89,7 @@ namespace BanTayVang.API.Mappings
             // Answer mappings
             CreateMap<SubmitAnswerDto, SubmissionDetail>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.AnswerTime, opt => opt.MapFrom(src => DateTime.Now))
+                .ForMember(dest => dest.AnswerTime, opt => opt.MapFrom(src => DateTime.UtcNow.AddHours(7)))
                 .ForMember(dest => dest.ScoreObtained, opt => opt.Ignore());
         }
     }

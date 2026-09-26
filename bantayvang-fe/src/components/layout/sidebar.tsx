@@ -35,10 +35,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
 
-  const displayName = user?.fullName || user?.fullName || user?.username || user?.username || ''
+  const displayName = user?.fullName || user?.username || ''
   const displayRole = user?.roleName || user?.role || ''
 
-  const handleLogout = async () => {
+  async function handleLogout() {
     await dispatch(logout())
     navigate('/login')
   }

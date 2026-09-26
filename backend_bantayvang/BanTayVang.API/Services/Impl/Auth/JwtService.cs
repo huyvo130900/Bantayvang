@@ -68,8 +68,8 @@ namespace BanTayVang.API.Services.Impl.Auth
                     new("role_id", user.RoleId?.ToString() ?? "0"),
                     new("is_active", user.Status?.ToString() ?? "false"),
                     new("remember_me", rememberMe.ToString().ToLower()),
-                    new("khoa_phong", user.Department ?? string.Empty),
-                    new("id_khoa_quan_ly", user.DeptManagerDeptId?.ToString() ?? ""),
+                    new("department_claim", user.Department ?? string.Empty),
+                    new("managed_department_id", user.DeptManagerDeptId?.ToString() ?? ""),
                     new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                     new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
                 };
@@ -289,6 +289,12 @@ namespace BanTayVang.API.Services.Impl.Auth
                 4 => BanTayVang.API.Models.Enums.UserRole.Supervisor, // Obsolete
 #pragma warning restore CS0618
                 5 => BanTayVang.API.Models.Enums.UserRole.DeptManager,
+                // BUG FIX: RoleId 6 (ThiSinhNgoai / external candidate) fell through to the
+                // default and got labeled "Student" in the JWT Role claim. Harmless today only
+                // because every current check reads the numeric role_id claim instead of this one,
+                // but it mislabels external candidates in anything that does read Role (audit
+                // trails, future [Authorize(Roles=...)] checks).
+                6 => BanTayVang.API.Models.Enums.UserRole.ThiSinhNgoai,
                 _ => BanTayVang.API.Models.Enums.UserRole.Student
             };
         }

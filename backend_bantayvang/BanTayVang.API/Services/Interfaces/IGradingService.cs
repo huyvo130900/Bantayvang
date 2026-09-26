@@ -36,7 +36,7 @@ namespace BanTayVang.API.Services.Interfaces
         /// <summary>
         /// Auto-grade tất cả bài thi đã hoàn thành nhưng chưa được chấm điểm
         /// </summary>
-        Task<BaseResponseDto<int>> AutoGradeAllAsync();
+        Task<BaseResponseDto<int>> AutoGradeAllAsync(string? restrictToDepartment = null);
 
         /// <summary>
         /// Lấy kết quả thi phân cấp theo Kỳ thi

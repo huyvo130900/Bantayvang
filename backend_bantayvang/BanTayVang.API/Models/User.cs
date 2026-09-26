@@ -37,6 +37,18 @@ public partial class User
     public DateTime? LastLoginAt { get; set; }
 
     /// <summary>
+    /// So lan dang nhap sai lien tiep gan day nhat (OWASP A07 - account lockout).
+    /// Reset ve 0 khi dang nhap thanh cong. Xem AuthService.LoginAsync.
+    /// </summary>
+    public int FailedLoginAttempts { get; set; } = 0;
+
+    /// <summary>
+    /// Thoi diem (UTC that) tai khoan duoc mo khoa lai sau khi bi khoa tam thoi
+    /// do dang nhap sai qua nhieu lan. Null = khong bi khoa.
+    /// </summary>
+    public DateTime? LockoutEnd { get; set; }
+
+    /// <summary>
     /// FK -> ExamRegistrations.Id - chỉ dùng cho role DeptManager (ID=5)
     /// </summary>
     public int? DeptManagerDeptId { get; set; }

@@ -9,9 +9,9 @@ namespace BanTayVang.API.Services.Impl.Import
     {
         private readonly IQuestionRepository _questionRepository;
 
-        public MultipleChoiceImportStrategy(IQuestionRepository cauhoiRepository)
+        public MultipleChoiceImportStrategy(IQuestionRepository questionRepository)
         {
-            _questionRepository = cauhoiRepository;
+            _questionRepository = questionRepository;
         }
 
         public string QuestionTypeName => "Trắc nghiệm";
@@ -86,10 +86,10 @@ namespace BanTayVang.API.Services.Impl.Import
                     }
 
                     // 6. Kiểm tra trùng lặp
-                    var noiDungChuan = content.ToLower();
+                    var standardizedContent = content.ToLower();
                     
                     // Kiểm tra trùng lặp trong cùng file
-                    if (!seenContents.Add(noiDungChuan))
+                    if (!seenContents.Add(standardizedContent))
                     {
                         errors.Add($"Dòng {rowNumber}: Câu hỏi trùng lặp trong cùng file Excel — \"{content}\" — bỏ qua.");
                         continue;
@@ -98,7 +98,7 @@ namespace BanTayVang.API.Services.Impl.Import
                     // Kiểm tra trùng lặp với CSDL (chỉ kiểm tra nếu không phải "Không thuộc ngân hàng")
                     if (department != "Không thuộc ngân hàng")
                     {
-                        var existingQuestion = await _questionRepository.FindDuplicateAsync(noiDungChuan, department);
+                        var existingQuestion = await _questionRepository.FindDuplicateAsync(standardizedContent, department);
                         if (existingQuestion != null)
                         {
                             errors.Add($"Dòng {rowNumber}: Câu hỏi đã tồn tại trong CSDL (Id: {existingQuestion.Id}) — \"{content}\"");
@@ -112,7 +112,7 @@ namespace BanTayVang.API.Services.Impl.Import
                         Content = content,
                         Difficulty = difficulty,
                         CreatedBy = createdBy,
-                        CreatedAt = DateTime.Now,
+                        CreatedAt = DateTime.UtcNow.AddHours(7),
                         IsDeleted = false,
                         Department = department,
                         QuestionOptions = choices
@@ -208,3 +208,4 @@ namespace BanTayVang.API.Services.Impl.Import
         }
     }
 }
+

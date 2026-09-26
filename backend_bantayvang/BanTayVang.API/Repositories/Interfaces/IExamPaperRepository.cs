@@ -9,7 +9,7 @@ namespace BanTayVang.API.Repositories.Interfaces
         Task<List<ExamPaper>> GetActiveExamsAsync(CancellationToken cancellationToken = default);
         Task<List<ExamPaper>> GetAllExamsAsync(string? status = null, CancellationToken cancellationToken = default);
         Task<ExamPaper?> GetWithQuestionsAsync(int id);
-        Task<bool> AddQuestionsToExamAsync(int dethiId, List<int> cauhoiIds);
+        Task<bool> AddQuestionsToExamAsync(int ExamPaperId, List<int> questionIds);
         Task<ExamPaper?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
         Task<bool> UpdateExamQuestionsAsync(int examId, List<int> questionIds);
         Task<IDbContextTransaction> BeginTransactionAsync();

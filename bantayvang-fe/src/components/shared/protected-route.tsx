@@ -9,7 +9,8 @@ interface ProtectedRouteProps {
 
 function getDefaultRedirect(role: string): string {
   switch (role) {
-    case ROLES.STUDENT:    return '/exam-waiting'
+    case ROLES.STUDENT:    
+    case ROLES.THI_SINH_NGOAI: return '/exam-waiting'
     case ROLES.DEPT_MANAGER: return '/dept-manager/dashboard'
     case ROLES.ADMIN:      return '/admin/dashboard'
     default:               return '/unauthorized'

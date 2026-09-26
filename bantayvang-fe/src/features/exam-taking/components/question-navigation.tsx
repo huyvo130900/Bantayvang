@@ -32,10 +32,10 @@ export function QuestionNavigation({
             }
           } else {
             if (hasChoices) {
-              isAnswered = (q.idLuaChonDaChon !== null && q.idLuaChonDaChon !== undefined && q.idLuaChonDaChon !== 0) ||
-                           (q.idLuaChonDaChonList !== undefined && q.idLuaChonDaChonList.length > 0 && q.idLuaChonDaChonList.some(id => id !== 0))
+              isAnswered = (q.selectedOptionId !== null && q.selectedOptionId !== undefined && q.selectedOptionId !== 0) ||
+                           (q.selectedOptionIdList !== undefined && q.selectedOptionIdList.length > 0 && q.selectedOptionIdList.some(id => id !== 0))
             } else {
-              isAnswered = !!q.cauTraLoiTuLuan && q.cauTraLoiTuLuan.trim().length > 0
+              isAnswered = !!q.essayAnswer && q.essayAnswer.trim().length > 0
             }
           }
 

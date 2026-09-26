@@ -39,11 +39,13 @@ namespace BanTayVang.API.Repositories.Impl
                     // Update existing answer
                     existing.SelectedOptionId = detail.SelectedOptionId;
                     existing.EssayAnswer = detail.EssayAnswer;
+                    existing.EssayImageUrl = detail.EssayImageUrl;
                     existing.AnswerTime = detail.AnswerTime;
                     existing.IsSaved = detail.IsSaved;
                     existing.ScoreObtained = detail.ScoreObtained;
                     
                     await UpdateAsync(existing);
+
                 }
                 else
                 {

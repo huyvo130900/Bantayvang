@@ -9,6 +9,7 @@ namespace BanTayVang.API.DTOs.Question
         public string? Difficulty { get; set; }
         public string? Department { get; set; }
         public string? ImageUrl { get; set; }
+        public string? SuggestedAnswer { get; set; }
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public List<QuestionOptionDto> Options { get; set; } = new();

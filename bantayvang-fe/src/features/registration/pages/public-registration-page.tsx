@@ -7,6 +7,7 @@ import { registrationApi } from '../api'
 import { departmentApi } from '@/features/departments/api'
 import type { DepartmentDto } from '@/features/departments/types'
 
+
 export function PublicRegistrationPage() {
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -20,18 +21,19 @@ export function PublicRegistrationPage() {
 
   const [formData, setFormData] = useState({
     fullName: '',
-    cccd: '',
+    idCardNumber: '',
     phoneNumber: '',
     email: '',
     password: '',
     workUnit: '',
-    chuyenNganh: '',
+    major: '',
     departmentId: '',
-    mucDichThi: '',
+    examPurpose: '',
   })
 
+
   useEffect(() => {
-    const fetchDepartments = async () => {
+    async function fetchDepartments() {
       try {
         const res = await departmentApi.getAll({ status: true })
         if (res.data) {
@@ -45,12 +47,21 @@ export function PublicRegistrationPage() {
     fetchDepartments()
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!formData.fullName || !formData.cccd || !formData.phoneNumber || !formData.password) {
+    if (!formData.fullName || !formData.idCardNumber || !formData.phoneNumber || !formData.email || !formData.password) {
       showToast('Vui lòng điền đầy đủ các trường bắt buộc', false)
       return
     }
+    // BUG FIX: department used to be optional here - a registration approved with no department
+    // produces an account with an empty Department, which the exam-list filter treats as
+    // "no restriction" and shows every campaign of every department. Require it up front.
+    if (!formData.departmentId) {
+      showToast('Vui lòng chọn khoa/phòng muốn thi', false)
+      return
+    }
+
+
 
     setIsSubmitting(true)
     try {
@@ -98,12 +109,12 @@ export function PublicRegistrationPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="cccd" className="text-sm font-medium leading-none">Số CCCD *</label>
+                <label htmlFor="idCardNumber" className="text-sm font-medium leading-none">Số CCCD *</label>
                 <Input
-                  id="cccd"
+                  id="idCardNumber"
                   placeholder="Căn cước công dân"
-                  value={formData.cccd}
-                  onChange={(e) => setFormData({ ...formData, cccd: e.target.value })}
+                  value={formData.idCardNumber}
+                  onChange={(e) => setFormData({ ...formData, idCardNumber: e.target.value })}
                   required
                 />
                 <p className="text-xs text-gray-500">Được dùng làm Tên đăng nhập</p>
@@ -119,14 +130,15 @@ export function PublicRegistrationPage() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium leading-none">Email</label>
+              <div className="space-y-2 md:col-span-2">
+                <label htmlFor="email" className="text-sm font-medium leading-none">Email *</label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="example@gmail.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
                 />
               </div>
 
@@ -138,16 +150,18 @@ export function PublicRegistrationPage() {
                   placeholder="Tự tạo mật khẩu"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  minLength={8}
                   required
                 />
+                <p className="text-xs text-gray-500">Ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt</p>
               </div>
               <div className="space-y-2">
-                <label htmlFor="chuyenNganh" className="text-sm font-medium leading-none">Chức danh / Chuyên ngành</label>
+                <label htmlFor="major" className="text-sm font-medium leading-none">Chức danh / Chuyên ngành</label>
                 <Input
-                  id="chuyenNganh"
+                  id="major"
                   placeholder="Điều dưỡng, Bác sĩ..."
-                  value={formData.chuyenNganh}
-                  onChange={(e) => setFormData({ ...formData, chuyenNganh: e.target.value })}
+                  value={formData.major}
+                  onChange={(e) => setFormData({ ...formData, major: e.target.value })}
                 />
               </div>
 
@@ -162,12 +176,13 @@ export function PublicRegistrationPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="department" className="text-sm font-medium leading-none">Khoa / Phòng muốn thi</label>
+                <label htmlFor="department" className="text-sm font-medium leading-none">Khoa / Phòng muốn thi *</label>
                 <select
                   id="department"
                   className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   value={formData.departmentId}
                   onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                  required
                 >
                   <option value="">Chọn khoa / phòng</option>
                   {departments.map((d) => (
@@ -179,12 +194,12 @@ export function PublicRegistrationPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="mucDichThi" className="text-sm font-medium leading-none">Mục đích dự thi</label>
+                <label htmlFor="examPurpose" className="text-sm font-medium leading-none">Mục đích dự thi</label>
                 <select
-                  id="mucDichThi"
+                  id="examPurpose"
                   className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  value={formData.mucDichThi}
-                  onChange={(e) => setFormData({ ...formData, mucDichThi: e.target.value })}
+                  value={formData.examPurpose}
+                  onChange={(e) => setFormData({ ...formData, examPurpose: e.target.value })}
                 >
                   <option value="">Chọn mục đích</option>
                   <option value="Tuyển dụng">Tuyển dụng</option>
@@ -196,7 +211,11 @@ export function PublicRegistrationPage() {
             </div>
 
             <div className="flex flex-col gap-3 pt-4">
-              <Button type="submit" className="w-full bg-[#5b8e23] hover:bg-[#4a731c]" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="w-full py-6 text-lg font-bold rounded-xl transition-all hover:scale-[1.02] shadow-xl bg-[#5b8e23] hover:bg-[#4a731c] hover:shadow-2xl"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? 'Đang xử lý...' : 'Gửi Đăng Ký'}
               </Button>
               <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/login')} disabled={isSubmitting}>

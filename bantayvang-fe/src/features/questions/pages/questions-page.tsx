@@ -8,10 +8,11 @@ import { QuestionFilter } from '../components/question-filter'
 import { QuestionTable } from '../components/question-table'
 import { QuestionFormDialog } from '../components/question-form-dialog'
 import { ImportExcelDialog } from '../components/import-excel-dialog'
+import { ImportWordDialog } from '../components/import-word-dialog'
 import type { QuestionDto, QuestionFilterDto } from '../types'
 import type { CreateQuestionFormData } from '../schemas'
 import { ROLES } from '@/lib/constants'
-import { kyThiApi } from '@/features/ky-thi/api'
+import { examCampaignApi } from '@/features/ky-thi/api'
 import { examsApiExtended } from '@/features/exams/api'
 import type { ExamCampaignDto } from '@/features/ky-thi/types'
 import type { ExamPaperDto } from '@/features/exams/types'
@@ -32,6 +33,7 @@ export function QuestionsPage() {
   const [deThiList, setDeThiList] = useState<ExamPaperDto[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [importWordOpen, setImportWordOpen] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<QuestionDto | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
@@ -55,7 +57,7 @@ export function QuestionsPage() {
     }
 
     // Fetch exams and tests
-    kyThiApi.getAll()
+    examCampaignApi.getAll()
       .then((res) => {
         if (res.data?.success && res.data.data) {
           setKyThiList(res.data.data)
@@ -94,9 +96,9 @@ export function QuestionsPage() {
       if (isDeptManager && myKhoa && 'department' in changes) {
         changes = { ...changes, department: myKhoa }
       }
-      // Reset deThiId if examCampaignId is explicitly changed/cleared
-      if ('examCampaignId' in changes) {
-        changes.deThiId = undefined
+      // Reset examPaperId if examCampaignId is explicitly changed/cleared, unless examPaperId is also being set
+      if ('examCampaignId' in changes && !('examPaperId' in changes)) {
+        changes.examPaperId = undefined
       }
       dispatch(setFilter(changes))
     },
@@ -113,19 +115,19 @@ export function QuestionsPage() {
     setFormOpen(true)
   }
 
-  const handleDelete = async (question: QuestionDto) => {
+  async function handleDelete(question: QuestionDto) {
     const preview = (question.content || '').slice(0, 60)
     if (!window.confirm(`Xóa câu hỏi:\n"${preview}..."\n\nHành động này không thể hoàn tác.`)) return
     try {
       await questionsApi.delete(question.id)
       showToast('Đã xóa câu hỏi thành công')
-      dispatch(fetchQuestions(filter))
+      dispatch(fetchQuestions(filterRef.current))
     } catch {
       showToast('Không thể xóa câu hỏi này', false)
     }
   }
 
-  const handleFormSubmit = async (data: CreateQuestionFormData) => {
+  async function handleFormSubmit(data: CreateQuestionFormData) {
     setSubmitting(true)
     try {
       // DeptManager: tự động gán khoa của mình vào câu hỏi
@@ -141,8 +143,8 @@ export function QuestionsPage() {
         showToast('Đã tạo câu hỏi mới')
       }
       setFormOpen(false)
-      dispatch(fetchQuestions(filter))
-    } catch (err: unknown) {
+      dispatch(fetchQuestions(filterRef.current))
+    } catch (err: any) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
         || 'Có lỗi khi lưu câu hỏi'
       showToast(msg, false)
@@ -186,6 +188,7 @@ export function QuestionsPage() {
         onFilterChange={handleFilterChange}
         onCreateClick={handleCreate}
         onImportClick={() => setImportOpen(true)}
+        onImportWordClick={() => setImportWordOpen(true)}
         hideKhoaFilter={isDeptManager}
         khoaList={khoaList}
         kyThiList={kyThiList}
@@ -215,6 +218,15 @@ export function QuestionsPage() {
       <ImportExcelDialog
         open={importOpen}
         onClose={() => setImportOpen(false)}
+        onSuccess={() => {
+          dispatch(fetchQuestions(filterRef.current))
+          showToast('Nhập câu hỏi thành công')
+        }}
+      />
+
+      <ImportWordDialog
+        open={importWordOpen}
+        onOpenChange={setImportWordOpen}
         onSuccess={() => {
           dispatch(fetchQuestions(filterRef.current))
           showToast('Nhập câu hỏi thành công')

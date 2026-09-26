@@ -6,6 +6,7 @@ import type {
   StartExamDto,
   SubmitAnswerDto,
   SubmitExamDto,
+  SubmitMultipleAnswerDto,
   CheatingWarningDto,
 } from './types'
 
@@ -18,6 +19,9 @@ export const examTakingApi = {
 
   saveAnswer: (data: SubmitAnswerDto) =>
     apiClient.post<ApiResponse>('/exam/answer', data),
+
+  saveAnswerMultiple: (data: SubmitMultipleAnswerDto) =>
+    apiClient.post<ApiResponse>('/exam/answer-multiple', data),
 
   getProgress: (examSubmissionId: number) =>
     apiClient.get<ApiResponse<ExamSubmissionDto>>(`/exam/${examSubmissionId}/progress`),

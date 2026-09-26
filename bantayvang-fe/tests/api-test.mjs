@@ -474,7 +474,7 @@ async function testKyThi() {
       thoiGianBatDau: new Date().toISOString(),
       thoiGianKetThuc: new Date(Date.now() + 3600000).toISOString(),
       soLuongToiDa: 50,
-      ghiChu: 'Ca thi test',
+      notes: 'Ca thi test',
     })
     assert(res.data.success, `Create ca thi failed: ${res.data.message}`)
     createdCaThiId = res.data.data.id

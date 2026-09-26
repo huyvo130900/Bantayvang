@@ -220,6 +220,7 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
   ${preview.questions.map((q, i) => `
     <div class="question">
       <p>Câu ${i + 1}: ${q.content ?? ''}</p>
+      ${q.imageUrl ? `<img src="${q.imageUrl}" style="max-height: 200px; max-width: 100%; display: block; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;" />` : ''}
       ${q.questionOptions.length === 0
         ? `<div class="essay-lines">${Array(5).fill('<div class="essay-line"></div>').join('')}</div>`
         : q.questionOptions.map((c, ci) => `<div class="choice">${String.fromCharCode(65 + ci)}. ${c.content ?? ''}</div>`).join('')
@@ -329,6 +330,9 @@ export function ExamPreviewModal({ exam, onClose }: Props) {
                     <span className="text-primary font-bold mr-2">Câu {idx + 1}.</span>
                     {q.content}
                   </p>
+                  {q.imageUrl && (
+                    <img src={q.imageUrl} alt="Minh họa câu hỏi" className="max-h-48 rounded-md border object-contain mb-3" />
+                  )}
                   {q.chuDe && (
                     <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full mb-2 inline-block">{q.chuDe}</span>
                   )}

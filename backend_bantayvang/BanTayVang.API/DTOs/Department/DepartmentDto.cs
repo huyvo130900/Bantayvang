@@ -10,7 +10,7 @@ namespace BanTayVang.API.DTOs.Department
         public string? Description { get; set; }
         public bool Status { get; set; }
         public int? DeptManagerId { get; set; }
-        public string? TenQuanLy { get; set; }
+        public string? ManagerName { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }
@@ -63,20 +63,20 @@ namespace BanTayVang.API.DTOs.Department
         public int DeptId { get; set; }
         public string DepartmentName { get; set; } = string.Empty;
         public int TotalQuestions { get; set; }
-        public int TongSoDeThi { get; set; }
-        public int TongSoThiSinh { get; set; }
-        public double DiemTrungBinh { get; set; }
-        public List<KyThiSummaryDto> KyThiGanDay { get; set; } = new();
+        public int TotalExams { get; set; }
+        public int TotalCandidates { get; set; }
+        public double AverageScore { get; set; }
+        public List<ExamCampaignSummaryDto> RecentCampaigns { get; set; } = new();
     }
 
-    public class KyThiSummaryDto
+    public class ExamCampaignSummaryDto
     {
         public int Id { get; set; }
         public string CampaignName { get; set; } = string.Empty;
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public string Status { get; set; } = string.Empty;
-        public int SoDeThi { get; set; }
-        public int SoThiSinh { get; set; }
+        public int ExamCount { get; set; }
+        public int CandidateCount { get; set; }
     }
 }

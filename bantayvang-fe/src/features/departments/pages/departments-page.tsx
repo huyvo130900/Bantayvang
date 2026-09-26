@@ -52,7 +52,7 @@ export function DepartmentsPage() {
     }
   }, [success, error])
 
-  const load = async (pageNum = page) => {
+  async function load(pageNum = page) {
     setLoading(true)
     try {
       const res = await departmentApi.getAll({ search, page: pageNum, pageSize })
@@ -66,7 +66,7 @@ export function DepartmentsPage() {
     finally { setLoading(false) }
   }
 
-  const handleSubmit = async () => {
+  async function handleSubmit() {
     if (!form.departmentName.trim()) { setError('Vui lòng nhập tên khoa'); return }
     try {
       if (editing) {
@@ -80,7 +80,7 @@ export function DepartmentsPage() {
       setShowForm(false)
       setEditing(null)
       load()
-    } catch (err: unknown) {
+    } catch (err: any) {
       setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Có lỗi xảy ra')
     }
   }
@@ -91,7 +91,7 @@ export function DepartmentsPage() {
     setShowForm(true)
   }
 
-  const handleDelete = async (id: number) => {
+  async function handleDelete(id: number) {
     if (!window.confirm('Vô hiệu hóa khoa này?')) return
     try {
       await departmentApi.delete(id)
@@ -100,7 +100,7 @@ export function DepartmentsPage() {
     } catch { setError('Không thể vô hiệu hóa khoa') }
   }
 
-  const openAssign = async (d: DepartmentDto) => {
+  async function openAssign(d: DepartmentDto) {
     setAssignTarget(d)
     setSelectedManagerId(d.deptManagerId ?? null)
     setLoadingManagers(true)
@@ -111,7 +111,7 @@ export function DepartmentsPage() {
     finally { setLoadingManagers(false) }
   }
 
-  const handleAssign = async () => {
+  async function handleAssign() {
     if (!assignTarget) return
     if (!selectedManagerId) { setError('Vui lòng chọn quản lý'); return }
     setAssigning(true)
@@ -120,12 +120,12 @@ export function DepartmentsPage() {
       setSuccess(`Đã gán quản lý cho ${assignTarget.departmentName}`)
       setAssignTarget(null)
       load()
-    } catch (err: unknown) {
+    } catch (err: any) {
       setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gán quản lý thất bại')
     } finally { setAssigning(false) }
   }
 
-  const handleRemoveManager = async (d: DepartmentDto) => {
+  async function handleRemoveManager(d: DepartmentDto) {
     if (!window.confirm(`Xóa quản lý khỏi ${d.departmentName}?`)) return
     try {
       await departmentApi.assignManager(d.id, { deptManagerId: 0 })
@@ -137,7 +137,7 @@ export function DepartmentsPage() {
   }
 
   // ✨ Download template
-  const handleDownloadTemplate = async () => {
+  async function handleDownloadTemplate() {
     try {
       const response = await departmentApi.downloadImportTemplate()
       const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -152,7 +152,7 @@ export function DepartmentsPage() {
   }
 
   // ✨ Import từ Excel
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     if (!window.confirm(`Import khoa/phòng từ file "${file.name}"?`)) return
@@ -169,7 +169,7 @@ export function DepartmentsPage() {
         errors: data.errors || []
       })
       load()
-    } catch (err: unknown) {
+    } catch (err: any) {
       // Thử lấy chi tiết lỗi từ response body (created/skipped/errors)
       const errData = (err as { response?: { data?: { created?: number; skipped?: number; errors?: string[]; message?: string } } })?.response?.data
       if (errData && (errData.errors?.length || errData.created !== undefined)) {
@@ -297,10 +297,10 @@ export function DepartmentsPage() {
               </p>
             </div>
 
-            {assignTarget.tenQuanLy && (
+            {assignTarget.managerName && (
               <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-700 border border-blue-200">
                 <User className="h-4 w-4 shrink-0" />
-                Quản lý hiện tại: <strong>{assignTarget.tenQuanLy}</strong>
+                Quản lý hiện tại: <strong>{assignTarget.managerName}</strong>
               </div>
             )}
 
@@ -373,11 +373,11 @@ export function DepartmentsPage() {
                   </td>
                   <td className="px-4 py-3 font-medium">{d.departmentName}</td>
                   <td className="px-4 py-3">
-                    {d.tenQuanLy ? (
+                    {d.managerName ? (
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 text-green-700">
                           <User className="h-3.5 w-3.5" />
-                          <span className="font-medium">{d.tenQuanLy}</span>
+                          <span className="font-medium">{d.managerName}</span>
                         </div>
                         <button
                           onClick={() => openAssign(d)}
@@ -409,7 +409,7 @@ export function DepartmentsPage() {
                       <Button variant="ghost" size="icon" title="Gán quản lý" onClick={() => openAssign(d)}>
                         <UserPlus className="h-4 w-4 text-blue-500" />
                       </Button>
-                      {d.tenQuanLy && (
+                      {d.managerName && (
                         <Button variant="ghost" size="icon" title="Xóa quản lý" onClick={() => handleRemoveManager(d)}>
                           <UserX className="h-4 w-4 text-orange-500" />
                         </Button>

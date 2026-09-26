@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { Trash2, Pencil, Building2, ClipboardList } from 'lucide-react'
+import { Trash2, Pencil, Building2, ClipboardList, MonitorPlay } from 'lucide-react'
 import type { ExamCampaignDto } from '../types'
 import { formatDate } from '@/lib/utils'
 
@@ -11,6 +11,7 @@ interface KyThiTableProps {
   onEdit: (examCampaign: ExamCampaignDto) => void
   onDelete: (examCampaign: ExamCampaignDto) => void
   onChangeStatus: (examCampaign: ExamCampaignDto, status: string) => void
+  onMonitor?: (examCampaign: ExamCampaignDto) => void
 }
 
 const STATUS_OPTIONS = [
@@ -27,7 +28,7 @@ const statusColors: Record<string, string> = {
   DaKetThuc: 'bg-gray-100 text-gray-500',
 }
 
-export function KyThiTable({ examCampaigns, isLoading, showKhoa = false, onView, onEdit, onDelete, onChangeStatus }: KyThiTableProps) {
+export function KyThiTable({ examCampaigns, isLoading, showKhoa = false, onView, onEdit, onDelete, onChangeStatus, onMonitor }: KyThiTableProps) {
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -71,16 +72,27 @@ export function KyThiTable({ examCampaigns, isLoading, showKhoa = false, onView,
         <tbody className="divide-y">
           {examCampaigns.map((k) => (
             <tr key={k.id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-4 py-3 text-center">
+              <td className="px-4 py-3 text-center flex flex-col gap-1 items-center">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => onView(k)}
-                  className="h-8 gap-1.5 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 shrink-0 font-medium whitespace-nowrap"
+                  className="h-8 w-full justify-start gap-1.5 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 font-medium whitespace-nowrap"
                 >
                   <ClipboardList className="h-3.5 w-3.5" />
                   Quản lý đề
                 </Button>
+                {onMonitor && (k.status === 'DangDienRa' || k.status === 'DangChuanBi') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onMonitor(k)}
+                    className="h-8 w-full justify-start gap-1.5 text-xs text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700 font-medium whitespace-nowrap"
+                  >
+                    <MonitorPlay className="h-3.5 w-3.5" />
+                    Giám sát thi
+                  </Button>
+                )}
               </td>
               <td className="px-4 py-3 font-mono text-xs text-gray-600">{k.campaignCode}</td>
               <td className="px-4 py-3">
@@ -90,18 +102,36 @@ export function KyThiTable({ examCampaigns, isLoading, showKhoa = false, onView,
                 >
                   {k.campaignName}
                 </button>
+                {k.isPracticeMode && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200 mt-0.5 ml-1">
+                    Luyện tập
+                  </span>
+                )}
                 {/* Chỉ hiện tên khoa dưới tên khi KHÔNG hiện cột Khoa riêng */}
-                {!showKhoa && k.departmentName && (
-                  <p className="text-xs text-gray-400 mt-0.5">{k.departmentName}</p>
+                {!showKhoa && k.departmentNames.length > 0 && (
+                  <p className="text-xs text-gray-400 mt-0.5">{k.departmentNames.join(', ')}</p>
+                )}
+                {k.accessMode === 'AssignedList' && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 mt-0.5">
+                    Danh sách chỉ định
+                  </span>
                 )}
               </td>
               {showKhoa && (
                 <td className="px-4 py-3">
-                  {k.departmentName ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-                      <Building2 className="h-3 w-3" />
-                      {k.departmentName}
+                  {k.accessMode === 'AssignedList' ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                      Danh sách chỉ định
                     </span>
+                  ) : k.departmentNames.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {k.departmentNames.map((name) => (
+                        <span key={name} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                          <Building2 className="h-3 w-3" />
+                          {name}
+                        </span>
+                      ))}
+                    </div>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 whitespace-nowrap">
                       Tất cả các khoa
@@ -110,21 +140,21 @@ export function KyThiTable({ examCampaigns, isLoading, showKhoa = false, onView,
                 </td>
               )}
               <td className="px-4 py-3 text-gray-500 text-xs">
-                <div className="font-medium text-gray-700">{formatDate(k.thoiGianBatDau)}</div>
-                {k.thoiGianKetThuc && (
-                  <div className="text-gray-400 mt-0.5">đến {formatDate(k.thoiGianKetThuc)}</div>
+                <div className="font-medium text-gray-700">{formatDate(k.startTime)}</div>
+                {k.endTime && (
+                  <div className="text-gray-400 mt-0.5">đến {formatDate(k.endTime)}</div>
                 )}
               </td>
               <td className="px-4 py-3 text-center text-gray-600">
-                <span className="font-medium">{k.soLuongDeThi}</span>
+                <span className="font-medium">{k.totalExamPapers}</span>
                 <span className="text-gray-400 text-xs"> đề</span>
-                {k.tongThiSinh > 0 && (
-                  <span className="text-xs text-gray-400 block">{k.tongThiSinh} người</span>
+                {k.totalCandidates > 0 && (
+                  <span className="text-xs text-gray-400 block">{k.totalCandidates} người</span>
                 )}
               </td>
               <td className="px-4 py-3 text-center text-gray-600">
-                {k.soCauDungToiThieu !== undefined && k.soCauDungToiThieu !== null ? (
-                  <span className="font-medium text-gray-900">{k.soCauDungToiThieu} câu</span>
+                {k.minPassQuestions !== undefined && k.minPassQuestions !== null ? (
+                  <span className="font-medium text-gray-900">{k.minPassQuestions} câu</span>
                 ) : (
                   <span className="text-gray-400">—</span>
                 )}

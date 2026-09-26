@@ -20,7 +20,7 @@ export function ExamTakingPage() {
   const [examInfo, setExamInfo] = useState<ExamSubmissionDto | null>(null)
   const [questions, setQuestions] = useState<ExamQuestionDto[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, { choiceId: number | null; choiceIds: number[]; essay: string }>>({})
+  const [answers, setAnswers] = useState<Record<number, { choiceId: number | null; choiceIds: number[]; essay: string; essayImageUrl?: string | null }>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -34,8 +34,91 @@ export function ExamTakingPage() {
   const questionsRef = useRef(questions)
   const isSubmittingRef = useRef(false)
   const isForceTerminatedRef = useRef(false)
-  answersRef.current = answers
-  questionsRef.current = questions
+  const prevIndexRef = useRef(currentIndex)
+  const essayAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    answersRef.current = answers
+    questionsRef.current = questions
+  }, [answers, questions])
+
+  // BUG FIX: answers used to live only in this component's React state and were sent to the
+  // server in a single batch on final "Nộp bài" - a refresh, dropped connection, or closed tab
+  // before that click wiped out every answer for the whole exam (the countdown/session resumed
+  // fine, but GetExamQuestionsAsync restores selections from SubmissionDetail rows that were
+  // never actually written to). Autosave each answer as it changes so those rows stay current.
+  const persistAnswer = useCallback((questionId: number, overrideAns?: { choiceId: number | null; choiceIds: number[]; essay: string; essayImageUrl?: string | null }) => {
+    const question = questionsRef.current.find(q => q.id === questionId)
+    const ans = overrideAns ?? answersRef.current[questionId]
+    if (!question) return
+
+    const hasChoices = question.options && question.options.length > 0
+    if (hasChoices) {
+      const choiceIds = (ans?.choiceIds || []).filter(cid => cid)
+      if (question.allowMultipleSelection) {
+        examTakingApi
+          .saveAnswerMultiple({
+            examSubmissionId: id,
+            questionId,
+            selectedOptionId: choiceIds,
+            isSaved: true,
+          })
+          .catch(() => {})
+      } else {
+        examTakingApi
+          .saveAnswer({
+            examSubmissionId: id,
+            questionId,
+            selectedOptionId: choiceIds[0] ?? null,
+            isSaved: true,
+          })
+          .catch(() => {})
+      }
+    } else {
+      if (!ans?.essay && !ans?.essayImageUrl) return
+      examTakingApi
+        .saveAnswer({
+          examSubmissionId: id,
+          questionId,
+          selectedOptionId: null,
+          essayAnswer: ans?.essay || undefined,
+          essayImageUrl: ans?.essayImageUrl || undefined,
+          isSaved: true,
+        })
+        .catch(() => {})
+    }
+  }, [id])
+
+  // BUG FIX: onEssayChange/onEssayImageChange below only ever updated local React state -
+  // persistAnswer was never called until the student navigated to a different question (the
+  // effect right below). A student who types an essay answer (especially on the last question,
+  // where there's nothing to "navigate away" to) and then crashes/loses connection/closes the tab
+  // before clicking "Nộp bài" loses that answer entirely, since the server never received it -
+  // exactly the class of bug the persistAnswer mechanism itself was added to prevent. Debounce a
+  // save shortly after the student stops typing so it doesn't wait for navigation.
+  const scheduleEssayAutosave = useCallback((questionId: number) => {
+    if (essayAutosaveTimerRef.current) clearTimeout(essayAutosaveTimerRef.current)
+    essayAutosaveTimerRef.current = setTimeout(() => {
+      persistAnswer(questionId)
+    }, 1500)
+  }, [persistAnswer])
+
+  useEffect(() => {
+    return () => {
+      if (essayAutosaveTimerRef.current) clearTimeout(essayAutosaveTimerRef.current)
+    }
+  }, [])
+
+  // Save the answer for whichever question is being navigated AWAY from (covers Next/Previous/
+  // sidebar jump/keyboard nav - every path that changes currentIndex goes through this one place).
+  useEffect(() => {
+    const prevIndex = prevIndexRef.current
+    if (prevIndex !== currentIndex) {
+      if (essayAutosaveTimerRef.current) clearTimeout(essayAutosaveTimerRef.current)
+      const leftQuestion = questionsRef.current[prevIndex]
+      if (leftQuestion) persistAnswer(leftQuestion.id)
+    }
+    prevIndexRef.current = currentIndex
+  }, [currentIndex, persistAnswer])
 
   const unansweredQuestions = questions.filter((q) => {
     const userAns = answers[q.id]
@@ -46,7 +129,8 @@ export function ExamTakingPage() {
       const noChoiceIds = !userAns.choiceIds || userAns.choiceIds.length === 0 || userAns.choiceIds.every(id => id === 0)
       return noChoiceId && noChoiceIds
     } else {
-      return !userAns.essay || userAns.essay.trim() === ''
+      // Considered unanswered if no text and no image
+      return (!userAns.essay || userAns.essay.trim() === '') && !userAns.essayImageUrl
     }
   })
 
@@ -58,7 +142,7 @@ export function ExamTakingPage() {
     try {
       const currentAnswers = answersRef.current
       const currentQuestions = questionsRef.current
-      const danhSachCauTraLoi: any[] = []
+      const answers: any[] = []
 
       currentQuestions.forEach((q) => {
         const userAns = currentAnswers[q.id]
@@ -67,33 +151,34 @@ export function ExamTakingPage() {
           const selectedIds = userAns?.choiceIds || []
           if (selectedIds.length > 0) {
             selectedIds.forEach((choiceId) => {
-              danhSachCauTraLoi.push({
+              answers.push({
                 examSubmissionId: id,
                 questionId: q.id,
-                idLuaChonDaChon: choiceId,
-                daLuu: true,
+                selectedOptionId: choiceId,
+                isSaved: true,
               })
             })
           } else {
-            danhSachCauTraLoi.push({
+            answers.push({
               examSubmissionId: id,
               questionId: q.id,
-              idLuaChonDaChon: null,
-              daLuu: true,
+              selectedOptionId: null,
+              isSaved: true,
             })
           }
         } else {
-          danhSachCauTraLoi.push({
+          answers.push({
             examSubmissionId: id,
             questionId: q.id,
-            idLuaChonDaChon: null,
-            cauTraLoiTuLuan: userAns?.essay || undefined,
-            daLuu: true,
+            selectedOptionId: null,
+            essayAnswer: userAns?.essay || undefined,
+            essayImageUrl: userAns?.essayImageUrl || undefined,
+            isSaved: true,
           })
         }
       })
 
-      const response = await examTakingApi.submit({ examSubmissionId: id, danhSachCauTraLoi })
+      const response = await examTakingApi.submit({ examSubmissionId: id, answers })
       if (response.data.success) {
         if (document.fullscreenElement) {
           await document.exitFullscreen().catch(() => {})
@@ -159,6 +244,7 @@ export function ExamTakingPage() {
   // Show cheating warning when warningCount increases (but not terminated yet)
   useEffect(() => {
     if (warningCount > 0 && !isTerminated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCheatingAlert(`⚠️ Cảnh báo gian lận lần ${warningCount}/${MAX_CHEATING_WARNINGS} — còn ${remainingWarnings} lần nữa bài thi sẽ bị kết thúc!`)
       const t = setTimeout(() => setCheatingAlert(null), 4000)
       return () => clearTimeout(t)
@@ -166,7 +252,7 @@ export function ExamTakingPage() {
   }, [warningCount]) // eslint-disable-line
 
   const { formattedTime, isWarning, isCritical } = useExamTimer({
-    initialSeconds: examInfo?.thoiGianConLai ?? 0,
+    initialSeconds: examInfo?.remainingTimeSeconds ?? 0,
     isLoaded: !!examInfo,
     onTimeUp: handleTimeUp,
   })
@@ -176,7 +262,7 @@ export function ExamTakingPage() {
     loadExamData()
   }, [id]) // eslint-disable-line
 
-  const loadExamData = async () => {
+  async function loadExamData() {
     setLoading(true)
     try {
       const [progressRes, questionsRes] = await Promise.all([
@@ -184,23 +270,40 @@ export function ExamTakingPage() {
         examTakingApi.getQuestions(id),
       ])
       if (progressRes.data.success && progressRes.data.data) {
+        if (progressRes.data.data.status === 'Completed') {
+          navigate(`/exam-result/${id}`)
+          return
+        }
         setExamInfo(progressRes.data.data)
+      } else {
+        setSubmitError(progressRes.data.message || 'Không thể tải thông tin bài thi')
+        setLoading(false)
+        return
       }
+
       if (questionsRes.data.success && questionsRes.data.data) {
         const qs = questionsRes.data.data
+        if (qs.length === 0) {
+           setSubmitError('Đề thi này chưa có câu hỏi nào. Vui lòng liên hệ quản trị viên.')
+           setLoading(false)
+           return
+        }
         setQuestions(qs)
-        const initial: Record<number, { choiceId: number | null; choiceIds: number[]; essay: string }> = {}
+        const initial: Record<number, { choiceId: number | null; choiceIds: number[]; essay: string; essayImageUrl?: string | null }> = {}
         qs.forEach((q: ExamQuestionDto) => {
-          const choiceId = q.idLuaChonDaChon && q.idLuaChonDaChon !== 0 ? q.idLuaChonDaChon : null
-          const rawChoiceIds = q.idLuaChonDaChonList || (q.idLuaChonDaChon ? [q.idLuaChonDaChon] : [])
-          const choiceIds = rawChoiceIds.filter(id => id !== 0)
+          const choiceId = q.selectedOptionId && q.selectedOptionId !== 0 ? q.selectedOptionId : null
+          const rawChoiceIds = q.selectedOptionIdList || (q.selectedOptionId ? [q.selectedOptionId] : [])
+          const choiceIds = rawChoiceIds.filter((id: number) => id !== 0)
           initial[q.id] = {
             choiceId,
             choiceIds,
-            essay: q.cauTraLoiTuLuan || '',
+            essay: q.essayAnswer || '',
+            essayImageUrl: (q as any).essayImageUrl || null
           }
         })
         setAnswers(initial)
+      } else {
+        setSubmitError(questionsRes.data.message || 'Không thể tải danh sách câu hỏi')
       }
     } catch {
       setSubmitError('Không thể tải đề thi')
@@ -215,6 +318,21 @@ export function ExamTakingPage() {
         <div className="text-center text-gray-500">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3" />
           Đang tải đề thi...
+        </div>
+      </div>
+    )
+  }
+
+  if (submitError && (!examInfo || questions.length === 0)) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center space-y-4">
+          <XCircle className="h-16 w-16 text-red-500 mx-auto" />
+          <h2 className="text-2xl font-bold text-red-600">Lỗi Tải Bài Thi</h2>
+          <p className="text-gray-600">{submitError}</p>
+          <Button onClick={() => navigate('/exam-waiting')} className="w-full mt-4">
+            Quay lại phòng chờ
+          </Button>
         </div>
       </div>
     )
@@ -355,15 +473,12 @@ export function ExamTakingPage() {
               selectedChoiceId={answers[currentQuestion.id]?.choiceId ?? null}
               selectedChoiceIds={answers[currentQuestion.id]?.choiceIds ?? []}
               essayAnswer={answers[currentQuestion.id]?.essay ?? ''}
+              essayImageUrl={answers[currentQuestion.id]?.essayImageUrl ?? null}
               onSelectChoice={(choiceId) => {
-                setAnswers(prev => ({
-                  ...prev,
-                  [currentQuestion.id]: {
-                    ...prev[currentQuestion.id],
-                    choiceId,
-                    choiceIds: [choiceId]
-                  }
-                }))
+                const prevAns = answersRef.current[currentQuestion.id]
+                const nextAns = { ...prevAns, choiceId, choiceIds: [choiceId] }
+                setAnswers(prev => ({ ...prev, [currentQuestion.id]: nextAns }))
+                persistAnswer(currentQuestion.id, nextAns)
                 const activeIndex = currentIndex
                 if (activeIndex < questions.length - 1) {
                   setTimeout(() => {
@@ -372,24 +487,22 @@ export function ExamTakingPage() {
                 }
               }}
               onToggleChoiceMultiple={(choiceId) => {
-                setAnswers(prev => {
-                  const currentIds = prev[currentQuestion.id]?.choiceIds || []
-                  const updatedIds = currentIds.includes(choiceId)
-                    ? currentIds.filter(id => id !== choiceId)
-                    : [...currentIds, choiceId]
-                  return {
-                    ...prev,
-                    [currentQuestion.id]: {
-                      ...prev[currentQuestion.id],
-                      choiceIds: updatedIds,
-                      choiceId: updatedIds[0] ?? null
-                    }
-                  }
-                })
+                const currentIds = answersRef.current[currentQuestion.id]?.choiceIds || []
+                const updatedIds = currentIds.includes(choiceId)
+                  ? currentIds.filter(cid => cid !== choiceId)
+                  : [...currentIds, choiceId]
+                const nextAns = { ...answersRef.current[currentQuestion.id], choiceIds: updatedIds, choiceId: updatedIds[0] ?? null }
+                setAnswers(prev => ({ ...prev, [currentQuestion.id]: nextAns }))
+                persistAnswer(currentQuestion.id, nextAns)
               }}
-              onEssayChange={(essay) =>
+              onEssayChange={(essay) => {
                 setAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], essay } }))
-              }
+                scheduleEssayAutosave(currentQuestion.id)
+              }}
+              onEssayImageChange={(essayImageUrl) => {
+                setAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], essayImageUrl } }))
+                scheduleEssayAutosave(currentQuestion.id)
+              }}
             />
           )}
         </div>

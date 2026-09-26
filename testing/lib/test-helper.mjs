@@ -4,7 +4,7 @@
 import https from 'https'
 import axios from 'axios'
 
-const BASE_URL = 'https://localhost:7249/api'
+const BASE_URL = 'http://localhost:5293/api'
 
 // Shared axios instance (skip SSL for localhost)
 export const api = axios.create({

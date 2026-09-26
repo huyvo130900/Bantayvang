@@ -59,7 +59,7 @@ export const statisticsApi = {
     apiClient.get<ApiResponse<DashboardDto>>('/statistics/dashboard'),
 
   getKyThiStatistics: (examCampaignId: number) =>
-    apiClient.get<ApiResponse<ExamStatisticsDto>>(`/statistics/ExamCampaign/${examCampaignId}`),
+    apiClient.get<ApiResponse<ExamStatisticsDto>>(`/statistics/exam-campaign/${examCampaignId}`),
 
   getTopPerformers: (top = 10) =>
     apiClient.get<ApiResponse<TopPerformerDto[]>>(`/statistics/top-performers?top=${top}`),

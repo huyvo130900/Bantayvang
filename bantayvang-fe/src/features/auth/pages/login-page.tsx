@@ -10,7 +10,7 @@ export function LoginPage() {
 
   if (isAuthenticated && user) {
     const role = user.role || user.roleName || ''
-    if (role === ROLES.STUDENT)       return <Navigate to="/exam-waiting" replace />
+    if (role === ROLES.STUDENT || role === ROLES.THI_SINH_NGOAI) return <Navigate to="/exam-waiting" replace />
     if (role === ROLES.DEPT_MANAGER)  return <Navigate to="/dept-manager/dashboard" replace />
     return <Navigate to="/admin/dashboard" replace />
   }

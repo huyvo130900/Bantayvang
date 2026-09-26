@@ -13,6 +13,7 @@ namespace BanTayVang.API.DTOs.Question
         public string? Difficulty { get; set; }
         public string? Department { get; set; }
         public string? ImageUrl { get; set; }
+        public string? SuggestedAnswer { get; set; }
 
         // Additional properties for enhanced question management
         public string? QuestionCategory { get; set; }

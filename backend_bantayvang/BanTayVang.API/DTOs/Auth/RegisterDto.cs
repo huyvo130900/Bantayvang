@@ -28,12 +28,6 @@ namespace BanTayVang.API.DTOs.Auth
         public string FullName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Optional: Role ID (default = 3 - Student)
-        /// 1 = Admin, 2 = Teacher, 3 = Student, 4 = Supervisor
-        /// </summary>
-        public int RoleId { get; set; } = 3;
-
-        /// <summary>
         /// Optional: Mã nhân viên
         /// </summary>
         public string? EmployeeCode { get; set; }

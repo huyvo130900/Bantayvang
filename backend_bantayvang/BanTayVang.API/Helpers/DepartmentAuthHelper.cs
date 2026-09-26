@@ -16,15 +16,15 @@ namespace BanTayVang.API.Helpers
         /// <summary>
         /// Returns null for Admin (unrestricted), or the DeptManagerDeptId for DeptManager.
         /// </summary>
-        public static int? GetDeptManagerKhoaId(ClaimsPrincipal user)
+        public static int? GetDeptManagerDepartmentId(ClaimsPrincipal user)
         {
             if (IsAdmin(user)) return null;
-            var claim = user.FindFirst("id_khoa_quan_ly")?.Value;
+            var claim = user.FindFirst("managed_department_id")?.Value;
             return int.TryParse(claim, out var id) ? id : (int?)null;
         }
 
-        public static string? GetKhoaPhong(ClaimsPrincipal user)
-            => user.FindFirst("khoa_phong")?.Value;
+        public static string? GetDepartmentClaim(ClaimsPrincipal user)
+            => user.FindFirst("department_claim")?.Value;
 
         public static int? GetUserId(ClaimsPrincipal user)
         {
@@ -33,12 +33,12 @@ namespace BanTayVang.API.Helpers
             return int.TryParse(val, out var id) ? id : (int?)null;
         }
 
-        public static bool CanAccessKhoa(ClaimsPrincipal user, string? department)
+        public static bool CanAccessDepartment(ClaimsPrincipal user, string? department)
         {
             if (IsAdmin(user)) return true;
             if (!IsDeptManager(user)) return false;
-            var myKhoa = GetKhoaPhong(user);
-            return string.IsNullOrEmpty(myKhoa) || myKhoa == department;
+            var myDepartment = GetDepartmentClaim(user);
+            return string.IsNullOrEmpty(myDepartment) || myDepartment == department;
         }
     }
 }

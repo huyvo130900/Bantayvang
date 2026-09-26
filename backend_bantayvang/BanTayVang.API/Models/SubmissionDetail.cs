@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace BanTayVang.API.Models;
@@ -19,7 +19,19 @@ public partial class SubmissionDetail
 
     public string? EssayAnswer { get; set; }
 
+    public string? EssayImageUrl { get; set; }
     public double? ScoreObtained { get; set; }
+
+    public string? TeacherComment { get; set; }
+
+    /// <summary>Điểm do AI đề xuất (0, 0.5 hoặc 1)</summary>
+    public double? AiScore { get; set; }
+
+    /// <summary>Nhận xét, phân tích do AI sinh ra</summary>
+    public string? AiComment { get; set; }
+
+    /// <summary>Trạng thái chấm AI: null=chưa yêu cầu, Pending=đang chờ, Processing=đang chạy, Done=hoàn tất, Error=lỗi</summary>
+    public string? AiGradingStatus { get; set; }
 
     public virtual ExamSubmission? ExamSubmission { get; set; }
 

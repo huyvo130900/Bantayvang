@@ -12,7 +12,7 @@
     "test:exams": "node tests/05-exams.test.mjs",
     "test:exam-taking": "node tests/06-exam-taking.test.mjs",
     "test:grading": "node tests/07-grading.test.mjs",
-    "test:kythi": "node tests/08-kythi.test.mjs",
+    "test:examCampaign": "node tests/08-examCampaign.test.mjs",
     "test:notifications": "node tests/09-notifications.test.mjs",
     "test:statistics": "node tests/10-statistics.test.mjs",
     "test:audit": "node tests/11-audit-log.test.mjs",

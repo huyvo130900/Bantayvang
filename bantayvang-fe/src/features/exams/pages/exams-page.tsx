@@ -13,7 +13,7 @@ import { GradingPage } from '@/features/grading/pages/grading-page'
 import { departmentApi } from '@/features/departments/api'
 import { ExamPreviewModal } from '../components/exam-preview-modal'
 import { ROLES } from '@/lib/constants'
-import { kyThiApi } from '@/features/ky-thi/api'
+import { examCampaignApi } from '@/features/ky-thi/api'
 
 export function ExamsPage() {
   const dispatch = useAppDispatch()
@@ -28,6 +28,7 @@ export function ExamsPage() {
   const [assignOpen, setAssignOpen] = useState(false)
   const [statsExam, setStatsExam] = useState<ExamPaperDto | null>(null)
   const [selectedExam, setSelectedExam] = useState<ExamPaperDto | null>(null)
+  const [editingExam, setEditingExam] = useState<ExamPaperDto | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [previewExam, setPreviewExam] = useState<ExamPaperDto | null>(null)
   const [search, setSearch] = useState('')
@@ -48,9 +49,9 @@ export function ExamsPage() {
 
   useEffect(() => {
     dispatch(fetchAllExams())
-    const loadKyThis = async () => {
+    async function loadKyThis() {
       try {
-        const res = await kyThiApi.getAll()
+        const res = await examCampaignApi.getAll()
         if (res.data.success && res.data.data) {
           const list = res.data.data.map(k => ({
             id: k.id,
@@ -65,34 +66,39 @@ export function ExamsPage() {
     loadKyThis()
   }, [dispatch])
 
-  const handleCreateExam = async (data: CreateExamFormData) => {
+  async function handleCreateExam(data: CreateExamFormData) {
     setSubmitting(true)
     try {
-      const createDto = {
+      const dto = {
         examPaperCode: data.examPaperCode,
         examPaperName: data.examPaperName,
         durationMinutes: data.durationMinutes ?? 60,
-        thoiGianBatDau: data.thoiGianBatDau ? data.thoiGianBatDau : undefined,
+        startTime: data.startTime ? data.startTime : undefined,
         status: data.status,
         department: isDeptManager && myKhoa ? myKhoa : data.department,
-        soCauRandom: data.soCauRandom,
-        danhSachIdCauHoi: data.danhSachIdCauHoi ?? [],
+        randomQuestionCount: data.randomQuestionCount,
+        questionIds: data.questionIds ?? [],
         examCampaignId: data.examCampaignId,
-        soCauDungToiThieu: data.soCauDungToiThieu ?? null,
+        minPassQuestions: data.minPassQuestions ?? null,
       }
-      const res = await examsApi.create(createDto)
+      
+      const res = editingExam 
+        ? await examsApi.update(editingExam.id, dto)
+        : await examsApi.create(dto)
+        
       if (res.data.success) {
         if (data.examCampaignId) {
           setDefaultKyThiId(data.examCampaignId)
           localStorage.setItem('bantayvang_last_kythi_id', String(data.examCampaignId))
         }
         setFormOpen(false)
+        setEditingExam(null)
         dispatch(fetchAllExams())
-        showToast('Tạo đề thi thành công')
+        showToast(editingExam ? 'Cập nhật đề thi thành công' : 'Tạo đề thi thành công')
       } else {
-        showToast(res.data.message || 'Tạo đề thi thất bại', false)
+        showToast(res.data.message || (editingExam ? 'Cập nhật thất bại' : 'Tạo đề thi thất bại'), false)
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Có lỗi xảy ra'
       showToast(msg, false)
     } finally {
@@ -100,7 +106,12 @@ export function ExamsPage() {
     }
   }
 
-  const handleToggleStatus = async (exam: ExamPaperDto) => {
+  const handleEditExam = (exam: ExamPaperDto) => {
+    setEditingExam(exam)
+    setFormOpen(true)
+  }
+
+  async function handleToggleStatus(exam: ExamPaperDto) {
     const isActive = exam.status === 'Active'
     const newStatus = isActive ? 'Inactive' : 'Active'
     const label = isActive ? 'Tắt' : 'Bật'
@@ -114,7 +125,7 @@ export function ExamsPage() {
     }
   }
 
-  const handleToggleCongBo = async (exam: ExamPaperDto) => {
+  async function handleToggleCongBo(exam: ExamPaperDto) {
     const newVal = !exam.isResultPublished
     try {
       await departmentApi.toggleExamVisibility(exam.id, { isResultPublished: newVal })
@@ -125,7 +136,7 @@ export function ExamsPage() {
     }
   }
 
-  const handleDelete = async (exam: ExamPaperDto) => {
+  async function handleDelete(exam: ExamPaperDto) {
     if (!window.confirm(`Xóa đề thi "${exam.examPaperName}"? Hành động này không thể hoàn tác.`)) return
     try {
       await examsApiExtended.delete(exam.id)
@@ -141,7 +152,7 @@ export function ExamsPage() {
     setAssignOpen(true)
   }
 
-  const handleAssignUsers = async (examId: number, userIds: number[], note?: string) => {
+  async function handleAssignUsers(examId: number, userIds: number[], note?: string) {
     setSubmitting(true)
     try {
       const res = await examsApi.assignUsers({ examId, userIds, note })
@@ -329,8 +340,9 @@ export function ExamsPage() {
       <ExamTable
         exams={filtered}
         isLoading={isLoading}
-        showKhoa={isAdmin && khoaFilter === null}   // hiện cột Khoa khi admin đang xem "Tất cả"
+        showKhoa={isAdmin && khoaFilter === null}
         onViewAssignments={handleViewAssignments}
+        onEdit={handleEditExam}
         onToggleStatus={handleToggleStatus}
         onToggleCongBo={handleToggleCongBo}
         onDelete={handleDelete}
@@ -342,12 +354,16 @@ export function ExamsPage() {
 
       <ExamFormDialog
         open={formOpen}
-        onClose={() => setFormOpen(false)}
+        onClose={() => {
+          setFormOpen(false)
+          setEditingExam(null)
+        }}
         onSubmit={handleCreateExam}
         isLoading={submitting}
         lockedKhoa={isDeptManager && myKhoa ? myKhoa : undefined}
         kyThiList={kyThiList}
         defaultKyThiId={defaultKyThiId}
+        initialData={editingExam || undefined}
       />
 
       <AssignUsersDialog

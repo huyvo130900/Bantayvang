@@ -30,6 +30,7 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<IEnumerable<Question>> GetAllAsync()
         {
             return await _context.Questions
+                .AsNoTracking()
                 .Include(c => c.QuestionCategory)
                 .Include(c => c.QuestionOptions)
                 .Where(c => c.IsDeleted != true)
@@ -39,6 +40,7 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<PagedResultDto<Question>> GetPagedAsync(int pageNumber, int pageSize)
         {
             var query = _context.Questions
+                .AsNoTracking()
                 .Include(c => c.QuestionCategory)
                 .Include(c => c.QuestionOptions)
                 .Where(c => c.IsDeleted != true);
@@ -65,6 +67,7 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<PagedResultDto<Question>> GetFilteredAsync(QuestionFilterDto filter)
         {
             var query = _context.Questions
+                .AsNoTracking()
                 .Include(c => c.QuestionCategory)
                 .Include(c => c.QuestionOptions)
                 .Include(c => c.ExamPaperQuestions)
@@ -102,9 +105,9 @@ namespace BanTayVang.API.Repositories.Impl
                 query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.ExamPaper != null && dc.ExamPaper.ExamCampaignId == filter.ExamCampaignId.Value));
             }
 
-            if (filter.DeThiId.HasValue)
+            if (filter.ExamPaperId.HasValue)
             {
-                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.ExamPaperId == filter.DeThiId.Value));
+                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.ExamPaperId == filter.ExamPaperId.Value));
             }
 
             if (filter.ShowDuplicatesOnly == true)
@@ -170,9 +173,9 @@ namespace BanTayVang.API.Repositories.Impl
                 query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.ExamPaper != null && dc.ExamPaper.ExamCampaignId == filter.ExamCampaignId.Value));
             }
 
-            if (filter.DeThiId.HasValue)
+            if (filter.ExamPaperId.HasValue)
             {
-                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.ExamPaperId == filter.DeThiId.Value));
+                query = query.Where(c => c.ExamPaperQuestions.Any(dc => dc.ExamPaperId == filter.ExamPaperId.Value));
             }
 
             if (filter.ShowDuplicatesOnly == true)
@@ -189,13 +192,13 @@ namespace BanTayVang.API.Repositories.Impl
             return await query.CountAsync();
         }
 
-        public async Task<Question?> FindDuplicateAsync(string noiDungChuan, string? department)
+        public async Task<Question?> FindDuplicateAsync(string standardizedContent, string? department)
         {
             var khoa = string.IsNullOrEmpty(department) ? null : department.Trim();
             return await _context.Questions
                 .FirstOrDefaultAsync(c => c.IsDeleted != true
                     && c.Content != null
-                    && c.Content.ToLower().Trim() == noiDungChuan
+                    && c.Content.ToLower().Trim() == standardizedContent
                     && (khoa == null ? (c.Department == null || c.Department == "") : c.Department == khoa));
         }
 
@@ -225,7 +228,7 @@ namespace BanTayVang.API.Repositories.Impl
 
         public async Task<Question> AddAsync(Question entity)
         {
-            entity.CreatedAt = DateTime.Now;
+            entity.CreatedAt = DateTime.UtcNow.AddHours(7);
             entity.IsDeleted = false;
             _context.Questions.Add(entity);
             await _context.SaveChangesAsync();
@@ -234,7 +237,7 @@ namespace BanTayVang.API.Repositories.Impl
 
         public async Task<Question> UpdateAsync(Question entity)
         {
-            entity.UpdatedAt = DateTime.Now;
+            entity.UpdatedAt = DateTime.UtcNow.AddHours(7);
             _context.Questions.Update(entity);
             await _context.SaveChangesAsync();
             return entity;
@@ -256,7 +259,7 @@ namespace BanTayVang.API.Repositories.Impl
             if (entity == null) return false;
             
             entity.IsDeleted = true;
-            entity.UpdatedAt = DateTime.Now;
+            entity.UpdatedAt = DateTime.UtcNow.AddHours(7);
             entity.UpdatedBy = updatedBy;
             await _context.SaveChangesAsync();
             return true;
@@ -270,17 +273,27 @@ namespace BanTayVang.API.Repositories.Impl
         public async Task<List<Question>> GetByKhoaPhongAsync(string department)
         {
             return await _context.Questions
+                .AsNoTracking()
                 .Include(c => c.QuestionOptions)
                 .Where(c => c.Department == department && c.IsDeleted != true)
                 .ToListAsync();
         }
 
-        public async Task<List<Question>> GetRandomQuestionsAsync(int count)
+        public async Task<List<Question>> GetRandomQuestionsAsync(int count, int? categoryId = null)
         {
             var query = _context.Questions
+                .AsNoTracking()
                 .Include(c => c.QuestionOptions)
                 .Where(c => c.IsDeleted != true && c.Department != "Không thuộc ngân hàng");
-                
+
+            // BUG FIX: the categoryId filter was accepted by the controller (danhMucId) but never
+            // threaded through to this query, so GET /api/Question/random?danhMucId=X silently
+            // ignored the filter and returned questions from every category.
+            if (categoryId.HasValue)
+            {
+                query = query.Where(c => c.QuestionCategoryId == categoryId.Value);
+            }
+
             return await query
                 .OrderBy(x => Guid.NewGuid())
                 .Take(count)

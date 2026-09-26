@@ -38,7 +38,7 @@ export function NotificationsPage() {
     }
   }, [])
 
-  const loadNotifications = async () => {
+  async function loadNotifications() {
     setIsLoading(true)
     try {
       const response = await notificationsApi.getMyNotifications(unreadOnly || undefined)
@@ -57,7 +57,7 @@ export function NotificationsPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const handleMarkAllRead = async () => {
+  async function handleMarkAllRead() {
     try {
       await notificationsApi.markAllAsRead()
       showToastMsg('Đã đánh dấu tất cả là đã đọc')
@@ -65,14 +65,14 @@ export function NotificationsPage() {
     } catch { /* silent */ }
   }
 
-  const handleDelete = async (id: number) => {
+  async function handleDelete(id: number) {
     try {
       await notificationsApi.delete(id)
       setNotifications((prev) => prev.filter((n) => n.id !== id))
     } catch { /* silent */ }
   }
 
-  const handleMarkRead = async (id: number) => {
+  async function handleMarkRead(id: number) {
     try {
       await notificationsApi.markAsRead(id)
       setNotifications((prev) =>
@@ -81,7 +81,7 @@ export function NotificationsPage() {
     } catch { /* silent */ }
   }
 
-  const handleCreateNotification = async (data: CreateNotificationDto) => {
+  async function handleCreateNotification(data: CreateNotificationDto) {
     try {
       if (data.userId || data.department) {
         await notificationsApi.create(data)
@@ -258,6 +258,7 @@ function BroadcastDialog({
         .then((res) => {
           if (res.data.success && res.data.data) setUsers(res.data.data)
         })
+        .catch(() => {})
         .finally(() => setLoadingUsers(false))
     }
   }, [targetType, isDeptManager, user?.department])
@@ -274,6 +275,7 @@ function BroadcastDialog({
               setDepartments(res.data.data)
             }
           })
+          .catch(() => {})
           .finally(() => setLoadingDepts(false))
       }
     }

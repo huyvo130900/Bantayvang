@@ -111,14 +111,34 @@ namespace BanTayVang.API.Services.Impl
                         // Lấy tổng điểm của đề thi
                         totalScore = a.Exam?.TotalScore;
 
-                        // Đạt nếu >= 50% tổng điểm
-                        if (examSubmission.TotalScore.HasValue && a.Exam?.TotalScore > 0)
+                        // BUG FIX: this compared examSubmission.TotalScore (always normalized to a
+                        // 0-10 scale by ExamSubmissionService.CalculateTotalScore) against half of
+                        // ExamPaper.TotalScore, which UpdateExamAsync/CreateExamAsync set to the RAW
+                        // QUESTION COUNT (10, 20, 50...), not a 0-10 value - comparing a normalized
+                        // score against a raw-count-derived threshold. It only ever produced a
+                        // sensible result by coincidence for a paper with exactly 10 questions; for
+                        // any other count it silently made passing impossible (>10 questions) or
+                        // trivially easy (<10 questions). Use the same CorrectAnswers/MinPassQuestions
+                        // comparison already established as the canonical pass rule elsewhere
+                        // (ExamService.GetMyResultsAsync).
+                        // ExamPaper.MinPassQuestions is essentially never populated in practice
+                        // (the pass threshold is configured on the ExamCampaign instead) - fall
+                        // back to the campaign's value when the paper doesn't have its own.
+                        int? minPassQuestions = a.Exam?.MinPassQuestions;
+                        if (minPassQuestions == null && examSubmission.ExamCampaignId.HasValue)
                         {
-                            datYeuCau = examSubmission.TotalScore >= (a.Exam.TotalScore * 0.5);
+                            minPassQuestions = await _context.Set<ExamCampaign>()
+                                .Where(c => c.Id == examSubmission.ExamCampaignId.Value)
+                                .Select(c => c.MinPassQuestions)
+                                .FirstOrDefaultAsync();
+                        }
+                        if (examSubmission.CorrectAnswers.HasValue && minPassQuestions.HasValue)
+                        {
+                            datYeuCau = examSubmission.CorrectAnswers.Value >= minPassQuestions.Value;
                         }
 
                         // Redact scores if not published
-                        var isPublished = examSubmission.CongBoRieng || (a.Exam?.IsResultPublished ?? false);
+                        var isPublished = examSubmission.IsIndividualResultPublished || (a.Exam?.IsResultPublished ?? false);
                         if (!isPublished)
                         {
                             diemSo = null;
@@ -185,9 +205,25 @@ namespace BanTayVang.API.Services.Impl
                 int count = 0;
                 foreach (var userId in dto.UserIds)
                 {
-                    var exists = await _context.ExamAssignments
-                        .AnyAsync(a => a.ExamId == dto.ExamId && a.UserId == userId);
-                    if (exists) continue;
+                    // BUG FIX: this used to check AnyAsync(...) with no IsActive filter, so a user
+                    // who was ever assigned then removed (RemoveAssignmentAsync only soft-deletes via
+                    // IsActive=false, never deletes the row) could NEVER be re-assigned again - this
+                    // loop would find their old inactive row, silently `continue`, and report success
+                    // with a lower count while doing nothing for that user. Now reactivates the
+                    // existing row instead of treating "a row exists" as "already assigned".
+                    var existing = await _context.ExamAssignments
+                        .FirstOrDefaultAsync(a => a.ExamId == dto.ExamId && a.UserId == userId);
+                    if (existing != null)
+                    {
+                        if (existing.IsActive) continue;
+
+                        existing.IsActive = true;
+                        existing.AssignedAt = DateTime.UtcNow;
+                        existing.CustomStartTime = dto.CustomStartTime;
+                        existing.Note = dto.Note;
+                        count++;
+                        continue;
+                    }
 
                     var assignment = new ExamAssignment
                     {
@@ -259,12 +295,29 @@ namespace BanTayVang.API.Services.Impl
                 if (examSubmission.Status != "InProgress")
                     return new BaseResponseDto { Success = false, Message = "Chỉ gia hạn bài thi đang làm" };
 
-                var assignment = await _context.ExamAssignments
-                    .FirstOrDefaultAsync(a => a.ExamId == examSubmission.ExamPaperId && a.UserId == examSubmission.UserId);
+                var assignmentId = await _context.ExamAssignments
+                    .Where(a => a.ExamId == examSubmission.ExamPaperId && a.UserId == examSubmission.UserId)
+                    .Select(a => (int?)a.Id)
+                    .FirstOrDefaultAsync();
 
-                if (assignment == null)
+                // BUG FIX: this used to load the ExamAssignment entity, read-modify-write
+                // ExtraMinutes/Note in memory, then SaveChangesAsync - a classic lost-update.
+                // Two supervisors (or one double-clicking) extending the same student's time
+                // concurrently would both read the same starting ExtraMinutes, and the second
+                // SaveChangesAsync would silently overwrite the first extension instead of
+                // stacking. ExecuteUpdateAsync's SetProperty expressions are translated to a
+                // single atomic "SET X = X + @p" UPDATE, so concurrent extensions always stack.
+                if (assignmentId.HasValue)
                 {
-                    assignment = new ExamAssignment
+                    await _context.ExamAssignments
+                        .Where(a => a.Id == assignmentId.Value)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(a => a.ExtraMinutes, a => (a.ExtraMinutes ?? 0) + dto.AdditionalMinutes)
+                            .SetProperty(a => a.Note, a => (a.Note ?? "") + $"; Gia hạn thêm {dto.AdditionalMinutes}p: {dto.Reason}"));
+                }
+                else
+                {
+                    var assignment = new ExamAssignment
                     {
                         ExamId = examSubmission.ExamPaperId ?? 0,
                         UserId = examSubmission.UserId ?? 0,
@@ -274,13 +327,23 @@ namespace BanTayVang.API.Services.Impl
                         Note = $"Gia hạn: {dto.Reason}"
                     };
                     _context.ExamAssignments.Add(assignment);
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (DbUpdateException)
+                    {
+                        // Lost the race to create the first assignment row for this pair (the
+                        // UX_ExamAssignments_User_Exam unique index rejected it) - someone else's
+                        // concurrent extend-time just created it, so fold this grant into theirs.
+                        _context.Entry(assignment).State = EntityState.Detached;
+                        await _context.ExamAssignments
+                            .Where(a => a.ExamId == examSubmission.ExamPaperId && a.UserId == examSubmission.UserId)
+                            .ExecuteUpdateAsync(s => s
+                                .SetProperty(a => a.ExtraMinutes, a => (a.ExtraMinutes ?? 0) + dto.AdditionalMinutes)
+                                .SetProperty(a => a.Note, a => (a.Note ?? "") + $"; Gia hạn thêm {dto.AdditionalMinutes}p: {dto.Reason}"));
+                    }
                 }
-                else
-                {
-                    assignment.ExtraMinutes = (assignment.ExtraMinutes ?? 0) + dto.AdditionalMinutes;
-                    assignment.Note = $"{assignment.Note}; Gia hạn thêm {dto.AdditionalMinutes}p: {dto.Reason}";
-                }
-                await _context.SaveChangesAsync();
                 return new BaseResponseDto { Success = true, Message = $"Đã gia hạn thêm {dto.AdditionalMinutes} phút" };
             }
             catch (Exception ex)

@@ -1,5 +1,6 @@
 using BanTayVang.API.DTOs.Category;
 using BanTayVang.API.DTOs.Common;
+using BanTayVang.API.Helpers;
 using BanTayVang.API.Models;
 using BanTayVang.API.Repositories.Interfaces;
 using BanTayVang.API.Services.Interfaces;
@@ -24,16 +25,16 @@ namespace BanTayVang.API.Services.Impl
 
         #region Question Type (Loai cau hoi) Operations
 
-        public async Task<BaseResponseDto<List<LoaicauhoiDto>>> GetAllQuestionTypesAsync()
+        public async Task<BaseResponseDto<List<QuestionCategoryDto>>> GetAllQuestionTypesAsync()
         {
             try
             {
                 var types = await _categoryRepository.GetAllAsync();
-                var result = new List<LoaicauhoiDto>();
+                var result = new List<QuestionCategoryDto>();
                 
                 foreach (var t in types)
                 {
-                    result.Add(new LoaicauhoiDto
+                    result.Add(new QuestionCategoryDto
                     {
                         Id = t.Id,
                         CategoryName = t.CategoryName,
@@ -42,7 +43,7 @@ namespace BanTayVang.API.Services.Impl
                     });
                 }
 
-                return new BaseResponseDto<List<LoaicauhoiDto>>
+                return new BaseResponseDto<List<QuestionCategoryDto>>
                 {
                     Success = true,
                     Message = "Lấy danh sách loại câu hỏi thành công",
@@ -52,7 +53,7 @@ namespace BanTayVang.API.Services.Impl
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting all question types");
-                return new BaseResponseDto<List<LoaicauhoiDto>>
+                return new BaseResponseDto<List<QuestionCategoryDto>>
                 {
                     Success = false,
                     Message = "Lỗi khi lấy danh sách loại câu hỏi",
@@ -61,25 +62,25 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto<LoaicauhoiDto>> GetQuestionTypeByIdAsync(int id)
+        public async Task<BaseResponseDto<QuestionCategoryDto>> GetQuestionTypeByIdAsync(int id)
         {
             try
             {
                 var type = await _categoryRepository.GetByIdAsync(id);
                 if (type == null)
                 {
-                    return new BaseResponseDto<LoaicauhoiDto>
+                    return new BaseResponseDto<QuestionCategoryDto>
                     {
                         Success = false,
                         Message = "Không tìm thấy loại câu hỏi"
                     };
                 }
 
-                return new BaseResponseDto<LoaicauhoiDto>
+                return new BaseResponseDto<QuestionCategoryDto>
                 {
                     Success = true,
                     Message = "Lấy thông tin loại câu hỏi thành công",
-                    Data = new LoaicauhoiDto
+                    Data = new QuestionCategoryDto
                     {
                         Id = type.Id,
                         CategoryName = type.CategoryName,
@@ -91,7 +92,7 @@ namespace BanTayVang.API.Services.Impl
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting question type by id");
-                return new BaseResponseDto<LoaicauhoiDto>
+                return new BaseResponseDto<QuestionCategoryDto>
                 {
                     Success = false,
                     Message = "Lỗi khi lấy thông tin loại câu hỏi",
@@ -100,13 +101,13 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto<LoaicauhoiDto>> CreateQuestionTypeAsync(CreateLoaicauhoiDto createDto)
+        public async Task<BaseResponseDto<QuestionCategoryDto>> CreateQuestionTypeAsync(CreateQuestionCategoryDto createDto)
         {
             try
             {
                 if (await _categoryRepository.ExistsByNameAsync(createDto.CategoryName))
                 {
-                    return new BaseResponseDto<LoaicauhoiDto>
+                    return new BaseResponseDto<QuestionCategoryDto>
                     {
                         Success = false,
                         Message = "Tên loại câu hỏi đã tồn tại"
@@ -121,11 +122,11 @@ namespace BanTayVang.API.Services.Impl
 
                 var saved = await _categoryRepository.AddAsync(type);
 
-                return new BaseResponseDto<LoaicauhoiDto>
+                return new BaseResponseDto<QuestionCategoryDto>
                 {
                     Success = true,
                     Message = "Tạo loại câu hỏi thành công",
-                    Data = new LoaicauhoiDto
+                    Data = new QuestionCategoryDto
                     {
                         Id = saved.Id,
                         CategoryName = saved.CategoryName,
@@ -137,7 +138,7 @@ namespace BanTayVang.API.Services.Impl
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating question type");
-                return new BaseResponseDto<LoaicauhoiDto>
+                return new BaseResponseDto<QuestionCategoryDto>
                 {
                     Success = false,
                     Message = "Lỗi khi tạo loại câu hỏi",
@@ -146,14 +147,14 @@ namespace BanTayVang.API.Services.Impl
             }
         }
 
-        public async Task<BaseResponseDto<LoaicauhoiDto>> UpdateQuestionTypeAsync(int id, CreateLoaicauhoiDto updateDto)
+        public async Task<BaseResponseDto<QuestionCategoryDto>> UpdateQuestionTypeAsync(int id, CreateQuestionCategoryDto updateDto)
         {
             try
             {
                 var type = await _categoryRepository.GetByIdAsync(id);
                 if (type == null)
                 {
-                    return new BaseResponseDto<LoaicauhoiDto>
+                    return new BaseResponseDto<QuestionCategoryDto>
                     {
                         Success = false,
                         Message = "Không tìm thấy loại câu hỏi"
@@ -162,22 +163,48 @@ namespace BanTayVang.API.Services.Impl
 
                 if (await _categoryRepository.ExistsByNameAsync(updateDto.CategoryName, id))
                 {
-                    return new BaseResponseDto<LoaicauhoiDto>
+                    return new BaseResponseDto<QuestionCategoryDto>
                     {
                         Success = false,
                         Message = "Tên loại câu hỏi đã tồn tại"
                     };
                 }
 
+                // BUG FIX: "is this an essay category" is decided purely by matching CategoryName
+                // against EssayQuestionHelper.EssayCategoryNamesArray - a check baked into the SQL
+                // queries that gate auto-publish (AutoPublishExpiredExamsJob), manual publish
+                // (DepartmentController/GradingController), and the "pending essay grading" queue.
+                // Renaming a category that already has questions - e.g. "TL" -> "Tự luận (mở)" -
+                // flips whether every one of those questions is recognised as an essay, with no
+                // warning: auto-publish stops seeing them as ungraded and can publish scores that
+                // never counted their tự luận part, and the grading queue stops surfacing them to
+                // teachers at all. Block only the destructive direction (existing questions whose
+                // essay/non-essay classification would flip); a brand-new, still-empty category can
+                // still be renamed freely before any question is attached to it.
+                var questionCount = await _categoryRepository.GetQuestionCountAsync(id);
+                if (questionCount > 0)
+                {
+                    bool wasEssay = EssayQuestionHelper.IsEssayCategory(type.CategoryName);
+                    bool willBeEssay = EssayQuestionHelper.IsEssayCategory(updateDto.CategoryName);
+                    if (wasEssay != willBeEssay)
+                    {
+                        return new BaseResponseDto<QuestionCategoryDto>
+                        {
+                            Success = false,
+                            Message = $"Không thể đổi tên: danh mục này đang có {questionCount} câu hỏi sử dụng, và việc đổi tên sẽ làm thay đổi cách hệ thống nhận diện đây là câu {(wasEssay ? "tự luận" : "trắc nghiệm")} hay không - có thể làm sai lệch việc chấm điểm/công bố điểm cho các câu hỏi đó. Vui lòng tạo danh mục mới thay vì đổi tên danh mục này."
+                        };
+                    }
+                }
+
                 type.CategoryName = updateDto.CategoryName;
                 type.Description = updateDto.Description;
                 await _categoryRepository.UpdateAsync(type);
 
-                return new BaseResponseDto<LoaicauhoiDto>
+                return new BaseResponseDto<QuestionCategoryDto>
                 {
                     Success = true,
                     Message = "Cập nhật loại câu hỏi thành công",
-                    Data = new LoaicauhoiDto
+                    Data = new QuestionCategoryDto
                     {
                         Id = type.Id,
                         CategoryName = type.CategoryName,
@@ -189,7 +216,7 @@ namespace BanTayVang.API.Services.Impl
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating question type");
-                return new BaseResponseDto<LoaicauhoiDto>
+                return new BaseResponseDto<QuestionCategoryDto>
                 {
                     Success = false,
                     Message = "Lỗi khi cập nhật loại câu hỏi",

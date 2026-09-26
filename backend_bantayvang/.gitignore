@@ -38,6 +38,10 @@ bld/
 # Uncomment if you have tasks that create the project's static files in wwwroot
 #wwwroot/
 
+# User-uploaded content (question images, essay attachments) - runtime data, not source.
+# wwwroot/templates/ (app-provided import templates) is intentionally still tracked.
+/BanTayVang.API/wwwroot/uploads/
+
 # Visual Studio 2017 auto generated files
 Generated\ Files/
 
@@ -363,3 +367,8 @@ MigrationBackup/
 FodyWeavers.xsd
 
 /BanTayVang.API/appsettings.Development.json
+
+# Chua secret that (DB password, JWT signing key, Gemini API key) - KHONG duoc commit.
+# Da bi commit truoc day trong lich su git - da doi sang key/mat khau moi (xem audit-findings).
+# Dung appsettings.json.example lam mau, copy thanh appsettings.json va dien gia tri that cuc bo.
+/BanTayVang.API/appsettings.json

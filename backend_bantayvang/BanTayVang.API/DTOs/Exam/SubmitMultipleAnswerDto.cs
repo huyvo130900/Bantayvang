@@ -9,6 +9,7 @@ namespace BanTayVang.API.DTOs.Exam
         public int QuestionId { get; set; }
         public List<int> SelectedOptionId { get; set; } = new();
         public string? EssayAnswer { get; set; }
+        public string? EssayImageUrl { get; set; } // URL ảnh đính kèm cho câu tự luận
         public bool IsSaved { get; set; }
     }
-}
+}
