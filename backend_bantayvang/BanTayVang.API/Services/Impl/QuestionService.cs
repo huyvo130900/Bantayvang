@@ -999,6 +999,15 @@ namespace BanTayVang.API.Services.Impl
                 if (errors.Count > 0)
                     return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = $"File Word có {errors.Count} lỗi. Không thể thêm câu hỏi vào ngân hàng. Vui lòng sửa lại file.\nChi tiết: {string.Join("; ", errors)}" };
 
+                // BUG FIX: a document whose paragraphs don't match the "Câu N:" heading pattern at
+                // all (wrong heading style, wrong numbering format, scanned/image-only content...)
+                // parses to an empty question list with zero errors too - this used to fall through
+                // to the save loop below (a no-op on an empty list) and return Success=true with
+                // "Import thành công 0/0 câu hỏi từ Word.", which reads as a completed import to an
+                // admin instead of a parsing failure they need to fix their document for.
+                if (questions.Count == 0)
+                    return new BaseResponseDto<List<QuestionDto>> { Success = false, Message = "Không tìm thấy câu hỏi nào trong file Word. Kiểm tra lại định dạng tiêu đề câu hỏi (vd: \"Câu 1:\")." };
+
                 // Lưu câu hỏi hợp lệ vào DB với transaction
                 var saved = new List<Question>();
                 using var transaction = await _questionRepository.BeginTransactionAsync();

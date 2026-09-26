@@ -191,6 +191,9 @@ interface KyThiItem {
   id: number; campaignName: string; campaignCode: string
   startTime?: string; endTime?: string
   status: string; soCaThi?: number; organizedBy?: string
+  // Kỳ thi giờ có thể gán 1-n khoa (xem ky-thi/types.ts ExamCampaignDto.departmentNames) -
+  // organizedBy một mình không còn đủ để biết kỳ thi này thuộc (các) khoa nào.
+  departmentNames?: string[]
   minPassQuestions?: number | null
 }
 
@@ -327,8 +330,12 @@ export function ResultsByKyThiPage() {
       let list: KyThiItem[] = res.data?.data || []
 
       // DeptManager chỉ thấy kỳ thi của khoa mình
+      // BUG FIX: chỉ so sánh organizedBy (chuỗi tự do) trong khi kỳ thi giờ có thể gán 1-n khoa
+      // qua departmentNames - 1 kỳ thi gán đúng khoa của DeptManager nhưng có organizedBy khác
+      // (hoặc rỗng) sẽ biến mất khỏi danh sách của họ, khiến họ không xem/công bố được kết quả
+      // của chính khoa mình.
       if (isDeptManager && myKhoa) {
-        list = list.filter((k) => k.organizedBy === myKhoa)
+        list = list.filter((k) => k.departmentNames?.includes(myKhoa) || k.organizedBy === myKhoa)
       }
 
       setKyThiList(list)
@@ -448,7 +455,7 @@ export function ResultsByKyThiPage() {
 
   // Lấy tất cả các khoa từ danh sách kỳ thi để hiển thị trong bộ lọc
   const uniqueDeptsFilter = useMemo(() => {
-    const depts = new Set(kyThiList.map(k => k.organizedBy).filter(Boolean) as string[])
+    const depts = new Set(kyThiList.flatMap(k => k.departmentNames?.length ? k.departmentNames : (k.organizedBy ? [k.organizedBy] : [])))
     return Array.from(depts).sort()
   }, [kyThiList])
 
@@ -459,10 +466,12 @@ export function ResultsByKyThiPage() {
         kt.campaignName?.toLowerCase().includes(filterKyThiName.toLowerCase()) ||
         kt.campaignCode?.toLowerCase().includes(filterKyThiName.toLowerCase())
 
+      // BUG FIX: chỉ so sánh organizedBy trong khi kỳ thi giờ có thể gán 1-n khoa qua
+      // departmentNames - dùng cả 2 để không làm biến mất kỳ thi đa khoa khỏi bộ lọc.
       const matchKhoa = !filterKyThiKhoa || (
         filterKyThiKhoa === 'Tất cả các khoa'
-          ? !kt.organizedBy
-          : kt.organizedBy === filterKyThiKhoa
+          ? !kt.organizedBy && !kt.departmentNames?.length
+          : kt.departmentNames?.includes(filterKyThiKhoa) || kt.organizedBy === filterKyThiKhoa
       )
 
       // Lọc theo khoảng thời gian nếu người dùng nhập cả 2 mốc và mốc 2 >= mốc 1

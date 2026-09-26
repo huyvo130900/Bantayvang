@@ -1004,7 +1004,7 @@ namespace BanTayVang.API.Services.Impl
                             StartTime = examCampaign.StartTime,
                             DurationMinutes = duration,
                             Status = "Active",
-                            Department = targetDeptNames != null ? string.Join(", ", targetDeptNames) : null,
+                            Department = DepartmentLabelHelper.BuildDepartmentLabel(targetDeptNames),
                             CreatedAt = DateTime.UtcNow.AddHours(7),
                             CreatedBy = createdBy,
                             ExamCampaignId = examCampaign.Id,

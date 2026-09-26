@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { registrationApi } from '../api'
+import { authApi } from '@/features/auth/api'
 import { departmentApi } from '@/features/departments/api'
 import type { DepartmentDto } from '@/features/departments/types'
 
@@ -30,6 +31,80 @@ export function PublicRegistrationPage() {
     departmentId: '',
     examPurpose: '',
   })
+
+  // BUG FIX: the backend has a full OTP email-verification flow (send code / verify code) built
+  // specifically for this public registration form, but this page never called either endpoint -
+  // anyone could submit with any email (including someone else's), which then silently received
+  // the real approval/login-credentials email once an admin approved the application. Wire up the
+  // existing authApi.sendEmailVerificationCode/verifyEmailCode calls and require a verified email
+  // (for the CURRENT value of the field) before the form can be submitted.
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null)
+  const [isSendingCode, setIsSendingCode] = useState(false)
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false)
+  const isEmailVerified = verifiedEmail !== null && verifiedEmail === formData.email.trim().toLowerCase()
+
+  // BUG FIX: the backend only accepts a verified email for 30 minutes after verification
+  // (EmailVerificationService.ConsumeWindowMinutes) - without this, the "✓ Đã xác thực" checkmark
+  // and enabled submit button stayed stuck forever in the UI even after that window passed (e.g.
+  // an applicant who verifies then spends a while filling out the rest of the form), so submit
+  // would suddenly fail with a confusing "please verify your email" error despite the visible
+  // checkmark. Proactively expire the client-side flag a little before the real 30-minute window
+  // so the UI asks for a fresh code instead of the backend rejecting a stale one.
+  useEffect(() => {
+    if (!verifiedEmail) return
+    const timer = setTimeout(() => {
+      setVerifiedEmail(null)
+      setOtpSent(false)
+      showToast('Mã xác thực đã hết hạn, vui lòng xác thực lại email', false)
+    }, 25 * 60 * 1000)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verifiedEmail])
+
+  async function handleSendCode() {
+    if (!formData.email.trim()) {
+      showToast('Vui lòng nhập email trước', false)
+      return
+    }
+    setIsSendingCode(true)
+    try {
+      const res = await authApi.sendEmailVerificationCode(formData.email.trim())
+      if (res.data.success) {
+        setOtpSent(true)
+        setVerifiedEmail(null)
+        showToast(res.data.message || 'Đã gửi mã xác thực, vui lòng kiểm tra email', true)
+      } else {
+        showToast(res.data.message || 'Không thể gửi mã xác thực', false)
+      }
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Có lỗi khi gửi mã xác thực', false)
+    } finally {
+      setIsSendingCode(false)
+    }
+  }
+
+  async function handleVerifyCode() {
+    if (!otpCode.trim()) {
+      showToast('Vui lòng nhập mã xác thực', false)
+      return
+    }
+    setIsVerifyingCode(true)
+    try {
+      const res = await authApi.verifyEmailCode(formData.email.trim(), otpCode.trim())
+      if (res.data.success) {
+        setVerifiedEmail(formData.email.trim().toLowerCase())
+        showToast('Xác thực email thành công', true)
+      } else {
+        showToast(res.data.message || 'Mã xác thực không đúng hoặc đã hết hạn', false)
+      }
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Có lỗi khi xác thực mã', false)
+    } finally {
+      setIsVerifyingCode(false)
+    }
+  }
 
 
   useEffect(() => {
@@ -60,8 +135,10 @@ export function PublicRegistrationPage() {
       showToast('Vui lòng chọn khoa/phòng muốn thi', false)
       return
     }
-
-
+    if (!isEmailVerified) {
+      showToast('Vui lòng xác thực email trước khi gửi đăng ký', false)
+      return
+    }
 
     setIsSubmitting(true)
     try {
@@ -132,14 +209,57 @@ export function PublicRegistrationPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label htmlFor="email" className="text-sm font-medium leading-none">Email *</label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="example@gmail.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="example@gmail.com"
+                    value={formData.email}
+                    onChange={(e) => {
+                      setFormData({ ...formData, email: e.target.value })
+                      // Đổi email thì mã xác thực cũ (nếu có) không còn hợp lệ cho email mới nữa.
+                      setVerifiedEmail(null)
+                    }}
+                    disabled={isEmailVerified}
+                    required
+                    className="flex-1"
+                  />
+                  {isEmailVerified ? (
+                    <span className="flex items-center gap-1 px-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md whitespace-nowrap">
+                      ✓ Đã xác thực
+                    </span>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="whitespace-nowrap"
+                      onClick={handleSendCode}
+                      disabled={isSendingCode || !formData.email.trim()}
+                    >
+                      {isSendingCode ? 'Đang gửi...' : otpSent ? 'Gửi lại mã' : 'Gửi mã xác thực'}
+                    </Button>
+                  )}
+                </div>
+                {otpSent && !isEmailVerified && (
+                  <div className="flex gap-2 pt-1">
+                    <Input
+                      placeholder="Nhập mã 6 số từ email"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      maxLength={6}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="whitespace-nowrap"
+                      onClick={handleVerifyCode}
+                      disabled={isVerifyingCode || !otpCode.trim()}
+                    >
+                      {isVerifyingCode ? 'Đang xác thực...' : 'Xác thực'}
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -213,10 +333,10 @@ export function PublicRegistrationPage() {
             <div className="flex flex-col gap-3 pt-4">
               <Button
                 type="submit"
-                className="w-full py-6 text-lg font-bold rounded-xl transition-all hover:scale-[1.02] shadow-xl bg-[#5b8e23] hover:bg-[#4a731c] hover:shadow-2xl"
-                disabled={isSubmitting}
+                className="w-full py-6 text-lg font-bold rounded-xl transition-all hover:scale-[1.02] shadow-xl bg-[#5b8e23] hover:bg-[#4a731c] hover:shadow-2xl disabled:opacity-50 disabled:hover:scale-100"
+                disabled={isSubmitting || !isEmailVerified}
               >
-                {isSubmitting ? 'Đang xử lý...' : 'Gửi Đăng Ký'}
+                {isSubmitting ? 'Đang xử lý...' : !isEmailVerified ? 'Vui lòng xác thực email trước' : 'Gửi Đăng Ký'}
               </Button>
               <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/login')} disabled={isSubmitting}>
                 Quay lại Đăng nhập

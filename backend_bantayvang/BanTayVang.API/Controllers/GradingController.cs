@@ -681,11 +681,7 @@ namespace BanTayVang.API.Controllers
                 var duration = (b.SubmitTime.HasValue && b.StartTime.HasValue)
                     ? (int)(b.SubmitTime.Value - b.StartTime.Value).TotalMinutes : 0;
 
-                var isPass = b.ExamCampaign?.MinPassQuestions != null 
-                    ? (b.CorrectAnswers ?? 0) >= b.ExamCampaign.MinPassQuestions.Value 
-                    : (b.ExamPaper?.MinPassQuestions != null 
-                        ? (b.CorrectAnswers ?? 0) >= b.ExamPaper.MinPassQuestions.Value 
-                        : true);
+                var isPass = PassRuleHelper.ComputePass(b.CorrectAnswers, b.ExamCampaign?.MinPassQuestions, b.ExamPaper?.MinPassQuestions);
 
                 ws.Cell(row, 1).Value = stt++;
                 ws.Cell(row, 2).Value = b.User?.Username ?? "";

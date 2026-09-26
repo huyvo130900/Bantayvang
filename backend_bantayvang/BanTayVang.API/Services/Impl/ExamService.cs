@@ -1,6 +1,7 @@
 using AutoMapper;
 using BanTayVang.API.DTOs.Common;
 using BanTayVang.API.DTOs.Exam;
+using BanTayVang.API.Helpers;
 using BanTayVang.API.Models;
 using BanTayVang.API.Repositories.Interfaces;
 using BanTayVang.API.Services.Interfaces;
@@ -161,7 +162,12 @@ namespace BanTayVang.API.Services.Impl
                             ExamPaperCode = b.ExamPaperCode ?? b.ExamPaper?.ExamPaperCode,
                             StartTime = b.StartTime,
                             IsResultPublished = isPublished,
-                            Pass = isPublished && (b.CorrectAnswers ?? 0) >= (b.ExamPaper?.MinPassQuestions ?? 0),
+                            // BUG FIX: `?? 0` on a genuinely unconfigured MinPassQuestions collapsed
+                            // into "CorrectAnswers >= 0", which is always true - a student with 0
+                            // configured threshold saw Pass=true regardless of score, even 1/20.
+                            // Uses the same shared rule as everywhere else (PassRuleHelper) instead
+                            // of a locally copy-pasted version, to avoid the two silently drifting.
+                            Pass = isPublished && PassRuleHelper.ComputePass(b.CorrectAnswers, b.ExamCampaign?.MinPassQuestions, b.ExamPaper?.MinPassQuestions),
                         };
                     })
                     .ToList();

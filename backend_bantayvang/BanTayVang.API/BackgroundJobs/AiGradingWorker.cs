@@ -34,9 +34,35 @@ namespace BanTayVang.API.BackgroundJobs
         {
             _logger.LogInformation("AiGradingWorker started - cho doi cau tu luan can cham...");
 
-            await foreach (var item in _queue.ReadAllAsync(stoppingToken))
+            // BUG FIX (resilience): ProcessItemAsync already guards every item with its own
+            // try/catch, but the `await foreach` enumeration itself had no equivalent guard -
+            // unlike AutoPublishExpiredExamsJob, whose per-iteration try/catch keeps its polling
+            // loop alive across transient errors. BackgroundService does not restart a faulted
+            // ExecuteAsync, so any exception escaping the enumeration (not just per-item failures)
+            // would permanently stop AI grading for the rest of the app's lifetime with no recovery.
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await ProcessItemAsync(item.SubmissionDetailId, item.AutoFinalize, stoppingToken);
+                try
+                {
+                    await foreach (var item in _queue.ReadAllAsync(stoppingToken))
+                    {
+                        await ProcessItemAsync(item.SubmissionDetailId, item.AutoFinalize, stoppingToken);
+                    }
+                    break; // channel completed normally (never happens today - never explicitly closed)
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break; // expected on app shutdown
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "AiGradingWorker: loi khong mong doi trong vong lap doc queue, se thu lai sau 5s");
+                    // BUG FIX: retried with no backoff at all - if the channel read fails
+                    // immediately and persistently, this would spin the loop as fast as possible,
+                    // pegging a CPU core and flooding the logs. Mirror AutoPublishExpiredExamsJob's
+                    // delay-between-iterations pattern instead of retrying instantly forever.
+                    try { await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken); } catch (OperationCanceledException) { break; }
+                }
             }
 
             _logger.LogInformation("AiGradingWorker stopped.");

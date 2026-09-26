@@ -23,6 +23,7 @@ namespace BanTayVang.API.Repositories.Impl
         {
             return await _dbSet
                 .Include(b => b.ExamPaper)
+                .Include(b => b.ExamCampaign)
                 .Where(b => b.UserId == userId)
                 .OrderByDescending(b => b.SubmitTime)
                 .ToListAsync();

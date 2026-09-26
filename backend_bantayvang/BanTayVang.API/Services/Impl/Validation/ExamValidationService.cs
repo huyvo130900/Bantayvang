@@ -230,9 +230,7 @@ namespace BanTayVang.API.Services.Impl.Validation
                     // in the specific people an admin uploaded (see ExamCampaignController's
                     // assign-from-excel) - before this check, ExamAssignment rows were written but
                     // never read anywhere in the actual start-exam path, so ANY authenticated user
-                    // could still start it same as a normal campaign. This is the real gate; the
-                    // department-based path (AccessMode == "Department") is unaffected and keeps
-                    // relying on ExamCampaignService.GetAllAsync's list-visibility filter as before.
+                    // could still start it same as a normal campaign. This is the real gate.
                     if (campaignInfo?.AccessMode == "AssignedList")
                     {
                         var isAssigned = await _context.ExamAssignments
@@ -241,6 +239,42 @@ namespace BanTayVang.API.Services.Impl.Validation
                         {
                             errors.Add("Bạn không có trong danh sách được chỉ định thi kỳ thi này");
                             return ValidationResultDto.Failure(errors, "NOT_ASSIGNED");
+                        }
+                    }
+                    else
+                    {
+                        // BUG FIX (security): "AccessMode == Department" was NEVER actually enforced
+                        // here - ExamCampaignService.GetAllAsync's department filter is only a
+                        // list-VISIBILITY filter for the student's own exam list UI, not an access
+                        // control gate. A student who obtained an ExamPaperCode or ExamCampaignId for
+                        // a campaign restricted to a DIFFERENT department (shared link, browser
+                        // history, another student, a guessed/incremented id) could call this
+                        // start-exam endpoint directly and bypass the department scoping entirely.
+                        // Only applies to Student/ThiSinhNgoai - Admin/DeptManager are already
+                        // trusted with cross-department access elsewhere in this codebase.
+                        var callerRole = await _context.Users
+                            .Where(u => u.Id == userId)
+                            .Select(u => new { u.RoleId, u.Department })
+                            .FirstOrDefaultAsync(cancellationToken);
+                        if (callerRole != null && (callerRole.RoleId == 3 || callerRole.RoleId == 6))
+                        {
+                            var campaignDeptNames = await _context.Set<ExamCampaignDepartment>()
+                                .Where(kd => kd.ExamCampaignId == campaignIdForStatusCheck.Value)
+                                .Select(kd => kd.Department!.DepartmentName)
+                                .ToListAsync(cancellationToken);
+                            // Case/whitespace-insensitive match: User.Department is a free-text field
+                            // (UserManagementService.cs sets it straight from the admin edit-user form,
+                            // not validated against the Departments table), so an exact match here would
+                            // false-lock legitimate students out of their own department's exam over a
+                            // harmless casing/whitespace difference.
+                            var callerDeptNormalized = callerRole.Department?.Trim();
+                            if (campaignDeptNames.Count > 0 &&
+                                (string.IsNullOrEmpty(callerDeptNormalized) ||
+                                 !campaignDeptNames.Any(n => string.Equals(n?.Trim(), callerDeptNormalized, StringComparison.OrdinalIgnoreCase))))
+                            {
+                                errors.Add("Kỳ thi này không thuộc khoa của bạn");
+                                return ValidationResultDto.Failure(errors, "DEPARTMENT_MISMATCH");
+                            }
                         }
                     }
                 }

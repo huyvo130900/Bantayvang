@@ -70,8 +70,25 @@ namespace BanTayVang.API.Services.Impl
                 if (!validation.IsValid)
                     return new FileUploadResult { Success = false, Message = validation.ErrorMessage };
 
-                // Build path
-                var uploadsFolder = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", subFolder);
+                // BUG FIX (path traversal): subFolder comes straight from an attacker-controlled
+                // query string (UploadController.UploadImage's [FromQuery] string folder, reachable
+                // by any ManagementOnly caller including DeptManager) with no sanitization. The same
+                // Path.Combine-discards-the-base-on-a-rooted-segment behavior already fixed for
+                // DeleteFileAsync below applies here too - e.g. folder="../../../somewhere" (or an
+                // absolute path) would let an uploaded file land outside wwwroot/uploads entirely.
+                // Sanitize the same way: reject rooted/traversal segments and verify containment.
+                var uploadsRoot = Path.GetFullPath(Path.Combine(_env.ContentRootPath, "wwwroot", "uploads"));
+                var safeSubFolder = string.IsNullOrWhiteSpace(subFolder) || Path.IsPathRooted(subFolder) || subFolder.Contains("..")
+                    ? "questions"
+                    : subFolder;
+                var uploadsFolder = Path.GetFullPath(Path.Combine(uploadsRoot, safeSubFolder));
+                if (!uploadsFolder.StartsWith(uploadsRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(uploadsFolder, uploadsRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("Blocked attempt to upload outside the uploads directory: {SubFolder}", subFolder);
+                    safeSubFolder = "questions";
+                    uploadsFolder = Path.Combine(uploadsRoot, safeSubFolder);
+                }
                 if (!Directory.Exists(uploadsFolder))
                     Directory.CreateDirectory(uploadsFolder);
 
@@ -89,7 +106,7 @@ namespace BanTayVang.API.Services.Impl
                 // Build URL
                 var request = _httpContextAccessor.HttpContext?.Request;
                 var baseUrl = request != null ? $"{request.Scheme}://{request.Host}" : "";
-                var fileUrl = $"{baseUrl}/uploads/{subFolder}/{safeFileName}";
+                var fileUrl = $"{baseUrl}/uploads/{safeSubFolder}/{safeFileName}";
 
                 _logger.LogInformation("File uploaded: {FileName}, Size: {Size}", safeFileName, file.Length);
 

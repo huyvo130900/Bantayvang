@@ -1,6 +1,7 @@
 using AutoMapper;
 using BanTayVang.API.DTOs.Common;
 using BanTayVang.API.DTOs.Exam;
+using BanTayVang.API.Helpers;
 using BanTayVang.API.Models;
 using BanTayVang.API.Repositories.Interfaces;
 using BanTayVang.API.Services.Interfaces.Exams;
@@ -47,13 +48,20 @@ namespace BanTayVang.API.Services.Impl.Exams
                 if (createDto.ExamCampaignId.HasValue)
                 {
                     examCampaign = await _context.Set<ExamCampaign>()
-                        .Include(k => k.Department)
+                        .Include(k => k.ExamCampaignDepartments).ThenInclude(kd => kd.Department)
                         .FirstOrDefaultAsync(k => k.Id == createDto.ExamCampaignId.Value, cancellationToken);
                     if (examCampaign != null)
                     {
                         createDto.ExamPaperName = examCampaign.CampaignName;
                         createDto.StartTime = examCampaign.StartTime;
-                        createDto.Department = examCampaign.Department?.DepartmentName;
+                        // BUG FIX: examCampaign.Department (the obsolete single-department nav) is
+                        // never populated anymore now that a campaign can be gán cho 1-n khoa via
+                        // ExamCampaignDepartments - reading it here always produced null, silently
+                        // setting the manually-created ExamPaper's Department to null and breaking
+                        // every DeptManager ownership check on it afterward (ExamController compares
+                        // ExamPaper.Department == myDepartment everywhere). Derive it from the actual
+                        // department list instead.
+                        createDto.Department = DepartmentLabelHelper.BuildDepartmentLabel(examCampaign);
 
                         if (examCampaign.DurationMinutes.HasValue && examCampaign.DurationMinutes.Value > 0)
                         {
@@ -246,7 +254,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                 if (updateDto.ExamCampaignId.HasValue)
                 {
                     examCampaign = await _context.Set<ExamCampaign>()
-                        .Include(k => k.Department)
+                        .Include(k => k.ExamCampaignDepartments).ThenInclude(kd => kd.Department)
                         .FirstOrDefaultAsync(k => k.Id == updateDto.ExamCampaignId.Value, cancellationToken);
                     if (examCampaign != null)
                     {
@@ -280,7 +288,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                     existingExam.ExamCampaignId = updateDto.ExamCampaignId;
                     if (examCampaign != null)
                     {
-                        existingExam.Department = examCampaign.Department?.DepartmentName;
+                        existingExam.Department = DepartmentLabelHelper.BuildDepartmentLabel(examCampaign);
                     }
                     existingExam.UpdatedBy = updatedBy;
                     existingExam.UpdatedAt = DateTime.UtcNow.AddHours(7); // BUG FIX: see CreateExamAsync above

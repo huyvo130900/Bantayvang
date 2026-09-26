@@ -412,11 +412,18 @@ namespace BanTayVang.API.Services.Impl.Exams
             await _securityService.LogSecurityEventAsync(
                 actionType, actionDescription, supervisorId, "High", CancellationToken.None);
 
+            // BUG FIX: this force-submit/auto-lock audit entry never carried a department tag,
+            // even though the owning department is already resolvable here (User.Department /
+            // ExamPaper.Department, same fields the isOwner check above already reads). Without it,
+            // AuditLogController.GetByExamSession's department-scoped filter (Where(l.Department ==
+            // myDepartment), used for DeptManagers) silently excludes this entry from a DeptManager's
+            // own exam-session audit trail even for their own students.
             await _auditLogService.LogActionAsync(
                 actionType: actionType,
                 description: actionDescription,
                 userId: supervisorId,
-                examSubmissionId: examSubmissionId);
+                examSubmissionId: examSubmissionId,
+                department: examSubmission.User?.Department ?? examSubmission.ExamPaper?.Department);
 
             await _examMonitorNotifier.NotifyForceSubmitTriggered(examSubmissionId);
 

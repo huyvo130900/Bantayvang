@@ -465,6 +465,7 @@ namespace BanTayVang.API.Services.Impl.Exams
                             SelectedOptionId = selectedChoiceIds.Count > 0 ? (int?)selectedChoiceIds[0] : null,
                             SelectedOptionIdList = selectedChoiceIds,
                             EssayAnswer = SanitizeHtmlContent(questionDetails.First().EssayAnswer),
+                            EssayImageUrl = questionDetails.First().EssayImageUrl,
                             IsSaved = questionDetails.Any(c => c.IsSaved ?? false),
                             AllowMultipleSelection = question.QuestionOptions.Count(l => l.IsCorrect == true) > 1
                         };

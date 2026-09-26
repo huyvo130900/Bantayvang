@@ -21,8 +21,14 @@ namespace BanTayVang.API.Services.Impl.Import
         private readonly IQuestionRepository _questionRepository;
         private MainDocumentPart? _currentMainDocumentPart;
 
+        // BUG FIX: [Cc]â[uU] only varied the case of C/U, not the "â" itself - a document whose
+        // headings are styled/typed in ALL CAPS ("CÂU 1:", uppercase Â = U+00C2, common with a Word
+        // "all caps" character style or text copy-pasted from an uppercase-heading template) never
+        // matched, so currentQuestion stayed null for the whole file and the import silently
+        // produced 0 questions with no error pointing at the real cause. RegexOptions.IgnoreCase
+        // handles "â"/"Â" (and any other case variant) correctly instead of hand-picking letters.
         private static readonly Regex QuestionStartRegex =
-            new(@"^[Cc]â[uU]\s+(\d+)\s*[:\.]\s*(.*)", RegexOptions.Compiled | RegexOptions.Singleline);
+            new(@"^câu\s+(\d+)\s*[:\.]\s*(.*)", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private static readonly Regex OptionRegex =
             new(@"^([A-Da-d])\s*[\.\)]\s*(.*)", RegexOptions.Compiled | RegexOptions.Singleline);
         private static readonly Regex DifficultyRegex =
@@ -224,8 +230,17 @@ namespace BanTayVang.API.Services.Impl.Import
                 currentQuestion.CreatedAt = DateTime.UtcNow.AddHours(7);
                 currentQuestion.IsDeleted = false;
                 // Đáp án mẫu (chỉ áp dụng cho Tự luận, bỏ trống cũng không sao)
-                if (!string.IsNullOrWhiteSpace(currentSuggestedAnswer))
-                    currentQuestion.SuggestedAnswer = currentSuggestedAnswer;
+                // BUG FIX: "Giải thích:"/"Lời giải:" (currentExplanation) was parsed via
+                // ExplanationRegex but never attached to the built Question anywhere - the regex,
+                // the state variable and its per-question reset all existed purely to compute a
+                // value that was then discarded. Question has no dedicated Explanation column, so
+                // fold it into SuggestedAnswer (the closest existing field) instead of silently
+                // dropping content an admin explicitly wrote in their Word document.
+                var suggestedAnswerParts = new[] { currentSuggestedAnswer, currentExplanation }
+                    .Where(s => !string.IsNullOrWhiteSpace(s));
+                var combinedSuggestedAnswer = string.Join("\n\n", suggestedAnswerParts);
+                if (!string.IsNullOrWhiteSpace(combinedSuggestedAnswer))
+                    currentQuestion.SuggestedAnswer = combinedSuggestedAnswer;
 
                 if (pendingImageEmbedId != null)
                 {

@@ -7,6 +7,7 @@ export interface ExamQuestionDto {
   selectedOptionId: number | null
   selectedOptionIdList?: number[]
   essayAnswer: string | null
+  essayImageUrl?: string | null
   isSaved: boolean
   allowMultipleSelection?: boolean
 }

@@ -472,7 +472,11 @@ export function KyThiPage() {
             Tất cả ({scopedKyThis.length})
           </button>
           {khoaList.map((khoa) => {
-            const count = scopedKyThis.filter((k) => k.organizedBy === khoa).length
+            // BUG FIX: tab badge count still compared organizedBy (free-text) while the tabs
+            // themselves and khoaFiltered were already migrated to departmentNames - a multi-
+            // department campaign matched by the filter (kt.departmentNames.includes) showed
+            // a wrong (usually 0) count next to the tab that lists it.
+            const count = scopedKyThis.filter((k) => k.departmentNames.includes(khoa)).length
             return (
               <button
                 key={khoa}

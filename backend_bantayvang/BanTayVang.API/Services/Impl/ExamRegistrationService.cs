@@ -94,6 +94,23 @@ namespace BanTayVang.API.Services.Impl
                 throw new Exception(string.Join(" ", passwordValidation.Errors));
             }
 
+            // BUG FIX (security): IEmailVerificationService was injected into this class and
+            // AuthController already exposes send-verification-code/verify-email-code specifically
+            // for this public registration form (purpose="RegisterVerification"), but this method
+            // never actually checked the result - an anonymous caller could skip both endpoints
+            // entirely and register with any email address (including someone else's), which then
+            // receives the real approval/login-credentials email once an admin approves the
+            // application. ConsumeVerifiedCodeAsync marks the code used (one-time) the moment it
+            // succeeds, so this must run LAST - after every other validation above already passed -
+            // otherwise a registration that fails on a later check (password strength, duplicate
+            // CCCD...) would burn the applicant's verification and force them to re-verify their
+            // email again for no reason, even though it genuinely was verified moments ago.
+            var emailVerified = await _emailVerificationService.ConsumeVerifiedCodeAsync(dto.Email, "RegisterVerification");
+            if (!emailVerified)
+            {
+                throw new Exception("Vui lòng xác thực email trước khi gửi đăng ký.");
+            }
+
             string hashedPw = _passwordService.HashPassword(dto.Password);
 
             var reg = new ExamRegistration

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { auditLogApi, type AuditLogEntry } from '../api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { RefreshCw, Download, ChevronLeft, ChevronRight, Search, FilterX, Activity, AlertCircle, Users, FileText, Calendar, Clock, Globe } from 'lucide-react'
+import { RefreshCw, Download, ChevronLeft, ChevronRight, Search, FilterX, Activity, AlertCircle, Users, FileText, Calendar, Clock, Globe, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { translateAction } from '../action-translator'
 
@@ -27,6 +27,12 @@ export function AuditLogPage() {
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null)
+  // BUG FIX: "Có lỗi (4xx, 5xx)" used to call setActionFilter('ERROR'), which the backend matches
+  // against ActionType (e.g. "POST /api/auth/login") via a Contains() - the literal string "ERROR"
+  // never appears there, so the button always returned an empty/unfiltered result. There's no
+  // server-side status-code filter to send instead, so filter client-side on the already-fetched
+  // page (same statusCode field the stats widget below already uses).
+  const [errorsOnly, setErrorsOnly] = useState(false)
 
   const loadLogs = useCallback(async (pg = page) => {
     setIsLoading(true)
@@ -63,7 +69,7 @@ export function AuditLogPage() {
 
   const handleSearch = () => { setPage(1); loadLogs(1) }
   const handleClear = () => {
-    setActionFilter(''); setUserFilter(''); setDateFrom(''); setDateTo('')
+    setActionFilter(''); setUserFilter(''); setDateFrom(''); setDateTo(''); setErrorsOnly(false)
     setPage(1); setTimeout(() => loadLogs(1), 50)
   }
 
@@ -71,7 +77,7 @@ export function AuditLogPage() {
   const applyQuickFilter = (type: 'error' | 'login' | 'today') => {
     handleClear()
     setTimeout(() => {
-      if (type === 'error') setActionFilter('ERROR') // Tùy thuộc backend, tạm dùng filter action
+      if (type === 'error') setErrorsOnly(true)
       if (type === 'login') setActionFilter('/api/auth/login')
       if (type === 'today') {
         const today = new Date().toISOString().split('T')[0]
@@ -114,7 +120,7 @@ export function AuditLogPage() {
     return { errors, logins, total: logs.length }
   }, [logs])
 
-  const pagedLogs = logs
+  const pagedLogs = errorsOnly ? logs.filter(l => (l.statusCode || 0) >= 400) : logs
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto bg-gray-50/30 min-h-screen">
@@ -232,6 +238,17 @@ export function AuditLogPage() {
           </span>
         </div>
 
+        {errorsOnly && (
+          <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 text-xs text-amber-700 flex items-center justify-between gap-2">
+            {/* BUG FIX: errorsOnly only filters the 50 logs already fetched for the CURRENT page -
+                pagination (page/totalPages, Next/Prev) still reflects the server's unfiltered
+                total, so an admin could see "0 kết quả, Trang 1/40" and wrongly conclude there are
+                no errors at all, when errors may simply be on other pages. Make the limitation
+                explicit instead of implying this is a full search across all logs. */}
+            <span>Chỉ lọc trong {logs.length} bản ghi của trang hiện tại (Trang {page}/{totalPages}) - không phải toàn bộ nhật ký.</span>
+            <button type="button" className="underline shrink-0" onClick={() => setErrorsOnly(false)}>Bỏ lọc</button>
+          </div>
+        )}
         <div className="divide-y divide-gray-50 overflow-x-auto min-h-[400px]">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
@@ -241,7 +258,7 @@ export function AuditLogPage() {
           ) : pagedLogs.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
               <FileText className="h-10 w-10 mb-3 text-gray-200" />
-              <p>Không tìm thấy bản ghi nào phù hợp.</p>
+              <p>{errorsOnly ? 'Không có lỗi nào trong trang hiện tại - thử xem trang khác.' : 'Không tìm thấy bản ghi nào phù hợp.'}</p>
             </div>
           ) : (
             pagedLogs.map((log) => {
@@ -346,8 +363,7 @@ export function AuditLogPage() {
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelectedLog(null)} className="rounded-full hover:bg-gray-200">
-                <FilterX className="h-5 w-5 text-gray-500" /> 
-                {/* Fallback to Close icon look using CSS or lucide X, I will use text 'X' if X is not imported, let's just use text for now since X is not imported */}
+                <X className="h-5 w-5 text-gray-500" />
                 <span className="sr-only">Đóng</span>
               </Button>
             </div>

@@ -478,11 +478,7 @@ namespace BanTayVang.API.Services.Impl
                 CorrectAnswers = examSubmission.CorrectAnswers,
                 TotalQuestions = examSubmission.TotalQuestions,
                 Status = examSubmission.Status,
-                Pass = examSubmission.ExamCampaign?.MinPassQuestions != null 
-                    ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamCampaign.MinPassQuestions.Value 
-                    : (examSubmission.ExamPaper?.MinPassQuestions != null 
-                        ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamPaper.MinPassQuestions.Value 
-                        : true),
+                Pass = PassRuleHelper.ComputePass(examSubmission.CorrectAnswers, examSubmission.ExamCampaign?.MinPassQuestions, examSubmission.ExamPaper?.MinPassQuestions),
                 MinPassQuestions = examSubmission.ExamCampaign?.MinPassQuestions ?? examSubmission.ExamPaper?.MinPassQuestions,
                 WarningCount = examSubmission.WarningCount,
                 IsResultPublished = examSubmission.IsIndividualResultPublished || (examSubmission.ExamPaper?.IsResultPublished ?? false),
@@ -616,11 +612,7 @@ namespace BanTayVang.API.Services.Impl
                 CorrectAnswers = examSubmission.CorrectAnswers,
                 TotalQuestions = examSubmission.TotalQuestions,
                 Status = examSubmission.Status,
-                Pass = examSubmission.ExamCampaign?.MinPassQuestions != null 
-                    ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamCampaign.MinPassQuestions.Value 
-                    : (examSubmission.ExamPaper?.MinPassQuestions != null 
-                        ? (examSubmission.CorrectAnswers ?? 0) >= examSubmission.ExamPaper.MinPassQuestions.Value 
-                        : true),
+                Pass = PassRuleHelper.ComputePass(examSubmission.CorrectAnswers, examSubmission.ExamCampaign?.MinPassQuestions, examSubmission.ExamPaper?.MinPassQuestions),
                 MinPassQuestions = examSubmission.ExamCampaign?.MinPassQuestions ?? examSubmission.ExamPaper?.MinPassQuestions,
                 WarningCount = examSubmission.WarningCount,
                 IsResultPublished = examSubmission.IsIndividualResultPublished || (examSubmission.ExamPaper?.IsResultPublished ?? false),
@@ -776,11 +768,7 @@ namespace BanTayVang.API.Services.Impl
                         CorrectAnswers = b.CorrectAnswers,
                         TotalQuestions = b.TotalQuestions,
                         Status = b.Status,
-                        Pass = b.ExamCampaign?.MinPassQuestions != null 
-                            ? (b.CorrectAnswers ?? 0) >= b.ExamCampaign.MinPassQuestions.Value 
-                            : (b.ExamPaper?.MinPassQuestions != null 
-                                ? (b.CorrectAnswers ?? 0) >= b.ExamPaper.MinPassQuestions.Value 
-                                : true),
+                        Pass = PassRuleHelper.ComputePass(b.CorrectAnswers, b.ExamCampaign?.MinPassQuestions, b.ExamPaper?.MinPassQuestions),
                         MinPassQuestions = b.ExamCampaign?.MinPassQuestions ?? b.ExamPaper?.MinPassQuestions,
                         WarningCount = b.WarningCount,
                         IsResultPublished = b.IsIndividualResultPublished || (b.ExamPaper?.IsResultPublished ?? false),

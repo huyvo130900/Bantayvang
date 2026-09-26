@@ -36,6 +36,7 @@ export function ExamTakingPage() {
   const isForceTerminatedRef = useRef(false)
   const prevIndexRef = useRef(currentIndex)
   const essayAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const touchedEssayQuestionsRef = useRef<Set<number>>(new Set())
   useEffect(() => {
     answersRef.current = answers
     questionsRef.current = questions
@@ -74,7 +75,18 @@ export function ExamTakingPage() {
           .catch(() => {})
       }
     } else {
-      if (!ans?.essay && !ans?.essayImageUrl) return
+      // BUG FIX: this used to skip saving whenever essay/essayImageUrl were both empty - meant to
+      // avoid a pointless request for a question the student never touched, but `ans` always
+      // exists once the exam loads (initialized for every question, touched or not), so an empty
+      // essay/image can equally mean "the student deliberately cleared a previously-saved answer".
+      // Skipping the save in that case left the OLD non-empty answer stranded on the server if the
+      // student then crashed/closed the tab before clicking "Nộp bài" - the opposite-direction case
+      // this whole autosave mechanism exists to prevent. Always sync the current (possibly empty)
+      // state instead of guessing whether it's "untouched" or "cleared" - EXCEPT when the question
+      // has no content and was never touched at all: that combination can only be "student merely
+      // navigated past it", so skip the request rather than firing one for every essay question in
+      // the exam on every Next/Previous click.
+      if (!touchedEssayQuestionsRef.current.has(questionId) && !ans?.essay && !ans?.essayImageUrl) return
       examTakingApi
         .saveAnswer({
           examSubmissionId: id,
@@ -298,7 +310,7 @@ export function ExamTakingPage() {
             choiceId,
             choiceIds,
             essay: q.essayAnswer || '',
-            essayImageUrl: (q as any).essayImageUrl || null
+            essayImageUrl: q.essayImageUrl || null
           }
         })
         setAnswers(initial)
@@ -496,10 +508,12 @@ export function ExamTakingPage() {
                 persistAnswer(currentQuestion.id, nextAns)
               }}
               onEssayChange={(essay) => {
+                touchedEssayQuestionsRef.current.add(currentQuestion.id)
                 setAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], essay } }))
                 scheduleEssayAutosave(currentQuestion.id)
               }}
               onEssayImageChange={(essayImageUrl) => {
+                touchedEssayQuestionsRef.current.add(currentQuestion.id)
                 setAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], essayImageUrl } }))
                 scheduleEssayAutosave(currentQuestion.id)
               }}

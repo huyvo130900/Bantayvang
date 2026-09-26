@@ -4,6 +4,7 @@ import { AlertCircle, Lock, User, FileText, Clock } from 'lucide-react'
 import type { ActiveStudentMonitor } from './use-monitor-signalr'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { MAX_CHEATING_WARNINGS } from '@/lib/constants'
 
 interface StudentMonitorCardProps {
   student: ActiveStudentMonitor
@@ -11,7 +12,10 @@ interface StudentMonitorCardProps {
 }
 
 export function StudentMonitorCard({ student, onForceSubmit }: StudentMonitorCardProps) {
-  const isLocked = student.warningCount >= 6
+  // BUG FIX: was hardcoded `>= 6` next to a hardcoded "/5" display below - the two disagreed
+  // (a proctor saw "5/5", implying maxed-out/locked, on a card that wasn't actually locked yet
+  // since the real threshold is 6). Use the single shared constant for both.
+  const isLocked = student.warningCount >= MAX_CHEATING_WARNINGS
   const isCompleted = student.status === 'Completed'
   
   let borderColor = 'border-gray-200'
@@ -56,7 +60,7 @@ export function StudentMonitorCard({ student, onForceSubmit }: StudentMonitorCar
         </div>
         <div className="flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-gray-500" />
-          <span>Lỗi vi phạm: <strong>{student.warningCount}/5</strong></span>
+          <span>Lỗi vi phạm: <strong>{student.warningCount}/{MAX_CHEATING_WARNINGS}</strong></span>
         </div>
         {student.startTime && (
           <div className="flex items-center gap-2">

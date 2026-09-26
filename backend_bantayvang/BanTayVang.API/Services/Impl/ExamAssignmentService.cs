@@ -1,5 +1,6 @@
 using BanTayVang.API.DTOs.Common;
 using BanTayVang.API.DTOs.Exam;
+using BanTayVang.API.Helpers;
 using BanTayVang.API.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -121,21 +122,21 @@ namespace BanTayVang.API.Services.Impl
                         // trivially easy (<10 questions). Use the same CorrectAnswers/MinPassQuestions
                         // comparison already established as the canonical pass rule elsewhere
                         // (ExamService.GetMyResultsAsync).
-                        // ExamPaper.MinPassQuestions is essentially never populated in practice
-                        // (the pass threshold is configured on the ExamCampaign instead) - fall
-                        // back to the campaign's value when the paper doesn't have its own.
-                        int? minPassQuestions = a.Exam?.MinPassQuestions;
-                        if (minPassQuestions == null && examSubmission.ExamCampaignId.HasValue)
+                        // BUG FIX: precedence used to be ExamPaper-first / ExamCampaign-second (and
+                        // left datYeuCau null/undetermined when nothing was configured), the reverse
+                        // of the canonical rule used everywhere else (GradingService.cs x3,
+                        // ExamService.GetMyResultsAsync). Now uses the same shared PassRuleHelper
+                        // instead of a locally copy-pasted version, to avoid the two silently
+                        // drifting the next time this rule needs to change.
+                        int? campaignMinPassQuestions = null;
+                        if (examSubmission.ExamCampaignId.HasValue)
                         {
-                            minPassQuestions = await _context.Set<ExamCampaign>()
+                            campaignMinPassQuestions = await _context.Set<ExamCampaign>()
                                 .Where(c => c.Id == examSubmission.ExamCampaignId.Value)
                                 .Select(c => c.MinPassQuestions)
                                 .FirstOrDefaultAsync();
                         }
-                        if (examSubmission.CorrectAnswers.HasValue && minPassQuestions.HasValue)
-                        {
-                            datYeuCau = examSubmission.CorrectAnswers.Value >= minPassQuestions.Value;
-                        }
+                        datYeuCau = PassRuleHelper.ComputePass(examSubmission.CorrectAnswers, campaignMinPassQuestions, a.Exam?.MinPassQuestions);
 
                         // Redact scores if not published
                         var isPublished = examSubmission.IsIndividualResultPublished || (a.Exam?.IsResultPublished ?? false);
