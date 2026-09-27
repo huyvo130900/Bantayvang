@@ -197,7 +197,7 @@ export function ExamResultsTable({
                       const max = MAX_CHEATING_WARNINGS
                       const color = total === 0
                         ? 'text-gray-400'
-                        : total >= max
+                        : total > max
                           ? 'text-red-600 font-semibold'
                           : 'text-orange-600 font-medium'
                       return (
@@ -256,7 +256,12 @@ export function ExamResultsTable({
 
                   <td className="px-4 py-3 text-center">
                     {(() => {
-                      const fraudFail = (r.warningCount ?? 0) >= MAX_CHEATING_WARNINGS
+                      // BUG FIX (round 8): the actual fraud auto-terminate threshold is
+                      // warningCount > MAX_CHEATING_WARNINGS everywhere else (ExamService.cs,
+                      // use-anti-cheat.ts, student-monitor-card.tsx) - using >= here marked exactly
+                      // 6 warnings as "Không đạt" even though nothing in the live system ever
+                      // treated 6 warnings as over the line.
+                      const fraudFail = (r.warningCount ?? 0) > MAX_CHEATING_WARNINGS
                       const minCorrect = r.minPassQuestions ?? null
                       const scoreFail = minCorrect !== null && (r.correctAnswers ?? 0) < minCorrect
                       const passed = !fraudFail && !scoreFail

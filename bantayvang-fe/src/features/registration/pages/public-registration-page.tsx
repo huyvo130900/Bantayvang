@@ -57,6 +57,10 @@ export function PublicRegistrationPage() {
     const timer = setTimeout(() => {
       setVerifiedEmail(null)
       setOtpSent(false)
+      // BUG FIX (round 8): same stale-code class as the email onChange handler above - without
+      // clearing this, "Gửi lại mã" after expiry re-shows the OTP row pre-filled with the old,
+      // now-invalid code instead of an empty field.
+      setOtpCode('')
       showToast('Mã xác thực đã hết hạn, vui lòng xác thực lại email', false)
     }, 25 * 60 * 1000)
     return () => clearTimeout(timer)
@@ -74,6 +78,9 @@ export function PublicRegistrationPage() {
       if (res.data.success) {
         setOtpSent(true)
         setVerifiedEmail(null)
+        // BUG FIX (round 8): resending after a failed verify attempt left the previous wrong code
+        // sitting in the input instead of prompting fresh entry - same stale-code bug as above.
+        setOtpCode('')
         showToast(res.data.message || 'Đã gửi mã xác thực, vui lòng kiểm tra email', true)
       } else {
         showToast(res.data.message || 'Không thể gửi mã xác thực', false)
@@ -218,12 +225,23 @@ export function PublicRegistrationPage() {
                     onChange={(e) => {
                       setFormData({ ...formData, email: e.target.value })
                       // Đổi email thì mã xác thực cũ (nếu có) không còn hợp lệ cho email mới nữa.
+                      // BUG FIX (round 7): editing after verification is now possible (round 6 fix) -
+                      // otpSent/otpCode also need resetting here, otherwise the OTP row reappears
+                      // pre-filled with the OLD code for the NEW address (stale "Gửi lại mã" state
+                      // instead of prompting a fresh send), and a leftover non-empty otpCode lets
+                      // "Xác thực" be clicked against the new/empty email before a code was ever sent.
                       setVerifiedEmail(null)
+                      setOtpSent(false)
+                      setOtpCode('')
                     }}
-                    disabled={isEmailVerified}
                     required
                     className="flex-1"
                   />
+                  {/* BUG FIX (round 6): the field used to become permanently disabled once verified,
+                      with no way to fix a typo short of reloading the page and losing the whole form.
+                      The onChange handler above already invalidates verification the moment the value
+                      changes, so simply leaving the field editable lets the applicant correct it and
+                      re-verify without losing anything else they've filled in. */}
                   {isEmailVerified ? (
                     <span className="flex items-center gap-1 px-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md whitespace-nowrap">
                       ✓ Đã xác thực

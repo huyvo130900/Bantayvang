@@ -15,7 +15,12 @@ export function StudentMonitorCard({ student, onForceSubmit }: StudentMonitorCar
   // BUG FIX: was hardcoded `>= 6` next to a hardcoded "/5" display below - the two disagreed
   // (a proctor saw "5/5", implying maxed-out/locked, on a card that wasn't actually locked yet
   // since the real threshold is 6). Use the single shared constant for both.
-  const isLocked = student.warningCount >= MAX_CHEATING_WARNINGS
+  // BUG FIX (round 6): the actual auto-force-submit only fires at warningCount > MAX_CHEATING_WARNINGS
+  // (see ExamService.cs's maxCheatingWarnings check and use-anti-cheat.ts's isTerminated) - using
+  // `>=` here made the card show "Đã bị khóa" and disable the proctor's manual "Đuổi thi" button one
+  // violation before the session was actually terminated, so a proctor who wanted to intervene during
+  // that window couldn't.
+  const isLocked = student.warningCount > MAX_CHEATING_WARNINGS
   const isCompleted = student.status === 'Completed'
   
   let borderColor = 'border-gray-200'
